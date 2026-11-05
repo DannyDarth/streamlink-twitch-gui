@@ -13,16 +13,20 @@ export default Controller.extend({
 
 	actions: {
 		addFavorite() {
-			const value = ( this.channelInput || "" ).trim().replace( /^https?:\/\/(?:www\.)?kick\.com\//i, "" ).replace( /^\/+|\/+$/g, "" );
+			const value = ( this.channelInput || "" )
+				.trim()
+				.replace( /^https?:\/\/(?:www\.)?kick\.com\//i, "" )
+				.replace( /^\/+|\/+$/g, "" );
 			if ( !/^[a-zA-Z0-9_-]+$/.test( value ) ) { return; }
 			set( this, "favorites", saveFavorites( [ ...getFavorites(), value ] ) );
 			set( this, "channelInput", "" );
 		},
 		removeFavorite( slug ) {
-			set( this, "favorites", saveFavorites( getFavorites().filter( value => value !== slug ) ) );
+			const remaining = getFavorites().filter( value => value !== slug );
+			set( this, "favorites", saveFavorites( remaining ) );
 		},
 		openBrowser( slug ) {
-			require( "nw.gui" ).Shell.openExternal( "https://kick.com/" + slug );
+			require( "nw.gui" ).Shell.openExternal( `https://kick.com/${slug}` );
 		}
 	}
 });
