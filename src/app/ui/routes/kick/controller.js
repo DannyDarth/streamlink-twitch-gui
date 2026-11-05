@@ -21,9 +21,8 @@ export default Controller.extend({
 			const config = streaming.providers[ provider ];
 			const executable = config && ( config.exec || config.executable );
 			if ( !executable ) {
-				set( this, "error",
-					"Set a Streamlink executable in Settings → Streaming before playing Kick streams."
-				);
+				const message = "Set a Streamlink executable in Settings → Streaming";
+				set( this, "error", `${message} before playing Kick streams.` );
 				return;
 			}
 			const spawn = require( "child_process" ).spawn;
