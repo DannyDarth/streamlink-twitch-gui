@@ -33,6 +33,7 @@ function protectWithWindows( mode, input ) {
 	}
 	const script = [
 		"$ErrorActionPreference = 'Stop'",
+		"Add-Type -AssemblyName System.Security",
 		"$raw = [Console]::In.ReadToEnd()",
 		`if ('${mode}' -eq 'protect') {`,
 		"  $bytes = [Text.Encoding]::UTF8.GetBytes($raw)",
@@ -47,16 +48,23 @@ function protectWithWindows( mode, input ) {
 		"}"
 	].join( "\n" );
 	return new Promise( ( resolve, reject ) => {
+		const encodedScript = Buffer.from( script, "utf16le" ).toString( "base64" );
 		const child = spawn( "powershell.exe",
-			[ "-NoProfile", "-NonInteractive", "-Command", script ],
+			[ "-NoProfile", "-NonInteractive", "-EncodedCommand", encodedScript ],
 			{ windowsHide: true, stdio: [ "pipe", "pipe", "pipe" ] } );
 		let output = "";
+		let errorOutput = "";
 		child.stdout.on( "data", chunk => { output += chunk.toString(); } );
-		child.stderr.on( "data", () => {} );
+		child.stderr.on( "data", chunk => {
+			errorOutput += chunk.toString().slice( 0, 2000 );
+		});
 		child.on( "error", reject );
 		child.on( "close", code => {
 			if ( code === 0 ) { resolve( output ); } else {
-				reject( new Error( "Windows credential protection failed" ) );
+				const details = errorOutput.split( "\n" )
+					.find( line => line.includes( "Exception" ) || line.includes( "error" ) );
+				const reason = details ? details.trim().slice( 0, 160 ) : `exit code ${code}`;
+				reject( new Error( `Windows credential protection failed (${reason})` ) );
 			}
 		});
 		child.stdin.end( input );
