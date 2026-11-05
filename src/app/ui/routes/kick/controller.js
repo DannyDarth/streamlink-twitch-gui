@@ -44,10 +44,12 @@ export default Controller.extend({
 				args.push( `https://kick.com/${slug}`, settings.quality || "best" );
 				const child = spawn( provider, args, { detached: true } );
 				let output = "";
-				child.stderr.on( "data", chunk => {
-					output += chunk.toString();
-					output = output.slice( -2000 );
-				});
+				for ( const pipe of [ child.stdout, child.stderr ] ) {
+					pipe.on( "data", chunk => {
+						output += chunk.toString();
+						output = output.slice( -2000 );
+					});
+				}
 				child.once( "error", error => {
 					set( this, "error", error.message );
 				});
