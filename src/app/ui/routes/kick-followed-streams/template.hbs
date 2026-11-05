@@ -1,4 +1,17 @@
-<main class="content content-channels"><header><h2>Kick Followed Streams</h2></header>
-<p>Local Kick favorites and their live status are not yet connected in this clean rebuild.</p>
-{{#link-to "kickFollowedChannels"}}Manage Kick favorites{{/link-to}}
+<main class="content content-channels">
+	<header><h2>Kick Followed Streams</h2></header>
+	<p>Live streams among your locally saved favorites. The public directory may not list every live channel.</p>
+	{{#if loading}}
+		<p>Checking Kick live streams...</p>
+	{{else}}
+		{{#if error}}<p>{{error}}</p>{{/if}}
+		{{#each streams as |stream|}}
+			<div><strong>{{stream.slug}}</strong> — {{stream.title}}
+				<button {{action "openBrowser" stream.slug}}>Open Channel</button>
+			</div>
+		{{else}}
+			<p>No saved favorites found live in the directory.</p>
+		{{/each}}
+	{{/if}}
+	{{#link-to "kickFollowedChannels"}}Manage Kick favorites{{/link-to}}
 </main>
