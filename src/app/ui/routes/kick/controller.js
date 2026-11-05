@@ -21,11 +21,12 @@ export default Controller.extend({
 			const config = streaming.providers[ provider ];
 			const executable = config && ( config.exec || config.executable );
 			if ( !executable ) {
-				set( this, "error", "Set a Streamlink executable in Settings → Streaming before playing Kick streams." );
+				set( this, "error", "Set a Streamlink executable in Settings → Streaming " +
+					"before playing Kick streams." );
 				return;
 			}
 			const spawn = require( "child_process" ).spawn;
-			const args = [ "https://kick.com/" + slug, "best" ];
+			const args = [ `https://kick.com/${slug}`, "best" ];
 			const child = spawn( executable, args, { detached: true, stdio: "ignore" } );
 			child.once( "error", error => set( this, "error", error.message ) );
 			child.unref();
