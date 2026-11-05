@@ -7,6 +7,7 @@ on:
       - feature/kick-clean-rebuild
     paths:
       - .github/workflows/build-windows-kick-installer.yml
+      - src/app/ui/routes/kick/controller.js
 
 permissions:
   contents: read
