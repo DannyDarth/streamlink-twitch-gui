@@ -16,7 +16,6 @@ export default Controller.extend({
 		this._super( ...arguments );
 		set( this, "favorites", getFavorites() );
 		set( this, "channels", [] );
-		this.refreshChannels();
 	},
 
 	async refreshChannels() {
@@ -64,6 +63,10 @@ export default Controller.extend({
 			}));
 		}
 		if ( generation === this.refreshGeneration ) {
+			set( this, "channels", [ ...this.channels ].sort( ( a, b ) => {
+				if ( a.isLive !== b.isLive ) { return a.isLive ? -1 : 1; }
+				return a.slug.localeCompare( b.slug );
+			}));
 			set( this, "loading", false );
 		}
 	},
