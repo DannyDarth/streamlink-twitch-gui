@@ -12,6 +12,8 @@ on:
       - src/app/ui/routes/kick/template.hbs
       - src/app/router.js
       - src/app/ui/routes/settings/**
+      - src/app/ui/routes/kick-account/**
+      - src/app/ui/routes/kick-followed-channels/**
       - src/app/ui/components/search-bar/**
 
 permissions:
