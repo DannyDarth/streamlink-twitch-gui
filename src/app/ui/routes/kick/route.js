@@ -51,17 +51,39 @@ export default Route.extend({
 	async loadDirectory( controller ) {
 		setProperties( controller, { loading: true, error: null });
 		try {
-			const response = await fetch(
-				"https://kick.com/stream/livestreams/en",
-				{ credentials: "omit" }
-			);
-			if ( !response.ok ) {
-				throw new Error( `Kick live directory returned HTTP ${response.status}` );
+			const rows = [];
+			const seen = new Set();
+			for ( let page = 1; page <= 5; page++ ) {
+				const url = page === 1
+					? "https://kick.com/stream/livestreams/en"
+					: `https://kick.com/stream/livestreams/en?page=${page}`;
+				let response;
+				try {
+					response = await fetch( url, { credentials: "omit" } );
+					if ( !response.ok ) {
+						throw new Error( `HTTP ${response.status}` );
+					}
+				} catch ( error ) {
+					if ( page === 1 ) { throw error; }
+					break;
+				}
+				const data = await response.json();
+				const batch = Array.isArray( data )
+					? data
+					: ( data && ( data.data || data.livestreams ) ) || [];
+				if ( !Array.isArray( batch ) || !batch.length ) { break; }
+				let added = 0;
+				batch.forEach( row => {
+					const channel = row.channel || {};
+					const slug = channel.slug || row.slug;
+					if ( slug && !seen.has( slug.toLowerCase() ) ) {
+						seen.add( slug.toLowerCase() );
+						rows.push( row );
+						added++;
+					}
+				});
+				if ( !added || rows.length >= 150 ) { break; }
 			}
-			const data = await response.json();
-			const rows = Array.isArray( data )
-				? data
-				: ( data && ( data.data || data.livestreams ) ) || [];
 			const streams = rows.map( row => {
 				const channel = row.channel || {};
 				const slug = channel.slug || row.slug;
@@ -83,6 +105,8 @@ export default Route.extend({
 						|| slug
 						|| "Unknown channel",
 					title: row.session_title || row.title || "",
+					viewerCount: Number.isFinite( Number( viewers ) ) && viewers !== null
+						? Number( viewers ) : -1,
 					viewers: viewers === null || viewers === undefined
 						? "—"
 						: Number( viewers ).toLocaleString(),
@@ -92,8 +116,10 @@ export default Route.extend({
 						|| ""
 				};
 			}).filter( row => row.slug );
-			set( controller, "streams", streams );
 			await this.loadViewerCounts( streams );
+			streams.sort( ( a, b ) => b.viewerCount - a.viewerCount
+				|| a.channel.localeCompare( b.channel ) );
+			set( controller, "streams", streams );
 		} catch ( error ) {
 			set( controller, "error", `Kick live directory could not be loaded: ${error.message}` );
 		} finally {
@@ -101,7 +127,7 @@ export default Route.extend({
 		}
 	},
 	async loadViewerCounts( streams ) {
-		const missing = streams.slice( 0, 30 );
+		const missing = streams.filter( stream => stream.viewerCount < 0 ).slice( 0, 100 );
 		for ( let i = 0; i < missing.length; i += 5 ) {
 			await Promise.all( missing.slice( i, i + 5 ).map( async stream => {
 				try {
@@ -116,6 +142,7 @@ export default Route.extend({
 					if ( count !== null && count !== undefined
 						&& Number.isFinite( Number( count ) ) ) {
 						set( stream, "viewers", Number( count ).toLocaleString() );
+						set( stream, "viewerCount", Number( count ) );
 					}
 				} catch ( error ) {
 					// Counts are optional; keep the directory usable.
