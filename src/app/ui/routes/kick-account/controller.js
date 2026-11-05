@@ -41,7 +41,7 @@ export default Controller.extend({
 			const clientId = ( this.clientId || "" ).trim();
 			const secret = this.clientSecret || "";
 			if ( !clientId || !secret ) {
-				set( this, "status", "Enter your Client ID and Client Secret locally before signing in." );
+				set( this, "status", "Enter Client ID and Client Secret before signing in." );
 				return;
 			}
 			if ( this.redirectUri !== "http://127.0.0.1:17843/callback" ) {
@@ -55,7 +55,8 @@ export default Controller.extend({
 
 			const state = base64url( crypto.randomBytes( 32 ) );
 			const verifier = base64url( crypto.randomBytes( 32 ) );
-			const challenge = base64url( crypto.createHash( "sha256" ).update( verifier ).digest() );
+			const hash = crypto.createHash( "sha256" ).update( verifier ).digest();
+			const challenge = base64url( hash );
 			const redirectUri = this.redirectUri;
 			let handled = false;
 			let timeout;
@@ -81,7 +82,7 @@ export default Controller.extend({
 					response.writeHead( 400, { "Content-Type": "text/plain" } );
 					response.end( "Kick authorization failed. Return to the app." );
 					set( this, "status",
-						error ? "Kick denied authorization." : "Invalid authorization callback or state." );
+						error ? "Kick denied authorization." : "Invalid callback or state." );
 					set( this, "busy", false );
 					closePendingServer();
 					return;
