@@ -1,0 +1,29 @@
+<main class="content content-channels">
+	<header>
+		<h2>Kick Live Streams</h2>
+	</header>
+	{{#if loading}}
+		<p>Loading Kick live streams...</p>
+	{{else}}
+		{{#if error}}
+			<p>{{error}}</p>
+		{{else}}
+			{{#each streams as |stream|}}
+				<div class="kick-stream-row" style="display:flex;align-items:center;gap:1rem;padding:.7rem;border-bottom:1px solid rgba(128,128,128,.2)">
+					{{#if stream.thumbnail}}
+						<img src={{stream.thumbnail}} alt="" width="136" style="border-radius:4px">
+					{{/if}}
+					<div>
+						<strong>{{stream.channel}}</strong>
+						<p>{{stream.title}}</p>
+						<p>{{stream.viewers}} viewers</p>
+						<button {{action "play" stream.slug}}>Play</button>
+						<button {{action "openBrowser" stream.slug}}>Open in Browser</button>
+					</div>
+				</div>
+			{{else}}
+				<p>No live streams found.</p>
+			{{/each}}
+		{{/if}}
+	{{/if}}
+</main>
