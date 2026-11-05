@@ -1,7 +1,3 @@
-import Route from "@ember/routing/route";
+import SettingsSubmenuRoute from "../-submenu/route";
 
-export default Route.extend({
-	model() {
-		return null;
-	}
-});
+export default SettingsSubmenuRoute.extend({});
