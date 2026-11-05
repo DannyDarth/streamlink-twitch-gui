@@ -1,14 +1,17 @@
 <main class="content content-channels">
 	<header><h2>Kick Account</h2></header>
-	<p>Kick sign-in setup (not connected). OAuth authorization is not enabled yet.</p>
-	<p>Your Client Secret is never bundled with the app. Do not enter it until the secure local sign-in flow is implemented.</p>
+	<p>Sign in with your personal Kick developer app. Tokens are kept in memory only and cleared when the app exits.</p>
+	<p>Enter your Client Secret only in this local app. Never share it or commit it to GitHub.</p>
 	<p><label for="kick-client-id">Client ID</label></p>
 	<p>{{input id="kick-client-id" value=clientId class="form-control"}}</p>
 	<p><label for="kick-redirect-uri">Redirect URI</label></p>
 	<p>{{input id="kick-redirect-uri" value=redirectUri class="form-control"}}</p>
 	<p><label for="kick-client-secret">Client Secret (not saved)</label></p>
 	<p>{{input id="kick-client-secret" type="password" value=clientSecret class="form-control" autocomplete="off"}}</p>
-	<p><button type="button" class="btn btn-default" {{action "clearSecret"}}>Clear Secret</button></p>
-	<p><strong>Status:</strong> Not connected. Sign-in will be enabled after local callback handling and secure token storage are implemented.</p>
+	<p><button type="button" class="btn btn-primary" disabled={{busy}} {{action "signIn"}}>Sign in with Kick</button>
+	<button type="button" class="btn btn-default" {{action "clearSecret"}}>Clear Secret</button>
+	<button type="button" class="btn btn-default" {{action "disconnect"}}>Disconnect</button></p>
+	<p role="status"><strong>Status:</strong> {{status}}</p>
+	<p>Account follows are not synced yet. This step tests account authorization only.</p>
 	<p>{{#link-to "kickFollowedChannels"}}Back to Kick Followed Channels{{/link-to}}</p>
 </main>
