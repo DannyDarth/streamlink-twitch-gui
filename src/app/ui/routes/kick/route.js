@@ -2,7 +2,7 @@ import Route from "@ember/routing/route";
 import { set, setProperties } from "@ember/object";
 
 export default Route.extend({
-	async model() {
+	model() {
 		return [];
 	},
 	setupController( controller, model ) {
