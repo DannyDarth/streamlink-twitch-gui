@@ -14,16 +14,25 @@ export default Route.extend({
 		const favorites = getFavorites();
 		setProperties( controller, { loading: true, error: null });
 		try {
-			const response = await fetch( "https://kick.com/stream/livestreams/en", { credentials: "omit" } );
-			if ( !response.ok ) { throw new Error( "HTTP " + response.status ); }
+			const response = await fetch(
+				"https://kick.com/stream/livestreams/en",
+				{ credentials: "omit" }
+			);
+			if ( !response.ok ) { throw new Error( `HTTP ${response.status}` ); }
 			const data = await response.json();
-			const rows = Array.isArray( data ) ? data : ( data && ( data.data || data.livestreams ) ) || [];
-			set( controller, "streams", rows.filter( row => favorites.includes( ( ( row.channel && row.channel.slug ) || row.slug || "" ).toLowerCase() ) ).map( row => ({
+			const rows = Array.isArray( data )
+				? data
+				: ( data && ( data.data || data.livestreams ) ) || [];
+			const matches = rows.filter( row => {
+				const slug = ( row.channel && row.channel.slug ) || row.slug || "";
+				return favorites.includes( slug.toLowerCase() );
+			});
+			set( controller, "streams", matches.map( row => ({
 				slug: ( row.channel && row.channel.slug ) || row.slug,
 				title: row.session_title || row.title || ""
 			})) );
 		} catch ( error ) {
-			set( controller, "error", "Could not check the public Kick directory: " + error.message );
+			set( controller, "error", `Could not check the public Kick directory: ${error.message}` );
 		} finally {
 			set( controller, "loading", false );
 		}
