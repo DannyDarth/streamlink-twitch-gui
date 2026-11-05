@@ -44,7 +44,9 @@ export default Route.extend({
 						|| slug
 						|| "Unknown channel",
 					title: row.session_title || row.title || "",
-					viewers: viewers == null ? "—" : Number( viewers ).toLocaleString(),
+					viewers: viewers === null || viewers === undefined
+						? "—"
+						: Number( viewers ).toLocaleString(),
 					thumbnail: image,
 					category: ( row.categories && row.categories[0] && row.categories[0].name )
 						|| ( row.category && row.category.name )
@@ -71,7 +73,7 @@ export default Route.extend({
 					if ( !response.ok ) { return; }
 					const data = await response.json();
 					const count = data.viewers ?? data.viewcount ?? data.viewer_count;
-					if ( count != null && Number.isFinite( Number( count ) ) ) {
+					if ( count !== null && count !== undefined && Number.isFinite( Number( count ) ) ) {
 						set( stream, "viewers", Number( count ).toLocaleString() );
 					}
 				} catch ( error ) {
