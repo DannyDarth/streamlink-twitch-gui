@@ -1,0 +1,20 @@
+<fieldset>
+	<legend>Kick Account</legend>
+	<p>Personal Kick developer credentials. Sign-in is not enabled yet.</p>
+	<p>Your Client Secret is never included in the installer or saved by this form.</p>
+	<div class="form-group">
+		<label for="kick-client-id">Kick Client ID</label>
+		{{input id="kick-client-id" class="form-control" value=clientId}}
+	</div>
+	<div class="form-group">
+		<label for="kick-redirect-uri">Redirect URI</label>
+		{{input id="kick-redirect-uri" class="form-control" value=redirectUri}}
+	</div>
+	<div class="form-group">
+		<label for="kick-client-secret">Kick Client Secret (local session only)</label>
+		{{input id="kick-client-secret" type="password" class="form-control" value=clientSecret autocomplete="off"}}
+	</div>
+	<button type="button" {{action "clearSecret"}}>Clear Secret</button>
+	<p role="status">{{status}}</p>
+	<p>Do not paste your Client Secret into GitHub or share it with anyone.</p>
+</fieldset>
