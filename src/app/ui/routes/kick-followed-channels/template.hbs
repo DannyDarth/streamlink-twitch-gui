@@ -1,3 +1,19 @@
-<main class="content content-channels"><header><h2>Kick Followed Channels</h2></header>
-<p>Kick account sign-in and local favorites are being restored separately. The original Twitch follow lists and settings are unchanged.</p>
+<main class="content content-channels">
+	<header><h2>Kick Followed Channels</h2></header>
+	<p>These are local favorites, not your Kick account follows.</p>
+	<form {{action "addFavorite" on="submit"}}>
+		{{input value=channelInput placeholder="Kick channel name" class="form-control"}}
+		<button type="submit">Add Channel</button>
+	</form>
+	<ul>
+		{{#each favorites as |slug|}}
+			<li>
+				<strong>{{slug}}</strong>
+				<button {{action "openBrowser" slug}}>Open Channel</button>
+				<button {{action "removeFavorite" slug}}>Remove</button>
+			</li>
+		{{else}}
+			<li>No local Kick favorites saved yet.</li>
+		{{/each}}
+	</ul>
 </main>
