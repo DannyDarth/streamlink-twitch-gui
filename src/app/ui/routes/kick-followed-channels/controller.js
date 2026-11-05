@@ -45,7 +45,7 @@ export default Controller.extend({
 					set( item, "isLive", isLive );
 					if ( isLive ) {
 						const count = live.viewers ?? live.viewcount ?? live.viewer_count;
-						set( item, "viewers", count == null
+						set( item, "viewers", count === null || count === undefined
 							? "—" : Number( count ).toLocaleString() );
 						set( item, "title", live.session_title || live.title || "" );
 					}
