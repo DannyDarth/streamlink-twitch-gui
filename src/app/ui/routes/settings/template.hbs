@@ -20,6 +20,6 @@
 	apply=(action "apply")
 	discard=(action "discard")
 	isDirty=model.isDirty
-	disabled=(is-equal currentSubmenu "settings.channels")
+	disabled=(or (is-equal currentSubmenu "settings.channels") (is-equal currentSubmenu "settings.kickAccount"))
 }}
 </main>
