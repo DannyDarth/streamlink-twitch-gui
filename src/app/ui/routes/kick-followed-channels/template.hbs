@@ -1,20 +1,35 @@
 <main class="content content-channels">
 	<header><h2>Kick Followed Channels</h2></header>
 	<p>{{#link-to "kickAccount"}}Kick Account settings{{/link-to}}</p>
-	<p>These are local favorites, not your Kick account follows.</p>
+	<p>These are your locally saved Kick channels, not an automatic import of account follows.</p>
 	<form {{action "addFavorite" on="submit"}}>
 		{{input value=channelInput placeholder="Kick channel name" class="form-control"}}
 		<button type="submit">Add Channel</button>
 	</form>
+	<p><button type="button" {{action "refresh"}} disabled={{loading}}>Refresh live status</button></p>
+	{{#if loading}}<p>Checking Kick channels...</p>{{/if}}
+	{{#if error}}<p role="alert">{{error}}</p>{{/if}}
 	<ul>
-		{{#each favorites as |slug|}}
+		{{#each channels as |channel|}}
 			<li>
-				<strong>{{slug}}</strong>
-				<button {{action "openBrowser" slug}}>Open Channel</button>
-				<button {{action "removeFavorite" slug}}>Remove</button>
+				<strong>{{channel.slug}}</strong>
+				{{#if channel.checking}}
+					<span>Checking...</span>
+				{{else if channel.error}}
+					<span>Status unavailable ({{channel.error}})</span>
+				{{else if channel.isLive}}
+					<strong>LIVE</strong>
+					<span>{{channel.viewers}} viewers</span>
+					{{#if channel.title}}<span>— {{channel.title}}</span>{{/if}}
+					<button type="button" {{action "play" channel.slug}}>Play in VLC</button>
+				{{else}}
+					<span>Offline</span>
+				{{/if}}
+				<button type="button" {{action "openBrowser" channel.slug}}>Open Channel</button>
+				<button type="button" {{action "removeFavorite" channel.slug}}>Remove</button>
 			</li>
 		{{else}}
-			<li>No local Kick favorites saved yet.</li>
+			<li>No local Kick channels saved yet. Add a channel above.</li>
 		{{/each}}
 	</ul>
 </main>
