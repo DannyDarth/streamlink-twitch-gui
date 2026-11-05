@@ -44,6 +44,6 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: streamkickfusion-windows-x64-test-installer
-          path: build/dist/*win64-installer.exe
+          path: dist/*win64-installer.exe
           if-no-files-found: error
           retention-days: 14
