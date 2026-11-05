@@ -16,7 +16,7 @@ function closePendingServer() {
 }
 
 function base64url( bytes ) {
-	return bytes.toString( "base64" ).replace( /\\+/g, "-" ).replace( /\\//g, "_" ).replace( /=+$/g, "" );
+	return bytes.toString( "base64" ).replaceAll( "+", "-" ).replaceAll( "/", "_" ).replace( /=+$/g, "" );
 }
 
 export default Controller.extend({
