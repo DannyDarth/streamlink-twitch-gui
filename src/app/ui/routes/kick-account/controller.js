@@ -24,6 +24,7 @@ export default Controller.extend({
 	redirectUri: "http://127.0.0.1:17843/callback",
 	clientSecret: "",
 	status: "Not connected",
+	accountName: null,
 	busy: false,
 
 	actions: {
@@ -32,6 +33,7 @@ export default Controller.extend({
 		},
 		disconnect() {
 			sessionTokens = null;
+			set( this, "accountName", null );
 			closePendingServer();
 			set( this, "clientSecret", "" );
 			set( this, "status", "Disconnected. Session tokens cleared from memory." );
@@ -50,6 +52,7 @@ export default Controller.extend({
 				return;
 			}
 			set( this, "busy", true );
+			set( this, "accountName", null );
 			set( this, "status", "Preparing secure browser authorization..." );
 			closePendingServer();
 
@@ -113,9 +116,27 @@ export default Controller.extend({
 						throw new Error( "Kick returned no access token" );
 					}
 					sessionTokens = tokens;
-					set( this, "status", sessionTokens.access_token
-						? "Connected to Kick for this app session. Tokens are memory-only."
-						: "No access token received." );
+					set( this, "status", "Connected. Loading Kick account information..." );
+					try {
+						const profileResponse = await fetch( "https://api.kick.com/public/v1/users", {
+							headers: { Authorization: `Bearer ${sessionTokens.access_token}` }
+						});
+						if ( !profileResponse.ok ) {
+							throw new Error( `HTTP ${profileResponse.status}` );
+						}
+						const profile = await profileResponse.json();
+						const data = profile && profile.data;
+						const user = Array.isArray( data ) ? data[0] : data;
+						const name = user && ( user.name || user.username || user.slug );
+						if ( !name ) {
+							throw new Error( "No account name in Kick response" );
+						}
+						set( this, "accountName", name );
+						set( this, "status", "Connected to Kick for this app session." );
+					} catch ( profileError ) {
+						set( this, "status",
+							`Connected, but account lookup failed: ${profileError.message}` );
+					}
 				} catch ( exchangeError ) {
 					set( this, "status", exchangeError.message );
 				} finally {
