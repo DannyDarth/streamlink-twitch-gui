@@ -62,7 +62,7 @@ export default Route.extend({
 		}
 	},
 	async loadViewerCounts( streams ) {
-		const missing = streams.filter( stream => stream.viewers === "—" ).slice( 0, 30 );
+		const missing = streams.slice( 0, 30 );
 		for ( let i = 0; i < missing.length; i += 5 ) {
 			await Promise.all( missing.slice( i, i + 5 ).map( async stream => {
 				try {
@@ -72,7 +72,8 @@ export default Route.extend({
 					);
 					if ( !response.ok ) { return; }
 					const data = await response.json();
-					const count = data.viewers ?? data.viewcount ?? data.viewer_count;
+					const live = data.data || data;
+					const count = live.viewers ?? live.viewcount ?? live.viewer_count;
 					if ( count !== null && count !== undefined
 						&& Number.isFinite( Number( count ) ) ) {
 						set( stream, "viewers", Number( count ).toLocaleString() );
