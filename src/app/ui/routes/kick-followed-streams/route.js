@@ -32,7 +32,8 @@ export default Route.extend({
 				title: row.session_title || row.title || ""
 			})) );
 		} catch ( error ) {
-			set( controller, "error", `Could not check the public Kick directory: ${error.message}` );
+			const message = `Could not check the public Kick directory: ${error.message}`;
+			set( controller, "error", message );
 		} finally {
 			set( controller, "loading", false );
 		}
