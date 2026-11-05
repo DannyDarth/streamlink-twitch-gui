@@ -21,8 +21,9 @@ export default Controller.extend({
 			const config = streaming.providers[ provider ];
 			const executable = config && ( config.exec || config.executable );
 			if ( !executable ) {
-				set( this, "error", `Set a Streamlink executable in Settings → Streaming ` +
-					`before playing Kick streams.` );
+				set( this, "error",
+					"Set a Streamlink executable in Settings → Streaming before playing Kick streams."
+				);
 				return;
 			}
 			const spawn = require( "child_process" ).spawn;
@@ -34,7 +35,7 @@ export default Controller.extend({
 
 		openBrowser( slug ) {
 			if ( !slug ) { return; }
-			require( "nw.gui" ).Shell.openExternal( "https://kick.com/" + slug );
+			require( "nw.gui" ).Shell.openExternal( `https://kick.com/${slug}` );
 		}
 	}
 });
