@@ -30,16 +30,23 @@ export default Route.extend({
 				const image = typeof thumbnail === "string"
 					? thumbnail
 					: ( thumbnail.url || thumbnail.src || "" );
-				const viewers = row.viewer_count ?? row.viewers ??
-					row.concurrent_viewers ?? row.current_viewers ?? 0;
+				const viewers = row.viewer_count
+					?? row.viewers
+					?? row.concurrent_viewers
+					?? row.current_viewers
+					?? 0;
 				return {
 					slug,
-					channel: channel.user && channel.user.username || channel.slug || slug || "Unknown channel",
+					channel: ( channel.user && channel.user.username )
+						|| channel.slug
+						|| slug
+						|| "Unknown channel",
 					title: row.session_title || row.title || "",
 					viewers: Number( viewers ).toLocaleString(),
 					thumbnail: image,
-					category: row.categories && row.categories[0] && row.categories[0].name ||
-						row.category && row.category.name || ""
+					category: ( row.categories && row.categories[0] && row.categories[0].name )
+						|| ( row.category && row.category.name )
+						|| ""
 				};
 			}).filter( row => row.slug ) );
 		} catch ( error ) {
