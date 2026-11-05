@@ -16,7 +16,9 @@ export default Route.extend({
 				"https://kick.com/stream/livestreams/en",
 				{ credentials: "omit" }
 			);
-			if ( !response.ok ) { throw new Error( `Kick live directory returned HTTP ${response.status}` ); }
+			if ( !response.ok ) {
+				throw new Error( `Kick live directory returned HTTP ${response.status}` );
+			}
 			const data = await response.json();
 			const rows = Array.isArray( data )
 				? data
