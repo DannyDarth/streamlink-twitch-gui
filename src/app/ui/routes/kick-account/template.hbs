@@ -1,12 +1,12 @@
 <main class="content content-channels">
 	<header><h2>Kick Account</h2></header>
-	<p>Sign in with your personal Kick developer app. Tokens are kept in memory only and cleared when the app exits.</p>
-	<p>Enter your Client Secret only in this local app. Never share it or commit it to GitHub.</p>
+	<p>Sign in with your personal Kick developer app. On Windows, your login is encrypted for your user account and restored when you reopen the app.</p>
+	<p>Enter your Client Secret only in this local app. It is encrypted using Windows user-account protection for token refresh. Never share it or commit it to GitHub.</p>
 	<p><label for="kick-client-id">Client ID</label></p>
 	<p>{{input id="kick-client-id" value=clientId class="form-control"}}</p>
 	<p><label for="kick-redirect-uri">Redirect URI</label></p>
 	<p>{{input id="kick-redirect-uri" value=redirectUri class="form-control"}}</p>
-	<p><label for="kick-client-secret">Client Secret (not saved)</label></p>
+	<p><label for="kick-client-secret">Client Secret (encrypted on Windows for saved login)</label></p>
 	<p>{{input id="kick-client-secret" type="password" value=clientSecret class="form-control" autocomplete="off"}}</p>
 	<p><button type="button" class="btn btn-primary" disabled={{busy}} {{action "signIn"}}>Sign in with Kick</button>
 	<button type="button" class="btn btn-default" {{action "clearSecret"}}>Clear Secret</button>
