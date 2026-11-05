@@ -48,6 +48,10 @@ export default Controller.extend({
 						set( item, "viewers", count === null || count === undefined
 							? "—" : Number( count ).toLocaleString() );
 						set( item, "title", live.session_title || live.title || "" );
+						const thumbnail = live.thumbnail || live.thumbnail_url || {};
+						set( item, "thumbnail", typeof thumbnail === "string"
+							? thumbnail : ( thumbnail.src || thumbnail.url || "" ) );
+						set( item, "category", ( live.category && live.category.name ) || "" );
 					}
 				} catch ( error ) {
 					if ( generation !== this.refreshGeneration ) { return; }
@@ -70,10 +74,15 @@ export default Controller.extend({
 				.trim()
 				.replace( /^https?:\/\/(?:www\.)?kick\.com\//i, "" )
 				.replace( /^\/+|\/+$/g, "" );
+			if ( !value ) {
+				set( this, "error", null );
+				return;
+			}
 			if ( !/^[a-zA-Z0-9_-]+$/.test( value ) ) {
 				set( this, "error", "Enter a valid Kick channel name." );
 				return;
 			}
+			set( this, "error", null );
 			saveFavorites( [ ...getFavorites(), value ] );
 			set( this, "channelInput", "" );
 			this.refreshChannels();
