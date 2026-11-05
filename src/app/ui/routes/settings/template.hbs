@@ -12,7 +12,6 @@
 	hotkeys=(t "settings.menu.hotkeys")
 	notifications=(t "settings.menu.notifications")
 	channels=(t "settings.menu.channels")
-	kickAccount="Kick Account"
 )}}
 </header>
 {{outlet}}
@@ -20,6 +19,6 @@
 	apply=(action "apply")
 	discard=(action "discard")
 	isDirty=model.isDirty
-	disabled=(or (is-equal currentSubmenu "settings.channels") (is-equal currentSubmenu "settings.kickAccount"))
+	disabled=(is-equal currentSubmenu "settings.channels")
 }}
 </main>
