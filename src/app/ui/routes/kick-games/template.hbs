@@ -1,4 +1,17 @@
-<main class="content content-channels"><header><h2>Kick Games</h2></header>
-<p>Kick categories will be restored here after the live directory has been verified.</p>
-{{#link-to "kick"}}Browse Kick live streams{{/link-to}}
+<main class="content content-channels">
+	<header><h2>Kick Games</h2></header>
+	<p>Categories from the available live-stream directory. This is not Kick's full game catalog.</p>
+	{{#if loading}}
+		<p>Loading Kick categories...</p>
+	{{else}}
+		{{#if error}}<p>{{error}}</p>{{/if}}
+		{{#each games as |game|}}
+			<div style="padding:.5rem;border-bottom:1px solid rgba(128,128,128,.2)">
+				<strong>{{game.name}}</strong> — {{game.channels}} live channels in directory
+			</div>
+		{{else}}
+			<p>No categories were returned.</p>
+		{{/each}}
+	{{/if}}
+	{{#link-to "kick"}}Browse Kick live streams{{/link-to}}
 </main>
