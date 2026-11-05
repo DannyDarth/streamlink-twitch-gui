@@ -1,12 +1,9 @@
 import Controller from "@ember/controller";
-import { inject as service } from "@ember/service";
 import { set } from "@ember/object";
-import resolveProvider from "services/streaming/provider/resolve";
-import resolvePlayer from "services/streaming/player/resolve";
-import spawn from "services/streaming/spawn";
+
+const { spawn } = require( "child_process" );
 
 export default Controller.extend({
-	settings: service(),
 	loading: true,
 	error: null,
 	streams: null,
@@ -17,51 +14,31 @@ export default Controller.extend({
 	},
 
 	actions: {
-		async play( slug ) {
+		play( slug ) {
 			if ( !slug ) { return; }
 			set( this, "error", null );
 
-			try {
-				const settings = this.settings.content.streaming.toJSON();
-				const stream = { isAborted: false };
-				const provider = await resolveProvider(
-					stream,
-					settings.provider,
-					settings.providers
-				);
-				const player = await resolvePlayer(
-					stream,
-					settings.player,
-					settings.players
-				);
-				const args = [];
-				if ( player.exec ) {
-					args.push( "--player", player.exec );
+			const args = [ `https://kick.com/${slug}`, "best" ];
+			const child = spawn( "streamlink", args, { windowsHide: true } );
+			let output = "";
+			let failed = false;
+
+			const appendOutput = chunk => {
+				output = ( output + chunk.toString() ).slice( -3000 );
+			};
+			child.stdout.on( "data", appendOutput );
+			child.stderr.on( "data", appendOutput );
+
+			child.once( "error", error => {
+				failed = true;
+				set( this, "error", `Could not start Streamlink: ${error.message}` );
+			});
+			child.once( "exit", code => {
+				if ( code !== 0 && !failed ) {
+					const message = output.trim() || `Streamlink exited with code ${code}`;
+					set( this, "error", message );
 				}
-				if ( player.params ) {
-					args.push( "--player-args", player.params );
-				}
-				args.push( `https://kick.com/${slug}`, settings.quality || "best" );
-				const child = spawn( provider, args, { detached: true } );
-				let output = "";
-				for ( const pipe of [ child.stdout, child.stderr ] ) {
-					pipe.on( "data", chunk => {
-						output += chunk.toString();
-						output = output.slice( -2000 );
-					});
-				}
-				child.once( "error", error => {
-					set( this, "error", error.message );
-				});
-				child.once( "exit", code => {
-					if ( code !== 0 ) {
-						const message = output.trim() || `Streamlink exited with code ${code}`;
-						set( this, "error", message );
-					}
-				});
-			} catch ( error ) {
-				set( this, "error", error.message );
-			}
+			});
 		},
 
 		openBrowser( slug ) {
