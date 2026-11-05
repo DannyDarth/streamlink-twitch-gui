@@ -5,8 +5,11 @@ export default Route.extend({
 	async model() {
 		return [];
 	},
-	async setupController( controller, model ) {
+	setupController( controller, model ) {
 		this._super( controller, model );
+		this.loadDirectory( controller );
+	},
+	async loadDirectory( controller ) {
 		setProperties( controller, { loading: true, error: null });
 		try {
 			const response = await fetch( "https://kick.com/stream/livestreams/en", { credentials: "omit" } );
