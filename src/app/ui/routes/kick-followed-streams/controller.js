@@ -5,7 +5,7 @@ export default Controller.extend({
 	error: null,
 	actions: {
 		openBrowser( slug ) {
-			require( "nw.gui" ).Shell.openExternal( "https://kick.com/" + slug );
+			require( "nw.gui" ).Shell.openExternal( `https://kick.com/${slug}` );
 		}
 	}
 });
