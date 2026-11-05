@@ -11,7 +11,6 @@ const { spawn } = require( "child_process" );
 let sessionTokens = null;
 let pendingServer = null;
 let sessionGeneration = 0;
-let sessionSecret = null;
 const storePath = path.join( process.env.LOCALAPPDATA || os.homedir(),
 	"StreamKickFusion", "kick-session.dat" );
 
@@ -128,9 +127,11 @@ export default Controller.extend({
 			if ( !tokens.access_token ) { throw new Error( "No access token" ); }
 			if ( generation !== sessionGeneration ) { return; }
 			sessionTokens = tokens;
-			sessionSecret = saved.secret;
 			await saveSession( tokens, saved.secret );
-			if ( generation !== sessionGeneration ) { return; }
+			if ( generation !== sessionGeneration ) {
+				await removeSavedSession();
+				return;
+			}
 			const name = await fetchAccountName( tokens.access_token );
 			if ( generation !== sessionGeneration ) { return; }
 			set( this, "accountName", name );
@@ -155,7 +156,6 @@ export default Controller.extend({
 		async disconnect() {
 			sessionGeneration++;
 			sessionTokens = null;
-			sessionSecret = null;
 			set( this, "accountName", null );
 			closePendingServer();
 			set( this, "clientSecret", "" );
@@ -247,7 +247,6 @@ export default Controller.extend({
 					}
 					if ( generation !== sessionGeneration ) { return; }
 					sessionTokens = tokens;
-					sessionSecret = secret;
 					set( this, "status", "Connected. Loading Kick account information..." );
 					try {
 						const name = await fetchAccountName( tokens.access_token );
