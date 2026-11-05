@@ -3,9 +3,18 @@ import { set } from "@ember/object";
 
 const crypto = require( "crypto" );
 const http = require( "http" );
+const fs = require( "fs" );
+const path = require( "path" );
+const os = require( "os" );
+const { spawn } = require( "child_process" );
 
 let sessionTokens = null;
 let pendingServer = null;
+let sessionGeneration = 0;
+let sessionSecret = null;
+const storePath = path.join( process.env.LOCALAPPDATA || os.homedir(),
+	"StreamKickFusion", "kick-session.dat" );
+
 
 function closePendingServer() {
 	if ( pendingServer ) {
@@ -19,7 +28,119 @@ function base64url( bytes ) {
 		.replaceAll( "+", "-" ).replaceAll( "/", "_" ).replace( /=+$/g, "" );
 }
 
+
+function protectWithWindows( mode, input ) {
+	if ( process.platform !== "win32" ) {
+		return Promise.reject( new Error( "Saved login requires Windows" ) );
+	}
+	const script = [
+		"$ErrorActionPreference = 'Stop'",
+		"$raw = [Console]::In.ReadToEnd()",
+		"if ('" + mode + "' -eq 'protect') {",
+		"  $bytes = [Text.Encoding]::UTF8.GetBytes($raw)",
+		"  $output = [Security.Cryptography.ProtectedData]::Protect(",
+		"    $bytes, $null, [Security.Cryptography.DataProtectionScope]::CurrentUser)",
+		"  [Console]::Out.Write([Convert]::ToBase64String($output))",
+		"} else {",
+		"  $bytes = [Convert]::FromBase64String($raw)",
+		"  $output = [Security.Cryptography.ProtectedData]::Unprotect(",
+		"    $bytes, $null, [Security.Cryptography.DataProtectionScope]::CurrentUser)",
+		"  [Console]::Out.Write([Text.Encoding]::UTF8.GetString($output))",
+		"}"
+	].join( "\n" );
+	return new Promise( ( resolve, reject ) => {
+		const child = spawn( "powershell.exe",
+			[ "-NoProfile", "-NonInteractive", "-Command", script ],
+			{ windowsHide: true, stdio: [ "pipe", "pipe", "pipe" ] } );
+		let output = "";
+		child.stdout.on( "data", chunk => { output += chunk.toString(); } );
+		child.stderr.on( "data", () => {} );
+		child.on( "error", reject );
+		child.on( "close", code => {
+			if ( code === 0 ) { resolve( output ); }
+			else { reject( new Error( "Windows credential protection failed" ) ); }
+		});
+		child.stdin.end( input );
+	});
+}
+
+async function saveSession( tokens, secret ) {
+	if ( !tokens.refresh_token ) {
+		throw new Error( "Kick did not provide a refresh token" );
+	}
+	const payload = JSON.stringify({ tokens, secret });
+	const encrypted = await protectWithWindows( "protect", payload );
+	await fs.promises.mkdir( path.dirname( storePath ), { recursive: true } );
+	await fs.promises.writeFile( storePath, encrypted, { mode: 0o600 } );
+}
+
+async function loadSession() {
+	const encrypted = await fs.promises.readFile( storePath, "utf8" );
+	const payload = await protectWithWindows( "unprotect", encrypted );
+	return JSON.parse( payload );
+}
+
+async function removeSavedSession() {
+	try {
+		await fs.promises.unlink( storePath );
+	} catch ( error ) {
+		if ( error.code !== "ENOENT" ) { throw error; }
+	}
+}
+
+async function fetchAccountName( token ) {
+	const response = await fetch( "https://api.kick.com/public/v1/users", {
+		headers: { Authorization: `Bearer ${token}` }
+	});
+	if ( !response.ok ) { throw new Error( `HTTP ${response.status}` ); }
+	const profile = await response.json();
+	const data = profile && profile.data;
+	const user = Array.isArray( data ) ? data[0] : data;
+	const name = user && ( user.name || user.username || user.slug );
+	if ( !name ) { throw new Error( "No account name in Kick response" ); }
+	return name;
+}
+
 export default Controller.extend({
+	init() {
+		this._super( ...arguments );
+		this.restoreSavedLogin();
+	},
+	async restoreSavedLogin() {
+		const generation = sessionGeneration;
+		try {
+			const saved = await loadSession();
+			if ( generation !== sessionGeneration ) { return; }
+			set( this, "status", "Restoring saved Kick login..." );
+			const body = new URLSearchParams({
+				grant_type: "refresh_token",
+				client_id: this.clientId,
+				client_secret: saved.secret,
+				refresh_token: saved.tokens.refresh_token
+			});
+			const result = await fetch( "https://id.kick.com/oauth/token", {
+				method: "POST",
+				headers: { "Content-Type": "application/x-www-form-urlencoded" },
+				body: body.toString()
+			});
+			if ( !result.ok ) { throw new Error( `HTTP ${result.status}` ); }
+			const tokens = await result.json();
+			if ( !tokens.access_token ) { throw new Error( "No access token" ); }
+			if ( generation !== sessionGeneration ) { return; }
+			sessionTokens = tokens;
+			sessionSecret = saved.secret;
+			await saveSession( tokens, saved.secret );
+			if ( generation !== sessionGeneration ) { return; }
+			const name = await fetchAccountName( tokens.access_token );
+			if ( generation !== sessionGeneration ) { return; }
+			set( this, "accountName", name );
+			set( this, "status", "Connected to Kick (saved login restored)." );
+		} catch ( error ) {
+			if ( generation !== sessionGeneration ) { return; }
+			if ( error.code === "ENOENT" ) { return; }
+			set( this, "status", `Saved login could not be restored: ${error.message}` );
+		}
+	},
 	clientId: "01M6MZ2P7HESZTGFVKQHJ6HKKH",
 	redirectUri: "http://127.0.0.1:17843/callback",
 	clientSecret: "",
@@ -31,12 +152,19 @@ export default Controller.extend({
 		clearSecret() {
 			set( this, "clientSecret", "" );
 		},
-		disconnect() {
+		async disconnect() {
+			sessionGeneration++;
 			sessionTokens = null;
+			sessionSecret = null;
 			set( this, "accountName", null );
 			closePendingServer();
 			set( this, "clientSecret", "" );
-			set( this, "status", "Disconnected. Session tokens cleared from memory." );
+			try {
+				await removeSavedSession();
+				set( this, "status", "Disconnected. Saved Kick login removed." );
+			} catch ( error ) {
+				set( this, "status", `Could not remove saved login: ${error.message}` );
+			}
 		},
 		async signIn() {
 			if ( this.busy ) { return; }
@@ -51,6 +179,8 @@ export default Controller.extend({
 					"For this test build, use the registered redirect URI http://127.0.0.1:17843/callback." );
 				return;
 			}
+			sessionGeneration++;
+			const generation = sessionGeneration;
 			set( this, "busy", true );
 			set( this, "accountName", null );
 			set( this, "status", "Preparing secure browser authorization..." );
@@ -115,27 +245,24 @@ export default Controller.extend({
 					if ( !tokens.access_token ) {
 						throw new Error( "Kick returned no access token" );
 					}
+					if ( generation !== sessionGeneration ) { return; }
 					sessionTokens = tokens;
+					sessionSecret = secret;
 					set( this, "status", "Connected. Loading Kick account information..." );
 					try {
-						const profileResponse = await fetch( "https://api.kick.com/public/v1/users", {
-							headers: { Authorization: `Bearer ${sessionTokens.access_token}` }
-						});
-						if ( !profileResponse.ok ) {
-							throw new Error( `HTTP ${profileResponse.status}` );
-						}
-						const profile = await profileResponse.json();
-						const data = profile && profile.data;
-						const user = Array.isArray( data ) ? data[0] : data;
-						const name = user && ( user.name || user.username || user.slug );
-						if ( !name ) {
-							throw new Error( "No account name in Kick response" );
-						}
+						const name = await fetchAccountName( tokens.access_token );
+						if ( generation !== sessionGeneration ) { return; }
 						set( this, "accountName", name );
-						set( this, "status", "Connected to Kick for this app session." );
+						set( this, "status", "Connected. Saving protected Kick login..." );
+						await saveSession( tokens, secret );
+						if ( generation !== sessionGeneration ) {
+							await removeSavedSession();
+							return;
+						}
+						set( this, "status", "Connected to Kick. Login saved for next launch." );
 					} catch ( profileError ) {
 						set( this, "status",
-							`Connected, but account lookup failed: ${profileError.message}` );
+							`Connected, but profile or saving failed: ${profileError.message}` );
 					}
 				} catch ( exchangeError ) {
 					set( this, "status", exchangeError.message );
