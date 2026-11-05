@@ -41,6 +41,20 @@ export default Controller.extend({
 					const live = result.data || result;
 					if ( generation !== this.refreshGeneration ) { return; }
 					const isLive = Boolean( live && live.id );
+					if ( !isLive ) {
+						const profileResponse = await fetch(
+							`https://kick.com/api/v2/channels/${encodeURIComponent( slug )}`,
+							{ credentials: "omit" }
+						);
+						if ( profileResponse.ok ) {
+							const profile = await profileResponse.json();
+							const user = profile.user || {};
+							const avatar = user.profile_pic || user.profile_picture
+								|| profile.profile_pic || "";
+							if ( generation !== this.refreshGeneration ) { return; }
+							set( item, "avatar", avatar );
+						}
+					}
 					set( item, "isLive", isLive );
 					if ( isLive ) {
 						const count = live.viewers ?? live.viewcount ?? live.viewer_count;
