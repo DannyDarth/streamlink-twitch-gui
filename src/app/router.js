@@ -9,6 +9,7 @@ export default EmberRouter.extend().map(function() {
 	});
 	this.route( "streams" );
 	this.route( "kick" );
+	this.route( "kickAccount", { path: "/kick/account" } );
 	this.route( "kickGames", { path: "/kick/games" } );
 	this.route( "kickFollowedStreams", { path: "/kick/followed-streams" } );
 	this.route( "kickFollowedChannels", { path: "/kick/followed-channels" } );
