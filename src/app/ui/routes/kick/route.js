@@ -2,12 +2,51 @@ import Route from "@ember/routing/route";
 import { set, setProperties } from "@ember/object";
 
 export default Route.extend({
-	model() {
-		return [];
+	queryParams: {
+		query: { refreshModel: true }
+	},
+	model( params ) {
+		return params.query || "";
 	},
 	setupController( controller, model ) {
 		this._super( controller, model );
-		this.loadDirectory( controller );
+		if ( model ) {
+			this.loadChannel( controller, model );
+		} else {
+			this.loadDirectory( controller );
+		}
+	},
+	async loadChannel( controller, query ) {
+		setProperties( controller, { loading: true, error: null, streams: [] });
+		try {
+			const slug = query.trim().replace( /^@/, "" );
+			const response = await fetch(
+				`https://kick.com/api/v2/channels/${encodeURIComponent( slug )}/livestream`,
+				{ credentials: "omit" }
+			);
+			if ( !response.ok ) {
+				throw new Error( `Kick channel returned HTTP ${response.status}` );
+			}
+			const result = await response.json();
+			const live = result.data || result;
+			if ( !live || !live.id ) {
+				set( controller, "error", `No live stream found for ${slug}.` );
+				return;
+			}
+			const thumbnail = live.thumbnail || {};
+			set( controller, "streams", [{
+				slug,
+				channel: slug,
+				title: live.session_title || live.title || "",
+				viewers: Number( live.viewers ?? 0 ).toLocaleString(),
+				thumbnail: thumbnail.src || thumbnail.url || "",
+				category: ( live.category && live.category.name ) || ""
+			}]);
+		} catch ( error ) {
+			set( controller, "error", `Kick search failed: ${error.message}` );
+		} finally {
+			set( controller, "loading", false );
+		}
 	},
 	async loadDirectory( controller ) {
 		setProperties( controller, { loading: true, error: null });
