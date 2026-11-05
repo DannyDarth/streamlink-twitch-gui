@@ -8,7 +8,6 @@ const path = require( "path" );
 const os = require( "os" );
 const { spawn } = require( "child_process" );
 
-let sessionTokens = null;
 let pendingServer = null;
 let sessionGeneration = 0;
 const storePath = path.join( process.env.LOCALAPPDATA || os.homedir(),
@@ -35,7 +34,7 @@ function protectWithWindows( mode, input ) {
 	const script = [
 		"$ErrorActionPreference = 'Stop'",
 		"$raw = [Console]::In.ReadToEnd()",
-		"if ('" + mode + "' -eq 'protect') {",
+		`if ('${mode}' -eq 'protect') {`,
 		"  $bytes = [Text.Encoding]::UTF8.GetBytes($raw)",
 		"  $output = [Security.Cryptography.ProtectedData]::Protect(",
 		"    $bytes, $null, [Security.Cryptography.DataProtectionScope]::CurrentUser)",
@@ -56,8 +55,9 @@ function protectWithWindows( mode, input ) {
 		child.stderr.on( "data", () => {} );
 		child.on( "error", reject );
 		child.on( "close", code => {
-			if ( code === 0 ) { resolve( output ); }
-			else { reject( new Error( "Windows credential protection failed" ) ); }
+			if ( code === 0 ) { resolve( output ); } else {
+				reject( new Error( "Windows credential protection failed" ) );
+			}
 		});
 		child.stdin.end( input );
 	});
@@ -126,7 +126,6 @@ export default Controller.extend({
 			const tokens = await result.json();
 			if ( !tokens.access_token ) { throw new Error( "No access token" ); }
 			if ( generation !== sessionGeneration ) { return; }
-			sessionTokens = tokens;
 			await saveSession( tokens, saved.secret );
 			if ( generation !== sessionGeneration ) {
 				await removeSavedSession();
@@ -155,7 +154,6 @@ export default Controller.extend({
 		},
 		async disconnect() {
 			sessionGeneration++;
-			sessionTokens = null;
 			set( this, "accountName", null );
 			closePendingServer();
 			set( this, "clientSecret", "" );
@@ -246,7 +244,6 @@ export default Controller.extend({
 						throw new Error( "Kick returned no access token" );
 					}
 					if ( generation !== sessionGeneration ) { return; }
-					sessionTokens = tokens;
 					set( this, "status", "Connected. Loading Kick account information..." );
 					try {
 						const name = await fetchAccountName( tokens.access_token );
