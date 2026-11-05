@@ -19,7 +19,7 @@ export default Controller.extend({
 			const streaming = this.settings.content.streaming;
 			const provider = streaming.provider;
 			const config = streaming.providers[ provider ];
-			const executable = config && config.exec;
+			const executable = config && ( config.exec || config.executable );
 			if ( !executable ) {
 				set( this, "error", "Set a Streamlink executable in Settings → Streaming before playing Kick streams." );
 				return;
