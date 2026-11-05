@@ -24,6 +24,24 @@
 		});
 	}
 
+	.twitch-heading {
+		border-left: 3px solid @color-twitch-purple;
+		padding-left: 9px;
+		margin-left: calc( @app-padding - 12px );
+	}
+
+	.kick-heading {
+		border-top: 1px solid rgba( 128, 128, 128, .25 );
+		border-left: 3px solid #53fc18;
+		padding: 12px 0 0 9px;
+		margin-left: calc( @app-padding - 12px );
+		margin-top: 18px;
+	}
+
+	.kick-links a.active::before {
+		border-left-color: #53fc18;
+	}
+
 	h4 {
 		margin: .6em 0 .15em @app-padding;
 		font-size: .9em;
