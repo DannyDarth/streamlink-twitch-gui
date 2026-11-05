@@ -4,6 +4,8 @@ import { set } from "@ember/object";
 const { spawn } = require( "child_process" );
 
 export default Controller.extend({
+	queryParams: [ "query" ],
+	query: "",
 	loading: true,
 	error: null,
 	streams: null,
