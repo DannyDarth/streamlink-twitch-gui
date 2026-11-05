@@ -4,8 +4,7 @@ import { set } from "@ember/object";
 const crypto = require( "crypto" );
 const http = require( "http" );
 
-let accessToken = null;
-let refreshToken = null;
+let sessionTokens = null;
 let pendingServer = null;
 
 function closePendingServer() {
@@ -16,7 +15,8 @@ function closePendingServer() {
 }
 
 function base64url( bytes ) {
-	return bytes.toString( "base64" ).replaceAll( "+", "-" ).replaceAll( "/", "_" ).replace( /=+$/g, "" );
+	return bytes.toString( "base64" )
+		.replaceAll( "+", "-" ).replaceAll( "/", "_" ).replace( /=+$/g, "" );
 }
 
 export default Controller.extend({
@@ -31,8 +31,7 @@ export default Controller.extend({
 			set( this, "clientSecret", "" );
 		},
 		disconnect() {
-			accessToken = null;
-			refreshToken = null;
+			sessionTokens = null;
 			closePendingServer();
 			set( this, "clientSecret", "" );
 			set( this, "status", "Disconnected. Session tokens cleared from memory." );
@@ -46,7 +45,8 @@ export default Controller.extend({
 				return;
 			}
 			if ( this.redirectUri !== "http://127.0.0.1:17843/callback" ) {
-				set( this, "status", "For this test build, use the registered redirect URI http://127.0.0.1:17843/callback." );
+				set( this, "status",
+					"For this test build, use the registered redirect URI http://127.0.0.1:17843/callback." );
 				return;
 			}
 			set( this, "busy", true );
@@ -80,7 +80,8 @@ export default Controller.extend({
 				if ( !receivedState || receivedState !== state || !code || error ) {
 					response.writeHead( 400, { "Content-Type": "text/plain" } );
 					response.end( "Kick authorization failed. Return to the app." );
-					set( this, "status", error ? "Kick denied authorization." : "Invalid authorization callback or state." );
+					set( this, "status",
+						error ? "Kick denied authorization." : "Invalid authorization callback or state." );
 					set( this, "busy", false );
 					closePendingServer();
 					return;
@@ -110,9 +111,10 @@ export default Controller.extend({
 					if ( !tokens.access_token ) {
 						throw new Error( "Kick returned no access token" );
 					}
-					accessToken = tokens.access_token;
-					refreshToken = tokens.refresh_token || null;
-					set( this, "status", "Connected to Kick for this app session. Tokens are memory-only." );
+					sessionTokens = tokens;
+					set( this, "status", sessionTokens.access_token
+						? "Connected to Kick for this app session. Tokens are memory-only."
+						: "No access token received." );
 				} catch ( exchangeError ) {
 					set( this, "status", exchangeError.message );
 				} finally {
