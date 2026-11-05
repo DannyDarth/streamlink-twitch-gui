@@ -2,8 +2,6 @@ import Controller from "@ember/controller";
 import { inject as service } from "@ember/service";
 import { set } from "@ember/object";
 
-const DIRECTORY_URL = "https://kick.com/api/v1/channels?limit=40";
-
 export default Controller.extend({
 	settings: service(),
 	loading: true,
