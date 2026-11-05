@@ -42,14 +42,21 @@ export default Controller.extend({
 					args.push( "--player-args", player.params );
 				}
 				args.push( `https://kick.com/${slug}`, settings.quality || "best" );
-				const child = spawn( provider, args, {
-					detached: true,
-					stdio: "ignore"
+				const child = spawn( provider, args, { detached: true } );
+				let output = "";
+				child.stderr.on( "data", chunk => {
+					output += chunk.toString();
+					output = output.slice( -2000 );
 				});
 				child.once( "error", error => {
 					set( this, "error", error.message );
 				});
-				child.unref();
+				child.once( "exit", code => {
+					if ( code !== 0 ) {
+						const message = output.trim() || `Streamlink exited with code ${code}`;
+						set( this, "error", message );
+					}
+				});
 			} catch ( error ) {
 				set( this, "error", error.message );
 			}
