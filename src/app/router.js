@@ -26,6 +26,7 @@ export default EmberRouter.extend().map(function() {
 		this.route( "info" );
 	});
 	this.route( "settings", function() {
+		this.route( "kickAccount", { path: "/kick-account" } );
 		this.route( "main" );
 		this.route( "streams" );
 		this.route( "streaming" );
