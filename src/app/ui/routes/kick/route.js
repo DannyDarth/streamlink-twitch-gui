@@ -73,7 +73,8 @@ export default Route.extend({
 					if ( !response.ok ) { return; }
 					const data = await response.json();
 					const count = data.viewers ?? data.viewcount ?? data.viewer_count;
-					if ( count !== null && count !== undefined && Number.isFinite( Number( count ) ) ) {
+					if ( count !== null && count !== undefined
+						&& Number.isFinite( Number( count ) ) ) {
 						set( stream, "viewers", Number( count ).toLocaleString() );
 					}
 				} catch ( error ) {
