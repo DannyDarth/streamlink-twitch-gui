@@ -15,6 +15,9 @@ on:
       - src/app/ui/routes/kick-account/**
       - src/app/ui/routes/kick-followed-channels/**
       - src/app/ui/components/search-bar/**
+      - src/app/ui/components/main-menu/**
+      - src/app/ui/components/title-bar/**
+      - src/config/main.json
 
 concurrency:
   group: kick-windows-installer-${{ github.ref }}
