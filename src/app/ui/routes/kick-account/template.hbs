@@ -1,13 +1,14 @@
 <main class="content content-channels">
 	<header><h2>Kick Account</h2></header>
-	<p>Personal Kick account setup. Sign-in is not enabled yet.</p>
-	<p>This form does not save your Client Secret. Do not enter it until sign-in is ready.</p>
+	<p>Kick sign-in setup (not connected). OAuth authorization is not enabled yet.</p>
+	<p>Your Client Secret is never bundled with the app. Do not enter it until the secure local sign-in flow is implemented.</p>
 	<p><label for="kick-client-id">Client ID</label></p>
 	<p>{{input id="kick-client-id" value=clientId class="form-control"}}</p>
 	<p><label for="kick-redirect-uri">Redirect URI</label></p>
 	<p>{{input id="kick-redirect-uri" value=redirectUri class="form-control"}}</p>
 	<p><label for="kick-client-secret">Client Secret (not saved)</label></p>
-	<p>{{input id="kick-client-secret" type="password" value=clientSecret class="form-control"}}</p>
-	<p><button type="button" {{action "clearSecret"}}>Clear Secret</button></p>
+	<p>{{input id="kick-client-secret" type="password" value=clientSecret class="form-control" autocomplete="off"}}</p>
+	<p><button type="button" class="btn btn-default" {{action "clearSecret"}}>Clear Secret</button></p>
+	<p><strong>Status:</strong> Not connected. Sign-in will be enabled after local callback handling and secure token storage are implemented.</p>
 	<p>{{#link-to "kickFollowedChannels"}}Back to Kick Followed Channels{{/link-to}}</p>
 </main>
