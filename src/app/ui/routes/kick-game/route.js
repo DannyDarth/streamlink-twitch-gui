@@ -18,9 +18,9 @@ export default Route.extend({
 			const streams = [];
 			const seen = new Set();
 			for ( let page = 1; page <= 5; page++ ) {
-				const url = page === 1
-					? "https://kick.com/stream/livestreams/en"
-					: `https://kick.com/stream/livestreams/en?page=${page}`;
+				const base = "https://kick.com/stream/livestreams/en";
+				const category = encodeURIComponent( slug );
+				const url = `${base}?subcategory=${category}&page=${page}`;
 				const response = await fetch( url, { credentials: "omit" } );
 				if ( !response.ok ) {
 					if ( page === 1 ) { throw new Error( `HTTP ${response.status}` ); }
@@ -41,7 +41,7 @@ export default Route.extend({
 					const key = String( category.slug || category.name || "" ).toLowerCase();
 					if ( key !== slug.toLowerCase() ) { return; }
 					const thumbnail = row.thumbnail || row.thumbnail_url
-						|| row.stream_thumbnail || {};
+						|| row.stream_thumbnail || row.livestream?.thumbnail || {};
 					const image = typeof thumbnail === "string" ? thumbnail
 						: ( thumbnail.src || thumbnail.url || "" );
 					const count = row.viewer_count ?? row.viewers
@@ -53,6 +53,7 @@ export default Route.extend({
 							|| channel.slug || channelSlug,
 						title: row.session_title || row.title || "",
 						thumbnail: image,
+						viewerCount: Number( count ) || 0,
 						viewers: ( count === null || count === undefined )
 							? "—" : Number( count ).toLocaleString(),
 						category: category.name || ""
@@ -61,6 +62,36 @@ export default Route.extend({
 				});
 				if ( !newRows ) { break; }
 			}
+			// Fill in live thumbnails and viewer counts from each channel's
+			// current livestream, in small batches to avoid request bursts.
+			for ( let i = 0; i < streams.length; i += 5 ) {
+				await Promise.all( streams.slice( i, i + 5 ).map( async stream => {
+					try {
+						const url = "https://kick.com/api/v2/channels/"
+							+ encodeURIComponent( stream.slug ) + "/livestream";
+						const response = await fetch( url, { credentials: "omit" } );
+						if ( !response.ok ) { return; }
+						const payload = await response.json();
+						const live = payload.data || payload;
+						if ( !live || !live.id ) { return; }
+						const cover = live.thumbnail || {};
+						const image = typeof cover === "string"
+							? cover : ( cover.src || cover.url || "" );
+						if ( image ) { set( stream, "thumbnail", image ); }
+						const count = live.viewers ?? live.viewcount ?? live.viewer_count;
+						if ( count !== null && count !== undefined ) {
+							set( stream, "viewers", Number( count ).toLocaleString() );
+							set( stream, "viewerCount", Number( count ) );
+						}
+						if ( live.session_title ) {
+							set( stream, "title", live.session_title );
+						}
+					} catch ( error ) {
+						// Keep the stream card visible when enrichment fails.
+					}
+				}));
+			}
+			streams.sort( ( a, b ) => ( b.viewerCount || 0 ) - ( a.viewerCount || 0 ) );
 			set( controller, "streams", streams );
 		} catch ( error ) {
 			set( controller, "error", `Could not load category streams: ${error.message}` );
