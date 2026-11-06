@@ -7,6 +7,7 @@ on:
       - feature/kick-clean-rebuild
     paths:
       - .github/workflows/build-windows-kick-installer.yml
+      - .github/workflows/install-wine.sh
       - src/app/ui/routes/kick/controller.js
       - src/app/ui/routes/kick/route.js
       - src/app/ui/routes/kick-games/**
