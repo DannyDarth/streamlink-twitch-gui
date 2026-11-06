@@ -49,6 +49,12 @@ jobs:
         env:
           DEBIAN_FRONTEND: noninteractive
         run: |
+          # Rewrite Ubuntu mirrors before the first apt update, including
+          # source definitions used by GitHub-hosted runners.
+          sudo find /etc/apt -type f \\( -name '*.sources' -o -name '*.list' \\) \\
+            -exec sed -i \\
+            -e 's|azure.archive.ubuntu.com|archive.ubuntu.com|g' {} +
+          sudo rm -rf /var/lib/apt/lists/*
           sudo apt-get update
           sudo apt-get install -y nsis
           timeout --signal=TERM --kill-after=30s 35m ./.github/workflows/install-wine.sh
