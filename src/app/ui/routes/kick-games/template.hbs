@@ -8,7 +8,7 @@
 		{{/if}}
 		<div class="kick-game-grid">
 			{{#each games as |game|}}
-				<div class="kick-game-card">
+				{{#link-to "kickGame" game.slug class="kick-game-card" title=game.name}}
 					<div class="kick-game-cover">
 						{{#if game.image}}
 							<img src={{game.image}} alt="" loading="lazy">
@@ -18,7 +18,7 @@
 						<div class="kick-game-viewers">{{game.viewers}} viewers</div>
 					</div>
 					<div class="kick-game-name" title={{game.name}}>{{game.name}}</div>
-				</div>
+				{{/link-to}}
 			{{else}}
 				{{#unless error}}
 					<p>No Kick categories were returned.</p>
