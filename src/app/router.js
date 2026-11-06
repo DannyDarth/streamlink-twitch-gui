@@ -11,6 +11,7 @@ export default EmberRouter.extend().map(function() {
 	this.route( "kick" );
 	this.route( "kickAccount", { path: "/kick/account" } );
 	this.route( "kickGames", { path: "/kick/games" } );
+	this.route( "kickGame", { path: "/kick/games/:category_slug" } );
 	this.route( "kickFollowedStreams", { path: "/kick/followed-streams" } );
 	this.route( "kickFollowedChannels", { path: "/kick/followed-channels" } );
 	this.route( "channel", { path: "/channel/:user_id" }, function() {
