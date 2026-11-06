@@ -101,7 +101,8 @@ export default Route.extend({
 			games.forEach( game => {
 				game.viewers = game.viewerCount.toLocaleString();
 			});
-			games.sort( ( a, b ) => b.viewerCount - a.viewerCount || b.channels - a.channels );
+			games.sort( ( a, b ) => b.viewerCount - a.viewerCount
+				|| b.channels - a.channels );
 			set( controller, "games", games );
 		} catch ( error ) {
 			set( controller, "error", `Could not load Kick categories: ${error.message}` );
