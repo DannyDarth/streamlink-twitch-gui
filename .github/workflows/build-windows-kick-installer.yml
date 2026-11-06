@@ -41,13 +41,13 @@ jobs:
           node-version: '20'
 
       - name: Install Windows packaging tools
-        timeout-minutes: 15
+        timeout-minutes: 40
         env:
           DEBIAN_FRONTEND: noninteractive
         run: |
           sudo apt-get update
           sudo apt-get install -y nsis
-          timeout --signal=TERM --kill-after=30s 12m ./.github/workflows/install-wine.sh
+          timeout --signal=TERM --kill-after=30s 35m ./.github/workflows/install-wine.sh
 
       - name: Install project dependencies
         run: yarn install --pure-lockfile --no-progress --non-interactive
