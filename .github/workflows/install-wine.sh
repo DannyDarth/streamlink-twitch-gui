@@ -7,14 +7,19 @@ set -x
 
 source /etc/os-release
 
-# The Azure Ubuntu mirror on hosted runners has repeatedly downloaded Wine's
-# i386 packages at extremely low speeds. Prefer Ubuntu's primary archive.
-# Ubuntu 24.04 stores its default sources in ubuntu.sources.
-for sources in /etc/apt/sources.list /etc/apt/sources.list.d/ubuntu.sources; do
-    if [[ -f "$sources" ]]; then
-        sudo sed -i 's|http://azure.archive.ubuntu.com/ubuntu|http://archive.ubuntu.com/ubuntu|g' "$sources"
-    fi
-done
+# Explicitly replace the runner's Ubuntu mirror configuration. Some GitHub
+# images use sources files outside the two usual paths.
+sudo find /etc/apt -type f \\( -name '*.sources' -o -name '*.list' \\) \
+    -exec sed -i \
+    -e 's|http://azure.archive.ubuntu.com/ubuntu|http://archive.ubuntu.com/ubuntu|g' \
+    -e 's|https://azure.archive.ubuntu.com/ubuntu|http://archive.ubuntu.com/ubuntu|g' \
+    {} +
+# Fail early rather than silently falling back to the problematic mirror.
+if sudo grep -R -E 'https?://azure.archive.ubuntu.com/ubuntu' \
+    /etc/apt/sources.list /etc/apt/sources.list.d 2>/dev/null; then
+    echo "Azure Ubuntu mirror is still configured" >&2
+    exit 1
+fi
 
 # add i386 architecture
 sudo dpkg --add-architecture i386
