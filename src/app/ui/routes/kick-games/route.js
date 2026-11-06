@@ -86,7 +86,11 @@ export default Route.extend({
 									|| item.banner_url || item.thumbnail_url || "" );
 							const count = Number( item.viewers ?? item.viewer_count );
 							const game = categories.get( key ) || {
-								name, slug: item.slug || name, image: "", viewerCount: 0, channels: 0
+								name,
+								slug: item.slug || name,
+								image: "",
+								viewerCount: 0,
+								channels: 0
 							};
 							if ( image ) { game.image = image; }
 							if ( Number.isFinite( count ) ) { game.viewerCount = count; }
