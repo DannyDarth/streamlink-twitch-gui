@@ -9,7 +9,12 @@ source /etc/os-release
 
 # Explicitly replace the runner's Ubuntu mirror configuration. Some GitHub
 # images use sources files outside the two usual paths.
-sudo find /etc/apt -type f \\( -name '*.sources' -o -name '*.list' \\) \
+sudo find /etc/apt -type f -name '*.sources' \
+    -exec sed -i \
+    -e 's|http://azure.archive.ubuntu.com/ubuntu|http://archive.ubuntu.com/ubuntu|g' \
+    -e 's|https://azure.archive.ubuntu.com/ubuntu|http://archive.ubuntu.com/ubuntu|g' \
+    {} +
+sudo find /etc/apt -type f -name '*.list' \
     -exec sed -i \
     -e 's|http://azure.archive.ubuntu.com/ubuntu|http://archive.ubuntu.com/ubuntu|g' \
     -e 's|https://azure.archive.ubuntu.com/ubuntu|http://archive.ubuntu.com/ubuntu|g' \
