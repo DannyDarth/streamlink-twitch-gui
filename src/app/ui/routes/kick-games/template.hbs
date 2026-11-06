@@ -1,17 +1,29 @@
-<main class="content content-channels">
+<main class="content content-games">
 	<header><h2>Kick Games</h2></header>
-	<p>Categories from the available live-stream directory. This is not Kick's full game catalog.</p>
 	{{#if loading}}
 		<p>Loading Kick categories...</p>
 	{{else}}
-		{{#if error}}<p>{{error}}</p>{{/if}}
-		{{#each games as |game|}}
-			<div style="padding:.5rem;border-bottom:1px solid rgba(128,128,128,.2)">
-				<strong>{{game.name}}</strong> — {{game.channels}} live channels in directory
-			</div>
-		{{else}}
-			<p>No categories were returned.</p>
-		{{/each}}
+		{{#if error}}
+			<p role="alert">{{error}}</p>
+		{{/if}}
+		<div class="kick-game-grid">
+			{{#each games as |game|}}
+				<div class="kick-game-card">
+					<div class="kick-game-cover">
+						{{#if game.image}}
+							<img src={{game.image}} alt="" loading="lazy">
+						{{else}}
+							<span class="kick-game-placeholder fa fa-gamepad" aria-hidden="true"></span>
+						{{/if}}
+						<div class="kick-game-viewers">{{game.viewers}} viewers</div>
+					</div>
+					<div class="kick-game-name" title={{game.name}}>{{game.name}}</div>
+				</div>
+			{{else}}
+				{{#unless error}}
+					<p>No Kick categories were returned.</p>
+				{{/unless}}
+			{{/each}}
+		</div>
 	{{/if}}
-	{{#link-to "kick"}}Browse Kick live streams{{/link-to}}
 </main>
