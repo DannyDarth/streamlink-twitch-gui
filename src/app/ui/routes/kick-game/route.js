@@ -53,7 +53,7 @@ export default Route.extend({
 							|| channel.slug || channelSlug,
 						title: row.session_title || row.title || "",
 						thumbnail: image,
-						viewers: count == null ? "—" : Number( count ).toLocaleString(),
+						viewers: ( count === null || count === undefined ) ? "—" : Number( count ).toLocaleString(),
 						category: category.name || ""
 					});
 					if ( category.name ) { set( controller, "categoryName", category.name ); }
