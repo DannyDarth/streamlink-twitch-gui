@@ -1,24 +1,35 @@
-<nav>
-	<h3 class="twitch-heading">TWITCH</h3>
-	<ul>
-		<li>{{#link-to "games"}}{{t "components.main-menu.browse.games"}}{{/link-to}}</li>
-		<li>{{#link-to "streams"}}{{t "components.main-menu.browse.streams"}}{{/link-to}}</li>
-	</ul>
-	<h4>{{t "components.main-menu.followed.header"}}</h4>
-	<ul>
-		<li>{{#link-to "user.followedStreams"}}{{t "components.main-menu.followed.streams"}}{{/link-to}}</li>
-		<li>{{#link-to "user.followedChannels"}}{{t "components.main-menu.followed.channels"}}{{/link-to}}</li>
-	</ul>
-	<h3 class="kick-heading">KICK</h3>
-	<ul class="kick-links">
-		<li>{{#link-to "kick"}}Browse Streams{{/link-to}}</li>
-		<li>{{#link-to "kickGames"}}Browse Games{{/link-to}}</li>
-		<li>{{#link-to "kickFollowedChannels"}}Followed Channels{{/link-to}}</li>
-		<li>{{#link-to "kickAccount"}}Account Settings{{/link-to}}</li>
-	</ul>
-	<h3>{{t "components.main-menu.misc.header"}}</h3>
-	<ul>
-		<li>{{#link-to "settings"}}{{t "components.main-menu.misc.settings"}}{{/link-to}}</li>
-		<li>{{#link-to "about"}}{{t "components.main-menu.misc.about"}}{{/link-to}}</li>
-	</ul>
+<nav class="streamhub-nav">
+	<section class="nav-section twitch-section">
+		<h3 class="section-heading twitch-heading"><span class="fa fa-twitch" aria-hidden="true"></span>TWITCH</h3>
+		<h4>{{t "components.main-menu.browse.header"}}</h4>
+		<ul>
+			<li>{{#link-to "games"}}<span class="fa fa-gamepad" aria-hidden="true"></span>{{t "components.main-menu.browse.games"}}{{/link-to}}</li>
+			<li>{{#link-to "streams"}}<span class="fa fa-podcast" aria-hidden="true"></span>{{t "components.main-menu.browse.streams"}}{{/link-to}}</li>
+		</ul>
+		<h4>{{t "components.main-menu.followed.header"}}</h4>
+		<ul>
+			<li>{{#link-to "user.followedStreams"}}<span class="fa fa-heart-o" aria-hidden="true"></span>{{t "components.main-menu.followed.streams"}}{{/link-to}}</li>
+			<li>{{#link-to "user.followedChannels"}}<span class="fa fa-users" aria-hidden="true"></span>{{t "components.main-menu.followed.channels"}}{{/link-to}}</li>
+		</ul>
+	</section>
+	<section class="nav-section kick-section">
+		<h3 class="section-heading kick-heading"><span class="kick-symbol" aria-hidden="true">K</span>KICK</h3>
+		<h4>{{t "components.main-menu.browse.header"}}</h4>
+		<ul>
+			<li>{{#link-to "kickGames"}}<span class="fa fa-gamepad" aria-hidden="true"></span>Games{{/link-to}}</li>
+			<li>{{#link-to "kick"}}<span class="fa fa-podcast" aria-hidden="true"></span>Streams{{/link-to}}</li>
+		</ul>
+		<h4>{{t "components.main-menu.followed.header"}}</h4>
+		<ul class="kick-links">
+			<li>{{#link-to "kickFollowedChannels"}}<span class="fa fa-users" aria-hidden="true"></span>Channels{{/link-to}}</li>
+			<li>{{#link-to "kickAccount"}}<span class="fa fa-cog" aria-hidden="true"></span>Account Settings{{/link-to}}</li>
+		</ul>
+	</section>
+	<section class="nav-section misc-section">
+		<h3 class="section-heading misc-heading">{{t "components.main-menu.misc.header"}}</h3>
+		<ul>
+			<li>{{#link-to "settings"}}<span class="fa fa-cog" aria-hidden="true"></span>{{t "components.main-menu.misc.settings"}}{{/link-to}}</li>
+			<li>{{#link-to "about"}}<span class="fa fa-info-circle" aria-hidden="true"></span>{{t "components.main-menu.misc.about"}}{{/link-to}}</li>
+		</ul>
+	</section>
 </nav>
