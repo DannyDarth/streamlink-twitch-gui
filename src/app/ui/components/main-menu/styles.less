@@ -1,7 +1,6 @@
 @import (reference) "ui/styles/config";
 @import (reference) "ui/styles/themes";
 
-
 .main-menu-component {
 	width: @menu-width;
 	animation: animFadeInLeft @anim-content-duration ease-out paused;
@@ -10,13 +9,39 @@
 		animation-play-state: running;
 	}
 
-	h3 {
-		margin: 0 0 .2em @app-padding;
-		font: lighter 1.75em @font-name;
-		letter-spacing: -.025em;
+	.streamhub-nav {
+		padding: 3px 10px 18px 0;
+	}
 
-		&:not(:first-of-type) {
-			margin-top: .5em;
+	.nav-section {
+		padding-bottom: 16px;
+
+		& + .nav-section {
+			border-top: 1px solid rgba( 170, 170, 190, .3 );
+			padding-top: 19px;
+		}
+	}
+
+	.section-heading {
+		position: relative;
+		display: flex;
+		align-items: center;
+		gap: 10px;
+		min-height: 32px;
+		margin: 0 0 14px @app-padding;
+		padding-left: 13px;
+		font: normal 1.55em @font-name;
+		letter-spacing: -.02em;
+
+		&::before {
+			content: "";
+			position: absolute;
+			left: 0;
+			top: 2px;
+			bottom: 2px;
+			width: 3px;
+			border-radius: 3px;
+			background: #bfc0cb;
 		}
 
 		.theme({
@@ -24,46 +49,61 @@
 		});
 	}
 
-	.twitch-heading {
-		border-left: 3px solid @color-twitch-purple;
-		padding-left: 9px;
-		margin-left: calc( @app-padding - 12px );
+	.twitch-heading::before {
+		background: @color-twitch-purple;
 	}
 
-	.kick-heading {
-		border-top: 1px solid rgba( 128, 128, 128, .25 );
-		border-left: 3px solid #53fc18;
-		padding: 12px 0 0 9px;
-		margin-left: calc( @app-padding - 12px );
-		margin-top: 18px;
+	.kick-heading::before {
+		background: #53fc18;
 	}
 
-	.kick-links a.active::before {
-		border-left-color: #53fc18;
+	.twitch-heading > .fa {
+		color: @color-twitch-purple;
+		font-size: .85em;
+	}
+
+	.kick-symbol {
+		color: #53fc18;
+		font-weight: bold;
+		font-size: 1.1em;
 	}
 
 	h4 {
-		margin: .6em 0 .15em @app-padding;
-		font-size: .9em;
-		font-weight: normal;
+		margin: 18px 0 7px ( @app-padding + 13px );
+		font-size: .85em;
+		font-weight: bold;
 		text-transform: uppercase;
-		opacity: .65;
+		opacity: .68;
 	}
 
-	> menu, ul {
+	ul {
 		margin: 0;
 		padding: 0;
 		list-style: none;
 	}
 
 	li {
-		position: relative;
-		margin: .15em 0;
+		margin: 2px 0;
 
 		> a {
-			margin-left: @app-padding;
+			position: relative;
+			display: flex;
+			align-items: center;
+			gap: 10px;
+			min-height: 30px;
+			margin-left: ( @app-padding + 9px );
+			padding: 4px 7px;
+			border-radius: 5px;
 			text-decoration: none;
 			font-weight: lighter;
+			transition: background-color .12s ease;
+
+			> .fa {
+				width: 19px;
+				flex-shrink: 0;
+				text-align: center;
+				font-size: 1.05em;
+			}
 
 			.theme({
 				.theme-mix-color( @theme-mainmenu-anchor-color, @theme-background );
@@ -77,26 +117,24 @@
 				}
 			});
 
+			&:hover {
+				background: rgba( 145, 70, 255, .09 );
+			}
+
 			&.active {
 				font-weight: normal;
+				background: rgba( 145, 70, 255, .18 );
 			}
+		}
+	}
 
-			&.active::before {
-				@size: .5em;
+	.kick-section li > a {
+		&:hover {
+			background: rgba( 83, 252, 24, .08 );
+		}
 
-				content: "";
-				display: block;
-				position: absolute;
-				left: 0;
-				top: 50%;
-				width: 0;
-				height: 0;
-				margin-top: -@size;
-				border-width: @size 0 @size @size;
-				border-style: solid;
-				border-color: transparent;
-				border-left-color: @color-twitch-purple;
-			}
+		&.active {
+			background: rgba( 83, 252, 24, .14 );
 		}
 	}
 }
