@@ -52,7 +52,7 @@ export default Route.extend({
 						?? row.concurrent_viewers ?? row.current_viewers
 						?? row.viewcount ?? ( row.livestream && row.livestream.viewcount ) ?? 0 );
 					if ( !categories.has( key ) ) {
-						categories.set( key, { name, slug: category.slug || "", image,
+						categories.set( key, { name, slug: category.slug || name, image,
 							viewerCount: 0, channels: 0 } );
 					}
 					const game = categories.get( key );
@@ -86,7 +86,7 @@ export default Route.extend({
 									|| item.banner_url || item.thumbnail_url || "" );
 							const count = Number( item.viewers ?? item.viewer_count );
 							const game = categories.get( key ) || {
-								name, slug: item.slug || "", image: "", viewerCount: 0, channels: 0
+								name, slug: item.slug || name, image: "", viewerCount: 0, channels: 0
 							};
 							if ( image ) { game.image = image; }
 							if ( Number.isFinite( count ) ) { game.viewerCount = count; }
