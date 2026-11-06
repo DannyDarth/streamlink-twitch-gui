@@ -72,7 +72,8 @@ export default Route.extend({
 				if ( response.ok ) {
 					const payload = await response.json();
 					const catalog = Array.isArray( payload ) ? payload
-						: ( payload.data && ( Array.isArray( payload.data ) ? payload.data : payload.data.data ) )
+						: ( payload.data && ( Array.isArray( payload.data )
+							? payload.data : payload.data.data ) )
 						|| payload.subcategories || [];
 					if ( Array.isArray( catalog ) ) {
 						catalog.forEach( item => {
@@ -81,7 +82,8 @@ export default Route.extend({
 							const key = String( item.slug || name ).toLowerCase();
 							const banner = item.banner || item.thumbnail || item.image || {};
 							const image = typeof banner === "string" ? banner
-								: ( banner.src || banner.url || item.banner_url || item.thumbnail_url || "" );
+								: ( banner.src || banner.url
+									|| item.banner_url || item.thumbnail_url || "" );
 							const count = Number( item.viewers ?? item.viewer_count );
 							const game = categories.get( key ) || {
 								name, slug: item.slug || "", image: "", viewerCount: 0, channels: 0
