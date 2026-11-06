@@ -67,7 +67,8 @@ export default Route.extend({
 			for ( let i = 0; i < streams.length; i += 5 ) {
 				await Promise.all( streams.slice( i, i + 5 ).map( async stream => {
 					try {
-						const url = `https://kick.com/api/v2/channels/${encodeURIComponent( stream.slug )}/livestream`;
+						const channelSlug = encodeURIComponent( stream.slug );
+						const url = `https://kick.com/api/v2/channels/${channelSlug}/livestream`;
 						const response = await fetch( url, { credentials: "omit" } );
 						if ( !response.ok ) { return; }
 						const payload = await response.json();
