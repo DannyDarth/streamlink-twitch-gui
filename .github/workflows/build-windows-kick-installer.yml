@@ -51,9 +51,10 @@ jobs:
         run: |
           # Rewrite Ubuntu mirrors before the first apt update, including
           # source definitions used by GitHub-hosted runners.
-          sudo find /etc/apt -type f \\( -name '*.sources' -o -name '*.list' \\) \\
-            -exec sed -i \\
-            -e 's|azure.archive.ubuntu.com|archive.ubuntu.com|g' {} +
+          sudo find /etc/apt -type f -name '*.sources' -exec \
+            sed -i 's|azure.archive.ubuntu.com|archive.ubuntu.com|g' {} +
+          sudo find /etc/apt -type f -name '*.list' -exec \
+            sed -i 's|azure.archive.ubuntu.com|archive.ubuntu.com|g' {} +
           sudo rm -rf /var/lib/apt/lists/*
           sudo apt-get update
           sudo apt-get install -y nsis
