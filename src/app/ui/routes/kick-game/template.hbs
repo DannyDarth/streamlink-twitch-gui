@@ -1,8 +1,8 @@
 <main class="content content-channels">
 	<header>
 		<h2>Kick: {{categoryName}}</h2>
-		{{#link-to "kickGames"}}All Games{{/link-to}}
 	</header>
+	<p>{{#link-to "kickGames"}}← All Kick Games{{/link-to}}</p>
 	{{#if loading}}
 		<p>Loading live channels...</p>
 	{{else}}
