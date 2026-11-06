@@ -1,5 +1,6 @@
 import Route from "@ember/routing/route";
 import { set, setProperties } from "@ember/object";
+import "./styles.less";
 
 export default Route.extend({
 	model() {
