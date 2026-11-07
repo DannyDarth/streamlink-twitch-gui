@@ -12,6 +12,17 @@ const countFrom = (...values) => {
 	return null;
 };
 
+// Fetch and validate a single Kick directory page.
+const fetchDirectoryPage = async url => {
+	const response = await fetch( url, { credentials: "omit", cache: "no-store" } );
+	if ( !response.ok ) { throw new Error( `HTTP ${response.status}` ); }
+	const payload = await response.json();
+	const rows = Array.isArray( payload ) ? payload
+		: ( payload && ( payload.data || payload.livestreams ) ) || [];
+	if ( !Array.isArray( rows ) ) { throw new Error( "Unexpected directory response" ); }
+	return rows;
+};
+
 export default Route.extend({
 	model( params ) {
 		return params.category_slug;
@@ -38,19 +49,9 @@ export default Route.extend({
 				const url = `${base}?subcategory=${category}&page=${page}`;
 				let rows = null;
 				let lastError = null;
-				// Retry transient failures and unexpectedly empty pages once.
 				for ( let attempt = 0; attempt < 2; attempt++ ) {
 					try {
-						const response = await fetch( url, {
-							credentials: "omit", cache: "no-store"
-						} );
-						if ( !response.ok ) { throw new Error( `HTTP ${response.status}` ); }
-						const payload = await response.json();
-						rows = Array.isArray( payload ) ? payload
-							: ( payload && ( payload.data || payload.livestreams ) ) || [];
-						if ( !Array.isArray( rows ) ) {
-							throw new Error( "Unexpected directory response" );
-						}
+						rows = await fetchDirectoryPage( url );
 						if ( rows.length ) { break; }
 					} catch ( error ) {
 						lastError = error;
