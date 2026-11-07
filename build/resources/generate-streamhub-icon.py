@@ -41,3 +41,7 @@ im.save(ICONS / "streamhub-1024.png")
 im.save(ICONS / "icon-16-32-48-256.ico", format="ICO",
         sizes=[(16, 16), (32, 32), (48, 48), (64, 64), (128, 128), (256, 256)])
 im.resize((256, 256), Image.Resampling.LANCZOS).save(ICONS / "streamhub-256.png")
+# NW.js loads this asset for the application window and running taskbar button.
+RUNTIME = ROOT / "src" / "app" / "assets" / "icons"
+RUNTIME.mkdir(parents=True, exist_ok=True)
+im.resize((256, 256), Image.Resampling.LANCZOS).save(RUNTIME / "icon-256.png")
