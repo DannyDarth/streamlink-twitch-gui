@@ -9,7 +9,7 @@ const thumbnailUrl = (...candidates) => {
 			: ( candidate.src || candidate.url || candidate.responsive || "" );
 		if ( typeof value !== "string" ) { continue; }
 		const url = value.split( "," )[0].trim().split( /\\s+/ )[0];
-		if ( /^https?:\\/\\//i.test( url ) ) { return url; }
+		if ( url.startsWith( "https://" ) || url.startsWith( "http://" ) ) { return url; }
 	}
 	return "";
 };
