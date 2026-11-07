@@ -77,8 +77,10 @@ export default Route.extend({
 					categories.set( key, game );
 				});
 				const initial = Array.from( categories.values() );
-				initial.forEach( game => { game.viewers = game.viewerCount === null
-						? "—" : game.viewerCount.toLocaleString(); });
+				initial.forEach( game => {
+					game.viewers = game.viewerCount === null
+						? "—" : game.viewerCount.toLocaleString();
+				});
 				publish( initial );
 				if ( version === loadVersion ) { set( controller, "loading", false ); }
 			};
