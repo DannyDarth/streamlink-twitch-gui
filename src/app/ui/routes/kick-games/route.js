@@ -86,10 +86,12 @@ export default Route.extend({
 			};
 			await showCatalog().catch( () => {} );
 			if ( version !== loadVersion ) { return; }
-			// Begin targeted cover recovery as soon as the first directory cards appear.
+			// Recover missing viewer totals and covers from individual category details.
 			const requested = new Set();
 			const recoverCovers = games => {
-				games.slice( 0, 42 ).filter( game => !game.image ).forEach( game => {
+				games.slice( 0, 42 ).filter( game =>
+					!game.image || game.viewerCount === null
+				).forEach( game => {
 					if ( requested.has( game.slug ) ) { return; }
 					requested.add( game.slug );
 					const slug = encodeURIComponent( game.slug );
@@ -98,7 +100,14 @@ export default Route.extend({
 						.then( response => response.ok ? response.json() : null )
 						.then( payload => {
 							if ( !payload ) { return; }
-							const image = coverUrl( payload.data || payload );
+							const details = payload.data || payload;
+							const image = coverUrl( details );
+							const total = Number( details.viewers ?? details.viewer_count );
+							if ( game.viewerCount === null && Number.isFinite( total )
+							&& total >= 0 && version === loadVersion ) {
+							set( game, "viewerCount", total );
+							set( game, "viewers", total.toLocaleString() );
+							}
 							if ( image && !game.image ) {
 								set( game, "image", image );
 								artworkCache.set( categoryKey( game ), image );
