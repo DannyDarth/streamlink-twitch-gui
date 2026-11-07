@@ -312,9 +312,9 @@ private struct KickStreamRow: View {
 
 private struct KickStreamPlayerView: View {
     let stream: KickStream
+    @State private var fullscreen = false
 
     private var playerURL: URL {
-        // Use the channel's public HTTPS page, rather than an unverified media URL.
         var components = URLComponents()
         components.scheme = "https"
         components.host = "kick.com"
@@ -324,18 +324,46 @@ private struct KickStreamPlayerView: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            FilteredWebPlayer(url: playerURL)
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
+            if !fullscreen {
+                FilteredWebPlayer(url: playerURL)
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+            }
         }
+        .background(Color.black)
         .navigationTitle(stream.channel)
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
-            ToolbarItem(placement: .navigationBarTrailing) {
+            ToolbarItemGroup(placement: .navigationBarTrailing) {
+                Button {
+                    fullscreen = true
+                } label: {
+                    Image(systemName: "arrow.up.left.and.arrow.down.right")
+                }
+                .accessibilityLabel("Fullscreen player")
                 ShareLink(item: playerURL) {
                     Image(systemName: "square.and.arrow.up")
                 }
                 .accessibilityLabel("Share stream")
             }
+        }
+        .fullScreenCover(isPresented: $fullscreen) {
+            ZStack(alignment: .topTrailing) {
+                Color.black.ignoresSafeArea()
+                FilteredWebPlayer(url: playerURL)
+                    .ignoresSafeArea()
+                Button {
+                    fullscreen = false
+                } label: {
+                    Image(systemName: "xmark")
+                        .font(.headline)
+                        .padding(13)
+                        .background(.black.opacity(0.75), in: Circle())
+                        .foregroundStyle(.white)
+                }
+                .accessibilityLabel("Exit fullscreen")
+                .padding(16)
+            }
+            .statusBarHidden()
         }
     }
 }
