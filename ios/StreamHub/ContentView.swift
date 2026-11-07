@@ -285,12 +285,11 @@ private struct KickGamesView: View {
 
 private struct KickGameDetailView: View {
     let game: KickGame
-    @StateObject private var directory = KickDirectory()
+    @StateObject private var directory: KickCategoryStreamsDirectory
 
-    private var streams: [KickStream] {
-        directory.streams.filter {
-            $0.category.caseInsensitiveCompare(game.name) == .orderedSame
-        }
+    init(game: KickGame) {
+        self.game = game
+        _directory = StateObject(wrappedValue: KickCategoryStreamsDirectory(slug: game.slug))
     }
 
     var body: some View {
@@ -315,16 +314,16 @@ private struct KickGameDetailView: View {
             } else if let error = directory.error, directory.streams.isEmpty {
                 Text(error)
                 Button("Retry") { Task { await directory.refresh() } }
-            } else if streams.isEmpty {
-                Text("No live streams found in the loaded directory for this game.")
+            } else if directory.streams.isEmpty {
+                Text("No live streams found for this game.")
                     .foregroundStyle(.secondary)
             } else {
                 Section("Live streams") {
-                    ForEach(streams) { stream in
+                    ForEach(directory.streams) { stream in
                         NavigationLink(destination: KickStreamPlayerView(stream: stream)) {
                             KickStreamRow(stream: stream)
                         }
-                            .task { await directory.loadMoreIfNeeded(current: stream) }
+                            .task { await directory.loadMoreIfNeeded(current: stream) }\n                    }\n                    if directory.loadingMore {\n                        HStack { Spacer(); ProgressView(); Spacer() }\n                    }\n                    if let error = directory.error {\n                        Button(error + " — Retry") {\n                            Task {\n                                if let last = directory.streams.last {\n                                    await directory.loadMoreIfNeeded(current: last)\n                                }\n                            }\n                        }
                     }
                 }
             }
