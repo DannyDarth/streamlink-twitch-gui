@@ -35,6 +35,32 @@ export default Route.extend({
 			const catalogUrl = "https://kick.com/api/v1/subcategories?page=1&limit=32";
 			const firstCatalog = fetch( catalogUrl, { credentials: "omit" } )
 				.catch( () => null );
+			// Display Kick's artwork catalog immediately, before directory pagination.
+			const showCatalog = async () => {
+				const response = await firstCatalog;
+				if ( !response || !response.ok ) { return; }
+				const payload = await response.json();
+				const rows = Array.isArray( payload ) ? payload
+					: ( payload.data && ( Array.isArray( payload.data )
+						? payload.data : payload.data.data ) ) || payload.subcategories || [];
+				if ( !Array.isArray( rows ) ) { return; }
+				rows.forEach( item => {
+					const name = item.name || item.slug;
+					if ( !name ) { return; }
+					const key = categoryKey( item );
+					const game = categories.get( key ) || {
+						name, slug: item.slug || name, image: "", viewerCount: 0, channels: 0
+					};
+					const image = coverUrl( item );
+					if ( image && !game.image ) { game.image = image; }
+					categories.set( key, game );
+				});
+				const initial = Array.from( categories.values() );
+				initial.forEach( game => { game.viewers = game.viewerCount.toLocaleString(); });
+				set( controller, "games", initial );
+				set( controller, "loading", false );
+			};
+			showCatalog().catch( () => {} );
 			// Begin targeted cover recovery as soon as the first directory cards appear.
 			const requested = new Set();
 			const recoverCovers = games => {
