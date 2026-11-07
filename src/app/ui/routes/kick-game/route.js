@@ -38,13 +38,71 @@ export default Route.extend({
 	},
 	setupController( controller, slug ) {
 		this._super( controller, slug );
+		this._kickCancelled = false;
 		this.loadCategory( controller, slug );
+	},
+	deactivate() {
+		this._kickCancelled = true;
+		if ( this._kickResume ) { this._kickResume(); }
+		this._super( ...arguments );
+	},
+	waitForMore( controller ) {
+		if ( this._kickCancelled ) { return Promise.resolve(); }
+		set( controller, "loadingMore", true );
+		return new Promise( resolve => {
+			let observer;
+			const finish = () => {
+				if ( observer ) { observer.disconnect(); }
+				this._kickResume = null;
+				set( controller, "loadingMore", false );
+				resolve();
+			};
+			this._kickResume = finish;
+			const sentinel = document.querySelector( ".kick-load-more-sentinel" );
+			if ( !sentinel || typeof IntersectionObserver === "undefined" ) {
+				finish();
+				return;
+			}
+			observer = new IntersectionObserver( entries => {
+				if ( entries.some( entry => entry.isIntersecting ) ) { finish(); }
+			}, { rootMargin: "900px" } );
+			observer.observe( sentinel );
+		});
+	},
+	async enrichBatch( controller, streams ) {
+		for ( let i = 0; i < streams.length; i += 5 ) {
+			if ( this._kickCancelled ) { return; }
+			await Promise.all( streams.slice( i, i + 5 ).map( async stream => {
+				try {
+					const slug = encodeURIComponent( stream.slug );
+					const response = await fetch(
+						`https://kick.com/api/v2/channels/${slug}/info`,
+						{ credentials: "omit" }
+					);
+					if ( !response.ok ) { return; }
+					const payload = await response.json();
+					if ( this._kickCancelled ) { return; }
+					const live = ( payload.data || payload ).livestream || {};
+					const count = live.show_view_count === false
+						? null : countFrom( live.viewer_count );
+					if ( count !== null && count > ( stream.viewerCount || 0 ) ) {
+						set( stream, "viewerCount", count );
+						set( stream, "viewers", count.toLocaleString() );
+					}
+					const image = imageFrom( live.thumbnail );
+					if ( !stream.thumbnail && image ) { set( stream, "thumbnail", image ); }
+					if ( live.id ) { set( stream, "livestreamId", live.id ); }
+				} catch ( error ) {
+					// Preserve directory data when enrichment is unavailable.
+				}
+			}));
+		}
 	},
 	async loadCategory( controller, slug ) {
 		setProperties( controller, {
 			loading: true, error: null, streams: [],
 			categorySlug: slug, categoryName: slug.replace( /-/g, " " ),
-			viewerDiagnostics: "Waiting for directory response..."
+			viewerDiagnostics: "Waiting for directory response...", loadingMore: false
 		});
 		try {
 			const streams = [];
@@ -55,7 +113,15 @@ export default Route.extend({
 			let stopReason = "page limit";
 			const pageSizes = [];
 			const pageBatch = new Map();
+			let batchStart = 0;
 			for ( let page = 1; page <= 80; page++ ) {
+				if ( this._kickCancelled ) { return; }
+				if ( page > 1 && ( page - 1 ) % 12 === 0 ) {
+					await this.enrichBatch( controller, streams.slice( batchStart ) );
+					batchStart = streams.length;
+					await this.waitForMore( controller );
+					if ( this._kickCancelled ) { return; }
+				}
 				const base = "https://kick.com/stream/livestreams/en";
 				const category = encodeURIComponent( slug );
 				const url = `${base}?subcategory=${category}&page=${page}`;
@@ -144,6 +210,8 @@ export default Route.extend({
 				}
 			}
 
+			await this.enrichBatch( controller, streams.slice( batchStart ) );
+			if ( this._kickCancelled ) { return; }
 			// Resolve livestream IDs and counts using the verified channel info API.
 			let resolved = 0;
 			let failed = 0;
