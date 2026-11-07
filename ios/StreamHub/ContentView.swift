@@ -147,7 +147,9 @@ private struct KickDirectoryView: View {
                 .refreshable { await directory.refresh() }
             }
         }
-        .task { await directory.loadInitial() }
+        }
+        .task(id: kickSection) {
+            if kickSection == 0 { await directory.loadInitial() }
         }
     }
 }
