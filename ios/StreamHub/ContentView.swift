@@ -60,6 +60,7 @@ private struct KickDirectoryView: View {
     @StateObject private var directory = KickDirectory()
     @State private var selectedCategory = "All"
     @State private var search = ""
+    @State private var kickSection = 0
 
     private var categories: [String] {
         ["All"] + Array(Set(directory.streams.map(\.category).filter { !$0.isEmpty })).sorted()
@@ -76,6 +77,17 @@ private struct KickDirectoryView: View {
 
     var body: some View {
         VStack(spacing: 0) {
+            Picker("Kick section", selection: $kickSection) {
+                Text("Streams").tag(0)
+                Text("Games").tag(1)
+            }
+            .pickerStyle(.segmented)
+            .padding(.horizontal)
+            .padding(.bottom, 8)
+
+            if kickSection == 1 {
+                KickGamesView()
+            } else {
             TextField("Search loaded streams or games", text: $search)
                 .textFieldStyle(.roundedBorder)
                 .padding(.horizontal)
@@ -135,6 +147,130 @@ private struct KickDirectoryView: View {
                 .refreshable { await directory.refresh() }
             }
         }
+        .task { await directory.loadInitial() }
+        }
+    }
+}
+
+private struct KickGamesView: View {
+    @StateObject private var catalog = KickGamesDirectory()
+    @State private var search = ""
+
+    private var filtered: [KickGame] {
+        catalog.games.filter { search.isEmpty || $0.name.localizedCaseInsensitiveContains(search) }
+    }
+
+    var body: some View {
+        VStack(spacing: 0) {
+            TextField("Search loaded games", text: $search)
+                .textFieldStyle(.roundedBorder)
+                .padding(.horizontal)
+                .padding(.bottom, 8)
+            if catalog.loading && catalog.games.isEmpty {
+                Spacer()
+                ProgressView("Loading Kick games…")
+                Spacer()
+            } else if catalog.games.isEmpty, let error = catalog.error {
+                Spacer()
+                Text(error).multilineTextAlignment(.center)
+                Button("Retry") { Task { await catalog.refresh() } }
+                Spacer()
+            } else {
+                List {
+                    ForEach(filtered) { game in
+                        NavigationLink(destination: KickGameDetailView(game: game)) {
+                            HStack(spacing: 12) {
+                                AsyncImage(url: game.cover) { image in
+                                    image.resizable().scaledToFill()
+                                } placeholder: {
+                                    Rectangle().fill(.gray.opacity(0.2))
+                                        .overlay(Image(systemName: "gamecontroller").foregroundStyle(.secondary))
+                                }
+                                .frame(width: 74, height: 100)
+                                .clipped()
+                                .cornerRadius(8)
+                                VStack(alignment: .leading, spacing: 6) {
+                                    Text(game.name).font(.headline)
+                                    Text(game.viewers.map { "\\($0.formatted()) viewers" } ?? "Viewers unavailable")
+                                        .font(.caption).foregroundStyle(.secondary)
+                                }
+                            }
+                            .padding(.vertical, 4)
+                        }
+                        .task { await catalog.loadMoreIfNeeded(current: game) }
+                    }
+                    if catalog.loadingMore {
+                        HStack { Spacer(); ProgressView(); Spacer() }
+                    }
+                    if let error = catalog.error, !catalog.games.isEmpty {
+                        Button(error + " — Retry") {
+                            Task {
+                                if let last = catalog.games.last {
+                                    await catalog.loadMoreIfNeeded(current: last)
+                                }
+                            }
+                        }
+                    }
+                    if filtered.isEmpty && !catalog.loading {
+                        Text("No matching games in loaded results.")
+                            .foregroundStyle(.secondary)
+                    }
+                }
+                .listStyle(.plain)
+                .refreshable { await catalog.refresh() }
+            }
+        }
+        .task { await catalog.loadInitial() }
+    }
+}
+
+private struct KickGameDetailView: View {
+    let game: KickGame
+    @StateObject private var directory = KickDirectory()
+
+    private var streams: [KickStream] {
+        directory.streams.filter {
+            $0.category.caseInsensitiveCompare(game.name) == .orderedSame
+        }
+    }
+
+    var body: some View {
+        List {
+            HStack(alignment: .top, spacing: 16) {
+                AsyncImage(url: game.cover) { image in
+                    image.resizable().scaledToFill()
+                } placeholder: {
+                    Rectangle().fill(.gray.opacity(0.2))
+                }
+                .frame(width: 100, height: 135)
+                .clipped().cornerRadius(8)
+                VStack(alignment: .leading, spacing: 8) {
+                    Text(game.name).font(.title2.bold())
+                    Text(game.viewers.map { "\\($0.formatted()) viewers" } ?? "Viewer count unavailable")
+                        .foregroundStyle(.secondary)
+                }
+            }
+            .listRowSeparator(.hidden)
+            if directory.loading && directory.streams.isEmpty {
+                ProgressView("Loading live streams…")
+            } else if let error = directory.error, directory.streams.isEmpty {
+                Text(error)
+                Button("Retry") { Task { await directory.refresh() } }
+            } else if streams.isEmpty {
+                Text("No live streams found in the loaded directory for this game.")
+                    .foregroundStyle(.secondary)
+            } else {
+                Section("Live streams") {
+                    ForEach(streams) { stream in
+                        KickStreamRow(stream: stream)
+                            .task { await directory.loadMoreIfNeeded(current: stream) }
+                    }
+                }
+            }
+        }
+        .navigationTitle(game.name)
+        .navigationBarTitleDisplayMode(.inline)
+        .refreshable { await directory.refresh() }
         .task { await directory.loadInitial() }
     }
 }
