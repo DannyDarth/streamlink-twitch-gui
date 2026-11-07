@@ -128,8 +128,34 @@ export default Route.extend({
 				set( controller, "viewerDiagnostics",
 					`Streams: ${streams.length}; IDs: ${resolved}; failed: ${failed}` );
 			}
-			// Channel info is the authoritative source for per-stream viewer counts.
-			// Do not overwrite it with the unreliable current-viewers batch endpoint.
+			// The channel-info endpoint sometimes returns zero for active streams.
+			// Try Kick's per-livestream endpoint only for unresolved counts.
+			let recovered = 0;
+			let lookupFailed = 0;
+			const unresolved = streams.filter( stream =>
+				stream.viewerCount === null && stream.livestreamId
+			);
+			for ( let i = 0; i < unresolved.length; i += 5 ) {
+				await Promise.all( unresolved.slice( i, i + 5 ).map( async stream => {
+					try {
+						const id = String( stream.livestreamId );
+						const url = `https://kick.com/current-viewers?ids[]=${encodeURIComponent( id )}`;
+						const response = await fetch( url, { credentials: "omit" } );
+						if ( !response.ok ) { lookupFailed++; return; }
+						const payload = await response.json();
+						const entry = Array.isArray( payload )
+							? payload.find( row => String( row.livestream_id ) === id ) : null;
+						if ( !entry || entry.show_view_count === false ) { return; }
+						const count = countFrom( entry.viewers );
+						if ( count === null ) { return; }
+						set( stream, "viewerCount", count );
+						set( stream, "viewers", count.toLocaleString() );
+						recovered++;
+					} catch ( error ) {
+						lookupFailed++;
+					}
+				}));
+			}
 			streams.sort( ( a, b ) => ( b.viewerCount || 0 ) - ( a.viewerCount || 0 ) );
 			set( controller, "streams", streams.slice() );
 			set( controller, "viewerDiagnostics",
