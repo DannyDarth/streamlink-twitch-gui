@@ -120,7 +120,9 @@ private struct KickDirectoryView: View {
             } else {
                 List {
                     ForEach(visibleStreams) { stream in
-                        KickStreamRow(stream: stream)
+                        NavigationLink(destination: KickStreamPlayerView(stream: stream)) {
+                            KickStreamRow(stream: stream)
+                        }
                             .listRowSeparator(.hidden)
                             .task {
                                 await directory.loadMoreIfNeeded(current: stream)
@@ -264,7 +266,9 @@ private struct KickGameDetailView: View {
             } else {
                 Section("Live streams") {
                     ForEach(streams) { stream in
-                        KickStreamRow(stream: stream)
+                        NavigationLink(destination: KickStreamPlayerView(stream: stream)) {
+                            KickStreamRow(stream: stream)
+                        }
                             .task { await directory.loadMoreIfNeeded(current: stream) }
                     }
                 }
@@ -303,5 +307,35 @@ private struct KickStreamRow: View {
         }
         .padding(.vertical, 5)
         .accessibilityElement(children: .combine)
+    }
+}
+
+private struct KickStreamPlayerView: View {
+    let stream: KickStream
+
+    private var playerURL: URL {
+        // Use the channel's public HTTPS page, rather than an unverified media URL.
+        var components = URLComponents()
+        components.scheme = "https"
+        components.host = "kick.com"
+        components.path = "/" + stream.slug.addingPercentEncoding(withAllowedCharacters: .urlPathAllowed)!
+        return components.url!
+    }
+
+    var body: some View {
+        VStack(spacing: 0) {
+            FilteredWebPlayer(url: playerURL)
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+        }
+        .navigationTitle(stream.channel)
+        .navigationBarTitleDisplayMode(.inline)
+        .toolbar {
+            ToolbarItem(placement: .navigationBarTrailing) {
+                ShareLink(item: playerURL) {
+                    Image(systemName: "square.and.arrow.up")
+                }
+                .accessibilityLabel("Share stream")
+            }
+        }
     }
 }
