@@ -1,0 +1,61 @@
+<main class="content content-channels">
+	<header><h2>Kick Followed Channels</h2></header>
+	<p>{{#link-to "kickAccount"}}Kick Account settings{{/link-to}}</p>
+	<p>Locally saved Kick channels. Automatic account-follow syncing is not enabled yet.</p>
+	<form {{action "addFavorite" on="submit"}} style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin:16px 0">
+		{{input value=channelInput placeholder="Kick channel name or URL" class="form-control"}}
+		<button type="submit">Add Channel</button>
+		<button type="button" {{action "refresh"}} disabled={{loading}}>Refresh live status</button>
+	</form>
+	{{#if loading}}<p>Checking Kick channels...</p>{{/if}}
+	{{#if error}}<p role="alert">{{error}}</p>{{/if}}
+	<div class="kick-followed-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:20px;padding:12px 0">
+		{{#each channels as |channel|}}
+			<div class="kick-followed-card" style="min-width:0">
+				{{#if channel.isLive}}
+					<button type="button" {{action "play" channel.slug}} title="Play {{channel.slug}} in VLC" style="display:block;width:100%;padding:0;border:0;background:transparent;cursor:pointer;text-align:left;color:inherit">
+						<div style="aspect-ratio:16/9;background:rgba(128,128,128,.18);overflow:hidden;border-radius:5px;position:relative">
+							{{#if channel.thumbnail}}
+								<img src={{channel.thumbnail}} alt="" style="width:100%;height:100%;object-fit:cover">
+							{{else}}
+								<div style="display:flex;align-items:center;justify-content:center;height:100%;font-size:1.2rem">Kick</div>
+							{{/if}}
+							<span style="position:absolute;top:8px;left:8px;background:#d12d36;color:white;padding:2px 6px;border-radius:3px;font-size:11px;font-weight:bold">LIVE</span>
+							<span style="position:absolute;bottom:8px;left:8px;background:rgba(0,0,0,.8);color:white;padding:3px 6px;border-radius:3px;font-size:12px">{{channel.viewers}} viewers</span>
+						</div>
+						<div style="padding:9px 0 2px;font-weight:bold;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{channel.slug}}</div>
+						<div style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{channel.title}}</div>
+						{{#if channel.category}}
+							<div style="opacity:.7;font-size:12px;margin-top:3px">{{channel.category}}</div>
+						{{/if}}
+					</button>
+				{{else}}
+					<div style="aspect-ratio:16/9;background:rgba(128,128,128,.12);border-radius:5px;display:flex;flex-direction:column;gap:10px;align-items:center;justify-content:center">
+						{{#if channel.avatar}}
+							<img src={{channel.avatar}} alt="" style="width:72px;height:72px;border-radius:50%;object-fit:cover">
+						{{else}}
+							<div style="width:72px;height:72px;border-radius:50%;background:rgba(128,128,128,.2);display:flex;align-items:center;justify-content:center;font-weight:bold">Kick</div>
+						{{/if}}
+						{{#if channel.checking}}
+							<span>Checking...</span>
+						{{else if channel.error}}
+							<span>Status unavailable</span>
+						{{else}}
+							<span style="font-size:12px;opacity:.75;font-weight:bold">OFFLINE</span>
+						{{/if}}
+					</div>
+					<div style="padding:9px 0 2px;font-weight:bold;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{channel.slug}}</div>
+					{{#if channel.error}}
+						<div style="opacity:.7;font-size:12px">Could not check: {{channel.error}}</div>
+					{{/if}}
+				{{/if}}
+				<div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px">
+					<button type="button" {{action "openBrowser" channel.slug}}>Open Channel</button>
+					<button type="button" {{action "removeFavorite" channel.slug}}>Remove</button>
+				</div>
+			</div>
+		{{else}}
+			<p>No saved Kick channels yet. Add one above to get started.</p>
+		{{/each}}
+	</div>
+</main>
