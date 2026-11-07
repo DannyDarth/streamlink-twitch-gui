@@ -1,0 +1,45 @@
+name: StreamHub iOS unsigned IPA
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - feature/kick-clean-rebuild
+    paths:
+      - 'ios/**'
+      - '.github/workflows/streamhub-ios.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  ios:
+    runs-on: macos-latest
+    timeout-minutes: 35
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+      - name: Install XcodeGen
+        run: brew install xcodegen
+      - name: Generate Xcode project
+        run: cd ios && xcodegen generate
+      - name: Build unsigned iPhone app
+        run: |
+          xcodebuild -project ios/StreamHub.xcodeproj \
+            -scheme StreamHub \
+            -configuration Release \
+            -sdk iphoneos \
+            -derivedDataPath "$RUNNER_TEMP/StreamHubDerived" \
+            CODE_SIGNING_ALLOWED=NO build
+      - name: Package unsigned IPA for local signing
+        run: |
+          mkdir -p "$RUNNER_TEMP/Payload" dist
+          cp -R "$RUNNER_TEMP/StreamHubDerived/Build/Products/Release-iphoneos/StreamHub.app" "$RUNNER_TEMP/Payload/"
+          cd "$RUNNER_TEMP"
+          zip -qry "$GITHUB_WORKSPACE/dist/StreamHub-iOS-unsigned.ipa" Payload
+      - name: Upload IPA
+        uses: actions/upload-artifact@v4
+        with:
+          name: streamhub-ios-unsigned-ipa
+          path: dist/StreamHub-iOS-unsigned.ipa
+          if-no-files-found: error
