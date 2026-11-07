@@ -111,7 +111,8 @@ export default Route.extend({
 							infoSample = `${stream.slug}: ${String( live.viewer_count )}`;
 						}
 						set( stream, "viewerCount", bestCount );
-						set( stream, "viewers", bestCount === null ? "—" : bestCount.toLocaleString() );
+						set( stream, "viewers",
+							bestCount === null ? "—" : bestCount.toLocaleString() );
 						const cover = live.thumbnail || {};
 						const image = typeof cover === "string"
 							? cover : ( cover.url || cover.src || "" );
