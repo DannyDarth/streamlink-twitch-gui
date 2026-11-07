@@ -126,9 +126,9 @@ export default Route.extend({
 				await this.waitForMore( controller );
 				if ( this._kickCancelled ) { return loaded > 0; }
 			}
+			const after = cursor ? `&after=${encodeURIComponent( cursor )}` : "";
 			const url = `${base}?limit=24&sort=viewer_count_desc`
-				+ `&category_id=${categoryId}&display_language=en`
-				+ ( cursor ? `&after=${encodeURIComponent( cursor )}` : "" );
+				+ `&category_id=${categoryId}&display_language=en${after}`;
 			let rows;
 			let nextCursor;
 			try {
