@@ -72,7 +72,8 @@ export default Route.extend({
 				const batch = rows.map( row => {
 					const channel = row.channel || {};
 					const slug = channel.slug || row.slug;
-					const thumbnail = row.thumbnail || row.thumbnail_url || row.stream_thumbnail || {};
+					const thumbnail = row.thumbnail || row.thumbnail_url
+					|| row.stream_thumbnail || {};
 					const image = typeof thumbnail === "string"
 						? thumbnail
 						: ( thumbnail.url || thumbnail.src || "" );
