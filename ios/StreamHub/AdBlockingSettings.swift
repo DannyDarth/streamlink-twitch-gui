@@ -1,4 +1,5 @@
 import Foundation
+import Combine
 import WebKit
 
 /// Controls optional filtering in StreamHub's own embedded web player.
