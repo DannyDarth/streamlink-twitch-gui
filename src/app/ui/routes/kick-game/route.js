@@ -12,6 +12,15 @@ const countFrom = (...values) => {
 	return null;
 };
 
+// Kick returns thumbnail objects with different field names across endpoints.
+const imageFrom = value => {
+	if ( typeof value === "string" ) { return value; }
+	if ( !value || typeof value !== "object" ) { return ""; }
+	const url = value.url || value.src || value.link || value.hd_link
+		|| value.responsive || "";
+	return typeof url === "string" ? url.split( "," )[0].trim().split( /\\s+/ )[0] : "";
+};
+
 // Fetch and validate a single Kick directory page.
 const fetchDirectoryPage = async url => {
 	const response = await fetch( url, { credentials: "omit", cache: "no-store" } );
@@ -77,9 +86,7 @@ export default Route.extend({
 					const live = row.livestream || {};
 					const thumbnail = row.thumbnail || row.thumbnail_url
 						|| row.stream_thumbnail || live.thumbnail || channel.thumbnail || {};
-					const image = typeof thumbnail === "string" ? thumbnail
-						: ( thumbnail.src || thumbnail.url || thumbnail.responsive || "" )
-							.split( "," )[0].trim().split( /\s+/ )[0];
+					const image = imageFrom( thumbnail );
 					const livestreamId = live.id || row.livestream_id || row.stream_id || null;
 					const count = countFrom(
 						row.viewer_count, row.concurrent_viewers,
@@ -139,9 +146,7 @@ export default Route.extend({
 						set( stream, "viewers",
 							bestCount === null ? "—" : bestCount.toLocaleString() );
 						const cover = live.thumbnail || {};
-						const image = ( typeof cover === "string"
-							? cover : ( cover.url || cover.src || cover.responsive || "" ) )
-							.split( "," )[0].trim().split( /\s+/ )[0];
+						const image = imageFrom( cover );
 						if ( !stream.thumbnail && image ) {
 							set( stream, "thumbnail", image );
 						}
@@ -182,6 +187,41 @@ export default Route.extend({
 					}
 				}));
 			}
+			// The dedicated livestream endpoint can expose counts and artwork that
+			// are missing from channel info. Query only streams needing a fallback.
+			let liveRecovered = 0;
+			let coverRecovered = 0;
+			let liveFailed = 0;
+			const missing = streams.filter( stream =>
+				stream.viewerCount === null || stream.viewerCount === 1 || !stream.thumbnail
+			);
+			for ( let i = 0; i < missing.length; i += 5 ) {
+				await Promise.all( missing.slice( i, i + 5 ).map( async stream => {
+					const channelSlug = encodeURIComponent( stream.slug );
+					const url = `https://kick.com/api/v2/channels/${channelSlug}/livestream`;
+					try {
+						const response = await fetch( url, { credentials: "omit" } );
+						if ( !response.ok ) { liveFailed++; return; }
+						const payload = await response.json();
+						const live = payload.data || payload;
+						if ( !live || typeof live !== "object" ) { return; }
+						const count = live.show_view_count === false ? null
+							: countFrom( live.viewer_count, live.viewers );
+						if ( count !== null && count > ( stream.viewerCount || 0 ) ) {
+							set( stream, "viewerCount", count );
+							set( stream, "viewers", count.toLocaleString() );
+							liveRecovered++;
+						}
+						const image = imageFrom( live.thumbnail || live.thumbnail_url );
+						if ( !stream.thumbnail && image ) {
+							set( stream, "thumbnail", image );
+							coverRecovered++;
+						}
+					} catch ( error ) {
+						liveFailed++;
+					}
+				}));
+			}
 			const oneViewerStreams = streams.filter( stream => stream.viewerCount === 1 ).length;
 			streams.sort( ( a, b ) => ( b.viewerCount || 0 ) - ( a.viewerCount || 0 ) );
 			set( controller, "streams", streams.slice() );
@@ -190,7 +230,8 @@ export default Route.extend({
 				+ ` page sizes: ${pageSizes.join( "," )}; stop: ${stopReason};`
 				+ ` resolved: ${resolved}; failed: ${failed};`
 				+ ` recovered: ${recovered}; lookup failed: ${lookupFailed};`
-				+ ` one-viewer values: ${oneViewerStreams};`
+				+ ` livestream recovered: ${liveRecovered}; covers: ${coverRecovered};`
+				+ ` livestream failed: ${liveFailed}; one-viewer values: ${oneViewerStreams};`
 				+ ` sample: ${infoSample}` );
 		} catch ( error ) {
 			set( controller, "error", `Could not load category streams: ${error.message}` );
