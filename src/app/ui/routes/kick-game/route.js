@@ -52,10 +52,10 @@ export default Route.extend({
 				for ( let attempt = 0; attempt < 2; attempt++ ) {
 					try {
 						rows = await fetchDirectoryPage( url );
-						if ( rows.length ) { break; }
 					} catch ( error ) {
 						lastError = error;
 					}
+					if ( rows && rows.length ) { break; }
 				}
 				if ( !rows || !rows.length ) {
 					stopReason = lastError ? lastError.message : "empty page";
