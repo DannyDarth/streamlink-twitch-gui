@@ -102,6 +102,7 @@ export default Route.extend({
 							|| slug
 							|| "Unknown channel",
 						title: row.session_title || row.title || "",
+						viewerCount: Number( viewers ) > 0 ? Number( viewers ) : null,
 						viewers: viewers === null || viewers === undefined
 							? "—"
 							: Number( viewers ).toLocaleString(),
@@ -115,6 +116,7 @@ export default Route.extend({
 					seen.add( stream.slug );
 					streams.push( stream );
 				});
+				streams.sort( ( a, b ) => ( b.viewerCount || 0 ) - ( a.viewerCount || 0 ) );
 				set( controller, "streams", streams.slice() );
 				set( controller, "loading", false );
 				set( controller, "nextPage", page + 1 );
