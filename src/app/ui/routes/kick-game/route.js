@@ -102,11 +102,16 @@ export default Route.extend({
 						set( stream, "livestreamId", live.id );
 						const count = live.show_view_count === false
 							? null : countFrom( live.viewer_count );
+						// Some Kick responses report 1 as a placeholder. Never let
+						// that replace a higher count already supplied by the directory.
+						const previous = stream.viewerCount;
+						const bestCount = count === null ? previous
+							: previous === null ? count : Math.max( previous, count );
 						if ( infoSample === "none" ) {
 							infoSample = `${stream.slug}: ${String( live.viewer_count )}`;
 						}
-						set( stream, "viewerCount", count );
-						set( stream, "viewers", count === null ? "—" : count.toLocaleString() );
+						set( stream, "viewerCount", bestCount );
+						set( stream, "viewers", bestCount === null ? "—" : bestCount.toLocaleString() );
 						const cover = live.thumbnail || {};
 						const image = typeof cover === "string"
 							? cover : ( cover.url || cover.src || "" );
