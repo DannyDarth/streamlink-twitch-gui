@@ -1,13 +1,13 @@
 import Route from "@ember/routing/route";
 import { set, setProperties } from "@ember/object";
 
-// Ignore boolean live-status flags masquerading as viewer counts.
+// Ignore boolean live-status flags and nonpositive placeholder counts.
 const countFrom = (...values) => {
 	for ( const value of values ) {
 		if ( typeof value !== "number" && typeof value !== "string" ) { continue; }
 		if ( value === "" || value === null ) { continue; }
 		const count = Number( value );
-		if ( Number.isFinite( count ) && count >= 0 ) { return count; }
+		if ( Number.isFinite( count ) && count > 0 ) { return count; }
 	}
 	return null;
 };
@@ -52,11 +52,12 @@ export default Route.extend({
 					const category = ( row.categories && row.categories[0] ) || row.category || {};
 					const key = String( category.slug || category.name || "" ).toLowerCase();
 					if ( key !== slug.toLowerCase() ) { return; }
-					const thumbnail = row.thumbnail || row.thumbnail_url
-						|| row.stream_thumbnail || row.livestream?.thumbnail || {};
-					const image = typeof thumbnail === "string" ? thumbnail
-						: ( thumbnail.src || thumbnail.url || "" );
 					const live = row.livestream || {};
+					const thumbnail = row.thumbnail || row.thumbnail_url
+						|| row.stream_thumbnail || live.thumbnail || channel.thumbnail || {};
+					const image = typeof thumbnail === "string" ? thumbnail
+						: ( thumbnail.src || thumbnail.url || thumbnail.responsive || "" )
+							.split( "," )[0].trim().split( /\s+/ )[0];
 					const livestreamId = live.id || row.livestream_id || row.stream_id || null;
 					const count = countFrom(
 						row.viewer_count, row.concurrent_viewers,
@@ -102,8 +103,7 @@ export default Route.extend({
 						set( stream, "livestreamId", live.id );
 						const count = live.show_view_count === false
 							? null : countFrom( live.viewer_count );
-						// Some Kick responses report 1 as a placeholder. Never let
-						// that replace a higher count already supplied by the directory.
+						// Keep higher directory counts if channel info is stale.
 						const previous = stream.viewerCount;
 						const bestCount = count === null ? previous
 							: previous === null ? count : Math.max( previous, count );
@@ -114,8 +114,9 @@ export default Route.extend({
 						set( stream, "viewers",
 							bestCount === null ? "—" : bestCount.toLocaleString() );
 						const cover = live.thumbnail || {};
-						const image = typeof cover === "string"
-							? cover : ( cover.url || cover.src || "" );
+						const image = ( typeof cover === "string"
+							? cover : ( cover.url || cover.src || cover.responsive || "" ) )
+							.split( "," )[0].trim().split( /\s+/ )[0];
 						if ( !stream.thumbnail && image ) {
 							set( stream, "thumbnail", image );
 						}
