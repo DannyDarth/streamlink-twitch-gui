@@ -29,5 +29,7 @@
 				{{#unless error}}<p>No live channels found in this category.</p>{{/unless}}
 			{{/each}}
 		</div>
+		<div class="kick-load-more-sentinel" style="min-height:2px"></div>
+		{{#if loadingMore}}<p>Scroll down to load more Kick streams...</p>{{/if}}
 	{{/if}}
 </main>
