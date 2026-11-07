@@ -150,7 +150,8 @@ export default Route.extend({
 				}
 			}
 			set( controller, "viewerDiagnostics",
-				`Streams: ${streams.length}; IDs: ${resolved}; matched: ${matched}; failed: ${failed}` );
+				`Streams: ${streams.length}; IDs: ${resolved};`
+				+ ` matched: ${matched}; failed: ${failed}` );
 			set( controller, "streams", streams.slice() );
 			streams.sort( ( a, b ) => ( b.viewerCount || 0 ) - ( a.viewerCount || 0 ) );
 			set( controller, "streams", streams );
