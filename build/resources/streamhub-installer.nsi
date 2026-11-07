@@ -24,6 +24,7 @@ Section "Install"
   WriteUninstaller "$INSTDIR\\Uninstall.exe"
   CreateDirectory "$SMPROGRAMS\\StreamHub"
   CreateShortcut "$SMPROGRAMS\\StreamHub\\StreamHub.lnk" "$INSTDIR\\streamlink-twitch-gui.exe" "" "$INSTDIR\\streamlink-twitch-gui.exe" 0
+  CreateShortcut "$DESKTOP\\StreamHub.lnk" "$INSTDIR\\streamlink-twitch-gui.exe" "" "$INSTDIR\\streamlink-twitch-gui.exe" 0
   CreateShortcut "$SMPROGRAMS\\StreamHub\\Uninstall.lnk" "$INSTDIR\\Uninstall.exe"
   WriteRegStr HKCU "Software\\Microsoft\\Windows\\CurrentVersion\\Uninstall\\StreamHub" "DisplayName" "StreamHub"
   WriteRegStr HKCU "Software\\Microsoft\\Windows\\CurrentVersion\\Uninstall\\StreamHub" "DisplayIcon" "$INSTDIR\\streamlink-twitch-gui.exe,0"
@@ -33,6 +34,7 @@ Section "Install"
 SectionEnd
 
 Section "Uninstall"
+  Delete "$DESKTOP\\StreamHub.lnk"
   Delete "$SMPROGRAMS\\StreamHub\\StreamHub.lnk"
   Delete "$SMPROGRAMS\\StreamHub\\Uninstall.lnk"
   RMDir "$SMPROGRAMS\\StreamHub"
