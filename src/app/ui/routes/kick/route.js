@@ -116,9 +116,10 @@ export default Route.extend({
 					);
 					const viewers = viewerCount(
 						row.viewer_count, row.viewers, row.concurrent_viewers,
-						row.current_viewers, row.viewcount, live.viewer_count,
+						row.current_viewers, row.viewcount, row.viewerCount,
+						row.stream && row.stream.viewer_count, live.viewer_count,
 						live.viewers, live.viewcount, live.concurrent_viewers,
-						channel.viewer_count
+						channel.viewer_count, channel.livestream && channel.livestream.viewer_count
 					);
 					return {
 						slug,
@@ -141,6 +142,32 @@ export default Route.extend({
 				});
 				streams.sort( ( a, b ) => ( b.viewerCount || 0 ) - ( a.viewerCount || 0 ) );
 				set( controller, "streams", streams.slice() );
+				// Resolve missing counts without blocking artwork or the stream grid.
+				const missing = streams.filter( stream => stream.viewerCount === null )
+					.slice( 0, 30 );
+				for ( let offset = 0; offset < missing.length; offset += 6 ) {
+					const batchMissing = missing.slice( offset, offset + 6 );
+					Promise.all( batchMissing.map( async stream => {
+						try {
+							const response = await fetch(
+								`https://kick.com/api/v2/channels/${encodeURIComponent( stream.slug )}/livestream`,
+								{ credentials: "omit" }
+							);
+							if ( !response.ok ) { return; }
+							const payload = await response.json();
+							const live = payload.data || payload;
+							const count = viewerCount(
+								live.viewer_count, live.viewers, live.viewcount,
+								live.concurrent_viewers
+							);
+							if ( count === null ) { return; }
+							set( stream, "viewerCount", count );
+							set( stream, "viewers", count.toLocaleString() );
+						} catch ( error ) {
+							// Keep the stream visible when count enrichment fails.
+						}
+					})).catch( () => {} );
+				}
 				set( controller, "loading", false );
 				set( controller, "nextPage", page + 1 );
 				if ( page === 15 ) {
