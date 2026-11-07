@@ -55,7 +55,9 @@ export default Route.extend({
 				set( controller, "error", `No live stream found for ${slug}.` );
 				return;
 			}
-			const viewers = viewerCount( live.viewer_count, live.viewers, live.viewcount, live.concurrent_viewers );
+			const viewers = viewerCount(
+				live.viewer_count, live.viewers, live.viewcount, live.concurrent_viewers
+			);
 			set( controller, "streams", [{
 				slug,
 				channel: slug,
