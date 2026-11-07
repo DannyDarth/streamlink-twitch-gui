@@ -17,6 +17,9 @@ const coverUrl = item => {
 const categoryKey = item => String( item.slug || item.name || "" )
 	.toLowerCase().replace( /[^a-z0-9]+/g, "-" ).replace( /^-|-$/g, "" );
 
+const artworkCache = new Map();
+let loadVersion = 0;
+
 export default Route.extend({
 	model() {
 		return [];
@@ -26,11 +29,27 @@ export default Route.extend({
 		this.loadGames( controller );
 	},
 	async loadGames( controller ) {
-		setProperties( controller, { loading: true, error: null, games: [] });
+		const version = ++loadVersion;
+		const previous = controller.games || [];
+		previous.forEach( game => {
+			if ( game.image ) { artworkCache.set( categoryKey( game ), game.image ); }
+		});
+		setProperties( controller, { loading: true, error: null, games: previous });
 		try {
 			// The public live directory is the same source used by Kick Streams.
 			// Build categories from several pages rather than an unavailable categories endpoint.
 			const categories = new Map();
+			const remember = game => {
+				const key = categoryKey( game );
+				if ( game.image ) { artworkCache.set( key, game.image ); }
+				else if ( artworkCache.has( key ) ) {
+					game.image = artworkCache.get( key );
+				}
+			};
+			const publish = games => {
+				games.forEach( remember );
+				if ( version === loadVersion ) { publish( games ); }
+			};
 			const seen = new Set();
 			const catalogUrl = "https://kick.com/api/v1/subcategories?page=1&limit=32";
 			const firstCatalog = fetch( catalogUrl, { credentials: "omit" } )
@@ -53,12 +72,13 @@ export default Route.extend({
 					};
 					const image = coverUrl( item );
 					if ( image && !game.image ) { game.image = image; }
+					remember( game );
 					categories.set( key, game );
 				});
 				const initial = Array.from( categories.values() );
 				initial.forEach( game => { game.viewers = game.viewerCount.toLocaleString(); });
-				set( controller, "games", initial );
-				set( controller, "loading", false );
+				publish( initial );
+				if ( version === loadVersion ) { set( controller, "loading", false ); }
 			};
 			showCatalog().catch( () => {} );
 			// Begin targeted cover recovery as soon as the first directory cards appear.
@@ -74,7 +94,10 @@ export default Route.extend({
 						.then( payload => {
 							if ( !payload ) { return; }
 							const image = coverUrl( payload.data || payload );
-							if ( image && !game.image ) { set( game, "image", image ); }
+							if ( image && !game.image ) {
+								set( game, "image", image );
+								artworkCache.set( categoryKey( game ), image );
+							}
 						})
 						.catch( () => {} );
 				});
@@ -127,7 +150,7 @@ export default Route.extend({
 				});
 				partial.sort( ( a, b ) => b.viewerCount - a.viewerCount
 					|| b.channels - a.channels );
-				set( controller, "games", partial );
+				publish( partial );
 				recoverCovers( partial );
 				set( controller, "loading", false );
 			}
@@ -195,7 +218,8 @@ export default Route.extend({
 								name: item.name || item.slug, slug: item.slug || item.name,
 								image: "", viewerCount: 0, channels: 0
 							};
-							if ( image ) { game.image = image; }
+							if ( image && !game.image ) { game.image = image; }
+							remember( game );
 							if ( Number.isFinite( count ) && count > 0 ) {
 								game.viewerCount = count;
 							}
@@ -216,7 +240,9 @@ export default Route.extend({
 			recoverCovers( games );
 
 		} catch ( error ) {
-			set( controller, "error", `Could not load Kick categories: ${error.message}` );
+			if ( version === loadVersion ) {
+				set( controller, "error", `Could not load Kick categories: ${error.message}` );
+			}
 		} finally {
 			set( controller, "loading", false );
 		}
