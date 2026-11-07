@@ -160,6 +160,35 @@ export default Route.extend({
 			games.sort( ( a, b ) => b.viewerCount - a.viewerCount
 				|| b.channels - a.channels );
 			set( controller, "games", games );
+			// Recover missing artwork for visible categories without blocking the grid.
+			const missing = games.slice( 0, 28 ).filter( game => !game.image );
+			const recover = async () => {
+				for ( let i = 0; i < missing.length; i += 4 ) {
+					await Promise.all( missing.slice( i, i + 4 ).map( async game => {
+						try {
+							const slug = encodeURIComponent( game.slug );
+							const response = await fetch(
+								`https://kick.com/api/v1/subcategories/${slug}`,
+								{ credentials: "omit" }
+							);
+							if ( !response.ok ) { return; }
+							const payload = await response.json();
+							const item = payload.data || payload;
+							const banner = item.banner || item.thumbnail || item.image || {};
+							const image = typeof banner === "string" ? banner
+								: ( banner.src || banner.url || item.banner_url
+									|| item.thumbnail_url || "" );
+							if ( image ) {
+								set( game, "image", image );
+							}
+						} catch ( error ) {
+							// An unavailable cover must not delay the rest of the page.
+						}
+					}));
+				}
+			};
+			recover();
+
 		} catch ( error ) {
 			set( controller, "error", `Could not load Kick categories: ${error.message}` );
 		} finally {
