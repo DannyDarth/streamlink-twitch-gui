@@ -6,10 +6,16 @@ const streamCache = new Map();
 const CACHE_TTL = 10 * 60 * 1000;
 const CACHE_LIMIT = 12;
 
+const cleanStream = stream => {
+	const copy = { ...stream };
+	delete copy.thumbnailRetryTried;
+	delete copy.thumbnailFallbackTried;
+	return copy;
+};
+
 const rememberStreams = ( slug, streams ) => {
 	streamCache.delete( slug );
-	streamCache.set( slug, { savedAt: Date.now(), streams: streams.map( stream =>
-		({ ...stream }) ) } );
+	streamCache.set( slug, { savedAt: Date.now(), streams: streams.map( cleanStream ) } );
 	if ( streamCache.size > CACHE_LIMIT ) {
 		streamCache.delete( streamCache.keys().next().value );
 	}
@@ -176,13 +182,17 @@ export default Route.extend({
 					row.concurrent_viewers, row.current_viewers );
 				const thumbnail = row.thumbnail || row.thumbnail_url
 					|| row.stream_thumbnail || {};
+				const previous = controller.streams.find( stream =>
+					stream.slug === channelSlug );
+				const cover = imageFrom( thumbnail )
+					|| ( previous && previous.thumbnail ) || "";
 				streams.push({
 					slug: channelSlug,
 					livestreamId: row.id || row.livestream_id || null,
 					channel: ( channel.user && channel.user.username )
 						|| channel.slug || channelSlug,
 					title: row.session_title || row.title || "",
-					thumbnail: imageFrom( thumbnail ),
+					thumbnail: cover,
 					viewerCount: count,
 					viewers: count === null ? "—" : count.toLocaleString(),
 					category: categoryName
@@ -204,7 +214,7 @@ export default Route.extend({
 	async loadCategory( controller, slug, loadId ) {
 		const cached = streamCache.get( slug );
 		const fresh = cached && Date.now() - cached.savedAt < CACHE_TTL;
-		const preview = fresh ? cached.streams.map( stream => ({ ...stream }) ) : [];
+		const preview = fresh ? cached.streams.map( cleanStream ) : [];
 		setProperties( controller, {
 			loading: !preview.length, error: null, streams: preview,
 			categorySlug: slug, categoryName: slug.replace( /-/g, " " ),
