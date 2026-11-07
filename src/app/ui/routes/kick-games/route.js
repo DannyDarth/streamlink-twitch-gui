@@ -2,6 +2,17 @@ import Route from "@ember/routing/route";
 import { set, setProperties } from "@ember/object";
 import "./styles.less";
 
+
+// Kick returns banner artwork in several formats, including responsive URLs.
+const coverUrl = item => {
+	const banner = item.banner || item.thumbnail || item.image || {};
+	if ( typeof banner === "string" ) { return banner; }
+	return banner.src || banner.url || banner.responsive
+		|| item.banner_url || item.thumbnail_url || item.responsive || "";
+};
+const categoryKey = item => String( item.slug || item.name || "" )
+	.toLowerCase().replace( /[^a-z0-9]+/g, "-" ).replace( /^-|-$/g, "" );
+
 export default Route.extend({
 	model() {
 		return [];
@@ -47,10 +58,8 @@ export default Route.extend({
 					if ( !category ) { return; }
 					const name = category.name || category.slug;
 					if ( !name ) { return; }
-					const key = ( category.slug || name ).toLowerCase();
-					const cover = category.banner || category.thumbnail || category.image || {};
-					const image = typeof cover === "string"
-						? cover : ( cover.src || cover.url || category.thumbnail_url || "" );
+					const key = categoryKey( category );
+					const image = coverUrl( category );
 					const count = Number( row.viewer_count ?? row.viewers
 						?? row.concurrent_viewers ?? row.current_viewers
 						?? row.viewcount ?? ( row.livestream && row.livestream.viewcount ) ?? 0 );
@@ -91,11 +100,8 @@ export default Route.extend({
 					catalog.forEach( item => {
 						const name = item.name || item.slug;
 						if ( !name ) { return; }
-						const key = String( item.slug || name ).toLowerCase();
-						const banner = item.banner || item.thumbnail || item.image || {};
-						const image = typeof banner === "string" ? banner
-							: ( banner.src || banner.url
-								|| item.banner_url || item.thumbnail_url || "" );
+						const key = categoryKey( item );
+						const image = coverUrl( item );
 						const count = Number( item.viewers ?? item.viewer_count );
 						const game = categories.get( key ) || {
 							name,
@@ -132,11 +138,9 @@ export default Route.extend({
 						: ( payload.data || payload.categories || [] );
 					if ( Array.isArray( rows ) ) {
 						rows.forEach( item => {
-							const key = String( item.slug || item.name || "" ).toLowerCase();
+							const key = categoryKey( item );
 							if ( !key ) { return; }
-							const banner = item.banner || item.thumbnail || item.image || {};
-							const image = typeof banner === "string" ? banner
-								: ( banner.src || banner.url || item.banner_url || "" );
+							const image = coverUrl( item );
 							const count = Number( item.viewers ?? item.viewer_count );
 							const game = categories.get( key ) || {
 								name: item.name || item.slug, slug: item.slug || item.name,
@@ -174,10 +178,7 @@ export default Route.extend({
 							if ( !response.ok ) { return; }
 							const payload = await response.json();
 							const item = payload.data || payload;
-							const banner = item.banner || item.thumbnail || item.image || {};
-							const image = typeof banner === "string" ? banner
-								: ( banner.src || banner.url || item.banner_url
-									|| item.thumbnail_url || "" );
+							const image = coverUrl( item );
 							if ( image ) {
 								set( game, "image", image );
 							}
