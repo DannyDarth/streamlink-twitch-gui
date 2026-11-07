@@ -60,6 +60,10 @@ export default Route.extend({
 					});
 					if ( category.name ) { set( controller, "categoryName", category.name ); }
 				});
+				if ( streams.length ) {
+					set( controller, "streams", streams.slice() );
+					set( controller, "loading", false );
+				}
 				if ( !newRows ) { break; }
 			}
 			// Only fetch extra channel data when the directory lacks a thumbnail.
