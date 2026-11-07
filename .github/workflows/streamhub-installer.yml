@@ -31,7 +31,7 @@ jobs:
         run: yarn install --frozen-lockfile
 
       - name: Build StreamHub for Windows x64
-        run: yarn grunt release:win64 --force
+        run: yarn grunt clean:tmp_prod webpack:prod compile:win64
 
       - name: Install NSIS
         shell: powershell
