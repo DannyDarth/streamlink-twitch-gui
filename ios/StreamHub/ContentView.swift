@@ -160,6 +160,11 @@ private struct KickGamesView: View {
     @StateObject private var catalog = KickGamesDirectory()
     @State private var search = ""
 
+    private let columns = [
+        GridItem(.flexible(), spacing: 12),
+        GridItem(.flexible(), spacing: 12)
+    ]
+
     private var filtered: [KickGame] {
         catalog.games.filter { search.isEmpty || $0.name.localizedCaseInsensitiveContains(search) }
     }
@@ -180,31 +185,43 @@ private struct KickGamesView: View {
                 Button("Retry") { Task { await catalog.refresh() } }
                 Spacer()
             } else {
-                List {
-                    ForEach(filtered) { game in
-                        NavigationLink(destination: KickGameDetailView(game: game)) {
-                            HStack(spacing: 12) {
-                                AsyncImage(url: game.cover) { image in
-                                    image.resizable().scaledToFill()
-                                } placeholder: {
-                                    Rectangle().fill(.gray.opacity(0.2))
-                                        .overlay(Image(systemName: "gamecontroller").foregroundStyle(.secondary))
-                                }
-                                .frame(width: 74, height: 100)
-                                .clipped()
-                                .cornerRadius(8)
+                ScrollView {
+                    LazyVGrid(columns: columns, alignment: .center, spacing: 18) {
+                        ForEach(filtered) { game in
+                            NavigationLink(destination: KickGameDetailView(game: game)) {
                                 VStack(alignment: .leading, spacing: 6) {
-                                    Text(game.name).font(.headline)
+                                    AsyncImage(url: game.cover) { image in
+                                        image.resizable().scaledToFill()
+                                    } placeholder: {
+                                        Rectangle().fill(.gray.opacity(0.2))
+                                            .overlay(Image(systemName: "gamecontroller").foregroundStyle(.secondary))
+                                    }
+                                    .frame(maxWidth: .infinity)
+                                    .aspectRatio(0.78, contentMode: .fit)
+                                    .clipped()
+                                    .cornerRadius(10)
+
+                                    Text(game.name)
+                                        .font(.subheadline.weight(.semibold))
+                                        .lineLimit(2)
+                                        .frame(maxWidth: .infinity, alignment: .leading)
                                     Text(game.viewers.map { "\($0.formatted()) viewers" } ?? "Viewers unavailable")
-                                        .font(.caption).foregroundStyle(.secondary)
+                                        .font(.caption)
+                                        .foregroundStyle(.secondary)
+                                        .lineLimit(1)
                                 }
+                                .frame(maxWidth: .infinity, alignment: .topLeading)
+                                .contentShape(Rectangle())
                             }
-                            .padding(.vertical, 4)
+                            .buttonStyle(.plain)
+                            .task { await catalog.loadMoreIfNeeded(current: game) }
                         }
-                        .task { await catalog.loadMoreIfNeeded(current: game) }
                     }
+                    .padding(.horizontal, 12)
+                    .padding(.top, 8)
+
                     if catalog.loadingMore {
-                        HStack { Spacer(); ProgressView(); Spacer() }
+                        ProgressView().padding()
                     }
                     if let error = catalog.error, !catalog.games.isEmpty {
                         Button(error + " — Retry") {
@@ -214,13 +231,14 @@ private struct KickGamesView: View {
                                 }
                             }
                         }
+                        .padding()
                     }
                     if filtered.isEmpty && !catalog.loading {
                         Text("No matching games in loaded results.")
                             .foregroundStyle(.secondary)
+                            .padding()
                     }
                 }
-                .listStyle(.plain)
                 .refreshable { await catalog.refresh() }
             }
         }
