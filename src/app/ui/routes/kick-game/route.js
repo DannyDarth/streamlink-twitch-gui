@@ -118,16 +118,19 @@ export default Route.extend({
 		if ( !categoryId ) { return false; }
 		const base = "https://web.kick.com/api/v1/livestreams";
 		let loaded = 0;
-		for ( let offset = 0; offset < 240; offset += 24 ) {
+		let cursor = null;
+		const usedCursors = new Set();
+		for ( let page = 0; page < 40; page++ ) {
 			if ( this._kickCancelled ) { return loaded > 0; }
-			if ( offset > 0 ) {
+			if ( page > 0 ) {
 				await this.waitForMore( controller );
 				if ( this._kickCancelled ) { return loaded > 0; }
 			}
-			const url = `${base}?limit=24&offset=${offset}`
-				+ `&sort=viewer_count_desc&category_id=${categoryId}`
-				+ "&display_language=en";
+			const url = `${base}?limit=24&sort=viewer_count_desc`
+				+ `&category_id=${categoryId}&display_language=en`
+				+ ( cursor ? `&after=${encodeURIComponent( cursor )}` : "" );
 			let rows;
+			let nextCursor;
 			try {
 				const response = await fetch( url, { credentials: "omit" } );
 				if ( !response.ok ) { break; }
@@ -135,6 +138,8 @@ export default Route.extend({
 				const data = payload.data || payload;
 				rows = Array.isArray( data ) ? data
 					: ( data.livestreams || data.data || [] );
+				nextCursor = ( data.pagination && data.pagination.next_cursor )
+					|| data.next_cursor || null;
 			} catch ( error ) {
 				break;
 			}
@@ -168,8 +173,10 @@ export default Route.extend({
 			set( controller, "streams", streams.slice() );
 			set( controller, "loading", false );
 			set( controller, "viewerDiagnostics",
-				`Popular API: ${loaded} streams; offset: ${offset}; sorting: viewers` );
-			if ( rows.length < 24 ) { break; }
+				`Popular API: ${loaded} streams; page: ${page + 1}; sorting: viewers` );
+			if ( !nextCursor || usedCursors.has( nextCursor ) ) { break; }
+			usedCursors.add( nextCursor );
+			cursor = nextCursor;
 		}
 		return loaded > 0;
 	},
