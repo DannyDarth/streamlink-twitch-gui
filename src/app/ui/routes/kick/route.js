@@ -145,19 +145,20 @@ export default Route.extend({
 				streams.sort( ( a, b ) => ( b.viewerCount || 0 ) - ( a.viewerCount || 0 ) );
 				set( controller, "streams", streams.slice() );
 				// Resolve missing counts without blocking artwork or the stream grid.
-				const missing = streams.filter( stream => stream.viewerCount === null )
-					.slice( 0, 30 );
+				const missing = batch.slice();
 				for ( let offset = 0; offset < missing.length; offset += 6 ) {
 					const batchMissing = missing.slice( offset, offset + 6 );
 					Promise.all( batchMissing.map( async stream => {
 						try {
 							const response = await fetch(
-								`https://kick.com/api/v2/channels/${encodeURIComponent( stream.slug )}/livestream`,
+								`https://kick.com/api/v2/channels/${encodeURIComponent( stream.slug )}/info`,
 								{ credentials: "omit" }
 							);
 							if ( !response.ok ) { return; }
 							const payload = await response.json();
-							const live = payload.data || payload;
+							const profile = payload.data || payload;
+							const live = profile.livestream;
+							if ( !live || live.show_view_count === false ) { return; }
 							const count = viewerCount(
 								live.viewer_count, live.viewers, live.viewcount,
 								live.concurrent_viewers
