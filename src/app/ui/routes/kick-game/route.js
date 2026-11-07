@@ -64,6 +64,7 @@ export default Route.extend({
 							|| channel.slug || channelSlug,
 						title: row.session_title || row.title || "",
 						thumbnail: image,
+						livestreamId: row.livestream_id || row.livestream?.id || row.id,
 						viewerCount: Number( count ) > 0 ? Number( count ) : null,
 						viewers: Number( count ) > 0
 							? Number( count ).toLocaleString() : "—",
@@ -81,6 +82,7 @@ export default Route.extend({
 					const base = `https://kick.com/api/v2/channels/${channelSlug}`;
 					const applyLive = live => {
 						if ( !live ) { return; }
+						if ( live.id ) { set( stream, "livestreamId", live.id ); }
 						const count = live.viewers ?? live.viewcount
 							?? live.viewer_count ?? live.concurrent_viewers;
 						if ( Number( count ) > 0 ) {
@@ -129,9 +131,46 @@ export default Route.extend({
 					}
 				}));
 			}
+			// Probe a small sample of livestream IDs using Kick's
+			// current-viewers endpoint before enabling it for all cards.
+			const sample = streams.filter( stream => stream.livestreamId ).slice( 0, 3 );
+			if ( sample.length ) {
+				const query = sample.map( stream =>
+					`ids[]=${encodeURIComponent( stream.livestreamId )}`
+				).join( "&" );
+				try {
+					const response = await fetch(
+						`https://kick.com/current-viewers?${query}`,
+						{ credentials: "omit" }
+					);
+					diagnostics.push( `current-viewers HTTP ${response.status}` );
+					if ( response.ok ) {
+						const payload = await response.json();
+						const rows = Array.isArray( payload ) ? payload : [];
+						diagnostics.push( `current-viewers rows: ${rows.length}` );
+						rows.forEach( item => {
+							const stream = sample.find( candidate =>
+								String( candidate.livestreamId )
+									=== String( item.livestream_id )
+							);
+							if ( stream && Number( item.viewers ) > 0 ) {
+								set( stream, "viewerCount", Number( item.viewers ) );
+								set( stream, "viewers", Number( item.viewers ).toLocaleString() );
+							}
+						});
+						diagnostics.push( `matched: ${sample.filter(
+							stream => stream.viewerCount
+						).length} of ${sample.length}` );
+					}
+				} catch ( error ) {
+					diagnostics.push( `current-viewers request failed: ${error.name}` );
+				}
+			} else {
+				diagnostics.push( "current-viewers: no livestream IDs found" );
+			}
 			streams.sort( ( a, b ) => ( b.viewerCount || 0 ) - ( a.viewerCount || 0 ) );
 			set( controller, "streams", streams );
-			set( controller, "diagnostic", diagnostics.slice( 0, 6 ).join( " | " ) );
+			set( controller, "diagnostic", diagnostics.slice( -5 ).join( " | " ) );
 		} catch ( error ) {
 			set( controller, "error", `Could not load category streams: ${error.message}` );
 		} finally {
