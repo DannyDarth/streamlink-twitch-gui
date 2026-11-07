@@ -8,7 +8,7 @@ const thumbnailUrl = (...candidates) => {
 		const value = typeof candidate === "string" ? candidate
 			: ( candidate.src || candidate.url || candidate.responsive || "" );
 		if ( typeof value !== "string" ) { continue; }
-		const url = value.split( "," )[0].trim().split( /\\s+/ )[0];
+		const url = value.split( "," )[0].trim().split( /\s+/ )[0];
 		if ( url.startsWith( "https://" ) || url.startsWith( "http://" ) ) { return url; }
 	}
 	return "";
