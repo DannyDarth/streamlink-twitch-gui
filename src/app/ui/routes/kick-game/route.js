@@ -56,7 +56,7 @@ export default Route.extend({
 					const image = typeof thumbnail === "string" ? thumbnail
 						: ( thumbnail.src || thumbnail.url || "" );
 					const live = row.livestream || {};
-					const livestreamId = live.id || row.livestream_id || row.id;
+					const livestreamId = live.id || row.livestream_id || row.stream_id || null;
 					const count = countFrom(
 						row.viewer_count, row.viewers, row.concurrent_viewers,
 						row.current_viewers, row.viewcount, live.viewer_count,
@@ -84,6 +84,10 @@ export default Route.extend({
 			}
 			// Kick's website fetches viewer counts by livestream ID in batches.
 			const withIds = streams.filter( stream => stream.livestreamId );
+			console.info( "[Kick viewers] Category stream IDs", {
+				streams: streams.length, withIds: withIds.length,
+				sample: withIds.slice( 0, 3 ).map( stream => stream.livestreamId )
+			} );
 			for ( let i = 0; i < withIds.length; i += 40 ) {
 				const batch = withIds.slice( i, i + 40 );
 				const params = batch.map( stream =>
@@ -94,22 +98,33 @@ export default Route.extend({
 						`https://kick.com/current-viewers?${params}`,
 						{ credentials: "omit" }
 					);
-					if ( !response.ok ) { continue; }
+					if ( !response.ok ) {
+						console.warn( "[Kick viewers] HTTP", response.status );
+						continue;
+					}
 					const payload = await response.json();
-					if ( !Array.isArray( payload ) ) { continue; }
+					if ( !Array.isArray( payload ) ) {
+						console.warn( "[Kick viewers] Unexpected response format" );
+						continue;
+					}
 					const byId = new Map( batch.map( stream =>
 						[ String( stream.livestreamId ), stream ]
 					) );
+					let matched = 0;
 					payload.forEach( item => {
 						const stream = byId.get( String( item.livestream_id ) );
 						if ( !stream ) { return; }
+						matched++;
 						const count = item.show_view_count === false
 							? null : countFrom( item.viewers );
 						set( stream, "viewerCount", count );
 						set( stream, "viewers", count === null ? "—" : count.toLocaleString() );
 					});
+					console.info( "[Kick viewers] Batch result", {
+						requested: batch.length, returned: payload.length, matched
+					} );
 				} catch ( error ) {
-					// Leave counts unavailable if Kick rejects the batch.
+					console.warn( "[Kick viewers] Request failed", error );
 				}
 			}
 			set( controller, "streams", streams.slice() );
