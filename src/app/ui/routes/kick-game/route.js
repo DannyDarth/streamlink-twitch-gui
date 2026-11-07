@@ -87,6 +87,7 @@ export default Route.extend({
 			// Resolve livestream IDs and counts using the verified channel info API.
 			let resolved = 0;
 			let failed = 0;
+			let infoSample = "none";
 			for ( let i = 0; i < streams.length; i += 5 ) {
 				await Promise.all( streams.slice( i, i + 5 ).map( async stream => {
 					const channelSlug = encodeURIComponent( stream.slug );
@@ -101,6 +102,9 @@ export default Route.extend({
 						set( stream, "livestreamId", live.id );
 						const count = live.show_view_count === false
 							? null : countFrom( live.viewer_count );
+						if ( infoSample === "none" ) {
+							infoSample = `${stream.slug}: ${String( live.viewer_count )}`;
+						}
 						set( stream, "viewerCount", count );
 						set( stream, "viewers", count === null ? "—" : count.toLocaleString() );
 						const cover = live.thumbnail || {};
@@ -125,6 +129,7 @@ export default Route.extend({
 			let rejected = 0;
 			let infoPositive = streams.filter( stream => stream.viewerCount > 0 ).length;
 			let batchPositive = 0;
+			let batchSample = "none";
 			for ( let i = 0; i < withIds.length; i += 10 ) {
 				const batch = withIds.slice( i, i + 10 );
 				const params = batch.map( stream =>
@@ -154,6 +159,9 @@ export default Route.extend({
 						const count = item.show_view_count === false
 							? null : countFrom( item.viewers );
 						if ( count > 0 ) { batchPositive++; }
+						if ( batchSample === "none" ) {
+							batchSample = `${stream.slug}: ${String( item.viewers )}`;
+						}
 						// Keep a positive channel count if the batch endpoint reports zero.
 						if ( count === 0 && stream.viewerCount > 0 ) { return; }
 						set( stream, "viewerCount", count );
@@ -167,7 +175,8 @@ export default Route.extend({
 				`Streams: ${streams.length}; IDs: ${resolved};`
 				+ ` matched: ${matched}; failed: ${failed};`
 				+ ` batches OK: ${accepted}; rejected: ${rejected}; ${batchStatus};`
-				+ ` info >0: ${infoPositive}; batch >0: ${batchPositive}` );
+				+ ` info >0: ${infoPositive}; batch >0: ${batchPositive};`
+				+ ` info sample: ${infoSample}; batch sample: ${batchSample}` );
 			set( controller, "streams", streams.slice() );
 			streams.sort( ( a, b ) => ( b.viewerCount || 0 ) - ( a.viewerCount || 0 ) );
 			set( controller, "streams", streams );
