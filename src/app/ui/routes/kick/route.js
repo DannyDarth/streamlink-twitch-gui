@@ -64,48 +64,48 @@ export default Route.extend({
 					}
 					break;
 				}
-			const data = await response.json();
-			const rows = Array.isArray( data )
-				? data
-				: ( data && ( data.data || data.livestreams ) ) || [];
-			if ( !Array.isArray( rows ) || !rows.length ) { break; }
-			const batch = rows.map( row => {
-				const channel = row.channel || {};
-				const slug = channel.slug || row.slug;
-				const thumbnail = row.thumbnail || row.thumbnail_url || row.stream_thumbnail || {};
-				const image = typeof thumbnail === "string"
-					? thumbnail
-					: ( thumbnail.url || thumbnail.src || "" );
-				const viewers = row.viewer_count
-					?? row.viewers
-					?? row.concurrent_viewers
-					?? row.current_viewers
-					?? row.viewcount
-					?? ( row.livestream && row.livestream.viewcount )
-					?? null;
-				return {
-					slug,
-					channel: ( channel.user && channel.user.username )
-						|| channel.slug
-						|| slug
-						|| "Unknown channel",
-					title: row.session_title || row.title || "",
-					viewers: viewers === null || viewers === undefined
-						? "—"
-						: Number( viewers ).toLocaleString(),
-					thumbnail: image,
-					category: ( row.categories && row.categories[0] && row.categories[0].name )
-						|| ( row.category && row.category.name )
-						|| ""
-				};
-			}).filter( row => row.slug && !seen.has( row.slug ) );
-			batch.forEach( stream => {
-				seen.add( stream.slug );
-				streams.push( stream );
-			});
-			set( controller, "streams", streams.slice() );
-			set( controller, "loading", false );
-			if ( !batch.length ) { break; }
+				const data = await response.json();
+				const rows = Array.isArray( data )
+					? data
+					: ( data && ( data.data || data.livestreams ) ) || [];
+				if ( !Array.isArray( rows ) || !rows.length ) { break; }
+				const batch = rows.map( row => {
+					const channel = row.channel || {};
+					const slug = channel.slug || row.slug;
+					const thumbnail = row.thumbnail || row.thumbnail_url || row.stream_thumbnail || {};
+					const image = typeof thumbnail === "string"
+						? thumbnail
+						: ( thumbnail.url || thumbnail.src || "" );
+					const viewers = row.viewer_count
+						?? row.viewers
+						?? row.concurrent_viewers
+						?? row.current_viewers
+						?? row.viewcount
+						?? ( row.livestream && row.livestream.viewcount )
+						?? null;
+					return {
+						slug,
+						channel: ( channel.user && channel.user.username )
+							|| channel.slug
+							|| slug
+							|| "Unknown channel",
+						title: row.session_title || row.title || "",
+						viewers: viewers === null || viewers === undefined
+							? "—"
+							: Number( viewers ).toLocaleString(),
+						thumbnail: image,
+						category: ( row.categories && row.categories[0] && row.categories[0].name )
+							|| ( row.category && row.category.name )
+							|| ""
+					};
+				}).filter( row => row.slug && !seen.has( row.slug ) );
+				batch.forEach( stream => {
+					seen.add( stream.slug );
+					streams.push( stream );
+				});
+				set( controller, "streams", streams.slice() );
+				set( controller, "loading", false );
+				if ( !batch.length ) { break; }
 			}
 		} catch ( error ) {
 			set( controller, "error", `Kick live directory could not be loaded: ${error.message}` );
