@@ -69,10 +69,16 @@ jobs:
       - name: Package portable Windows 64-bit ZIP
         run: yarn run grunt clean:dist dist:archive_win64
 
+      - name: Extract portable application for single-ZIP download
+        run: |
+          mkdir -p portable-app
+          unzip -q dist/*win64.zip -d portable-app
+          test -n "$(find portable-app -type f -print -quit)"
+
       - name: Upload portable Windows app
         uses: actions/upload-artifact@v4
         with:
           name: streamhub-windows-x64-portable
-          path: dist/*win64.zip
+          path: portable-app/
           if-no-files-found: error
           retention-days: 14
