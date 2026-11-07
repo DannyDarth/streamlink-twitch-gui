@@ -163,7 +163,12 @@ export default Route.extend({
 						};
 						diagnostics.push( `row fields: ${describe( rows[0] )}` );
 						diagnostics.push( `response fields: ${describe( payload )}` );
+						let idMatches = 0;
+						let positive = 0;
+						let hidden = 0;
 						rows.forEach( item => {
+							if ( Number( item.viewers ) > 0 ) { positive++; }
+							if ( item.show_view_count === false ) { hidden++; }
 							const stream = sample.find( candidate =>
 								String( candidate.livestreamId )
 									=== String( item.livestream_id )
@@ -176,8 +181,8 @@ export default Route.extend({
 							}
 						});
 						diagnostics.push( `ID matches: ${idMatches}; positive: ${positive}` );
-							diagnostics.push( `hidden: ${hidden}` );
-							diagnostics.push( `displayed: ${sample.filter(
+						diagnostics.push( `hidden: ${hidden}` );
+						diagnostics.push( `displayed: ${sample.filter(
 							stream => stream.viewerCount
 						).length} of ${sample.length}` );
 					}
