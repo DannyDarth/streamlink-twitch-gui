@@ -50,6 +50,8 @@ export default Route.extend({
 			const streams = [];
 			const seen = new Set();
 			let pagesLoaded = 0;
+			let duplicatePages = 0;
+			let consecutiveDuplicates = 0;
 			let stopReason = "page limit";
 			const pageSizes = [];
 			for ( let page = 1; page <= 40; page++ ) {
@@ -112,8 +114,14 @@ export default Route.extend({
 					set( controller, "loading", false );
 				}
 				if ( !newRows ) {
-					stopReason = "duplicate page";
-					break;
+					duplicatePages++;
+					consecutiveDuplicates++;
+					if ( consecutiveDuplicates >= 3 ) {
+						stopReason = "3 consecutive duplicate pages";
+						break;
+					}
+				} else {
+					consecutiveDuplicates = 0;
 				}
 			}
 
@@ -226,7 +234,7 @@ export default Route.extend({
 			streams.sort( ( a, b ) => ( b.viewerCount || 0 ) - ( a.viewerCount || 0 ) );
 			set( controller, "streams", streams.slice() );
 			set( controller, "viewerDiagnostics",
-				`Streams: ${streams.length}; pages: ${pagesLoaded};`
+				`Streams: ${streams.length}; pages: ${pagesLoaded}; duplicates: ${duplicatePages};`
 				+ ` page sizes: ${pageSizes.join( "," )}; stop: ${stopReason};`
 				+ ` resolved: ${resolved}; failed: ${failed};`
 				+ ` recovered: ${recovered}; lookup failed: ${lookupFailed};`
