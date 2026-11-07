@@ -43,7 +43,7 @@ export default Route.extend({
 			let pagesLoaded = 0;
 			let stopReason = "page limit";
 			const pageSizes = [];
-			for ( let page = 1; page <= 20; page++ ) {
+			for ( let page = 1; page <= 40; page++ ) {
 				const base = "https://kick.com/stream/livestreams/en";
 				const category = encodeURIComponent( slug );
 				const url = `${base}?subcategory=${category}&page=${page}`;
@@ -158,7 +158,7 @@ export default Route.extend({
 			let recovered = 0;
 			let lookupFailed = 0;
 			const unresolved = streams.filter( stream =>
-				stream.viewerCount === null && stream.livestreamId
+				( stream.viewerCount === null || stream.viewerCount === 1 ) && stream.livestreamId
 			);
 			for ( let i = 0; i < unresolved.length; i += 5 ) {
 				await Promise.all( unresolved.slice( i, i + 5 ).map( async stream => {
@@ -172,7 +172,7 @@ export default Route.extend({
 							? payload.find( row => String( row.livestream_id ) === id ) : null;
 						if ( !entry || entry.show_view_count === false ) { return; }
 						const count = countFrom( entry.viewers );
-						if ( count === null ) { return; }
+						if ( count === null || ( count === 1 && stream.viewerCount === 1 ) ) { return; }
 						set( stream, "viewerCount", count );
 						set( stream, "viewers", count.toLocaleString() );
 						recovered++;
@@ -181,6 +181,7 @@ export default Route.extend({
 					}
 				}));
 			}
+			const oneViewerStreams = streams.filter( stream => stream.viewerCount === 1 ).length;
 			streams.sort( ( a, b ) => ( b.viewerCount || 0 ) - ( a.viewerCount || 0 ) );
 			set( controller, "streams", streams.slice() );
 			set( controller, "viewerDiagnostics",
@@ -188,6 +189,7 @@ export default Route.extend({
 				+ ` page sizes: ${pageSizes.join( "," )}; stop: ${stopReason};`
 				+ ` resolved: ${resolved}; failed: ${failed};`
 				+ ` recovered: ${recovered}; lookup failed: ${lookupFailed};`
+				+ ` one-viewer values: ${oneViewerStreams};`
 				+ ` sample: ${infoSample}` );
 		} catch ( error ) {
 			set( controller, "error", `Could not load category streams: ${error.message}` );
