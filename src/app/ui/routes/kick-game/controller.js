@@ -30,6 +30,15 @@ export default KickController.extend({
 				set( stream, "thumbnail", "" );
 				return;
 			}
+			if ( !stream.thumbnailRetryTried ) {
+				set( stream, "thumbnailRetryTried", true );
+				const original = stream.thumbnail;
+				await new Promise( resolve => setTimeout( resolve, 900 ) );
+				if ( stream.thumbnail !== original ) { return; }
+				const separator = original.includes( "?" ) ? "&" : "?";
+				set( stream, "thumbnail", `${original}${separator}streamhub_retry=1` );
+				return;
+			}
 			set( stream, "thumbnailFallbackTried", true );
 			const original = stream.thumbnail;
 			const slug = encodeURIComponent( stream.slug );
