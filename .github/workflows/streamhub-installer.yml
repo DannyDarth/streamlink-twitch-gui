@@ -1,0 +1,59 @@
+name: StreamHub Windows x64 installer
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - feature/kick-clean-rebuild
+    paths:
+      - 'src/**'
+      - 'build/**'
+      - 'package.json'
+      - 'yarn.lock'
+      - '.github/workflows/streamhub-installer.yml'
+
+jobs:
+  installer:
+    runs-on: windows-latest
+    steps:
+      - name: Check out StreamHub
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install Yarn
+        run: npm install --global yarn@1.22.22
+
+      - name: Install dependencies
+        run: yarn install --frozen-lockfile
+
+      - name: Build StreamHub for Windows x64
+        run: yarn grunt release:win64
+
+      - name: Install NSIS
+        shell: powershell
+        run: choco install nsis --yes --no-progress
+
+      - name: Package Windows installer
+        shell: powershell
+        run: |
+          $source = Join-Path $env:GITHUB_WORKSPACE 'build/releases/streamlink-twitch-gui/win64'
+          if (!(Test-Path (Join-Path $source 'streamlink-twitch-gui.exe'))) {
+            throw "Missing StreamHub executable in $source"
+          }
+          New-Item -ItemType Directory -Force -Path dist | Out-Null
+          $makensis = "${env:ProgramFiles(x86)}\\NSIS\\makensis.exe"
+          if (!(Test-Path $makensis)) { $makensis = 'C:\\Program Files\\NSIS\\makensis.exe' }
+          & $makensis "/DAPP_SOURCE=$source" 'build/resources/streamhub-installer.nsi'
+          if ($LASTEXITCODE -ne 0) { throw "NSIS installer packaging failed" }
+          Move-Item 'StreamHub-Windows-x64-Setup.exe' 'dist/StreamHub-Windows-x64-Setup.exe'
+
+      - name: Upload installer
+        uses: actions/upload-artifact@v4
+        with:
+          name: streamhub-windows-x64-installer
+          path: dist/StreamHub-Windows-x64-Setup.exe
+          if-no-files-found: error
