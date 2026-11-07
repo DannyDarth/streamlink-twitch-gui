@@ -124,7 +124,7 @@ export default Route.extend({
 				await this.waitForMore( controller );
 				if ( this._kickCancelled ) { return loaded > 0; }
 			}
-			const url = base + `?limit=24&offset=${offset}`
+			const url = `${base}?limit=24&offset=${offset}`
 				+ `&sort=viewer_count_desc&category_id=${categoryId}`
 				+ "&display_language=en";
 			let rows;
