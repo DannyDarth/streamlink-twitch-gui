@@ -104,7 +104,7 @@ export default Component.extend( HotkeyMixin, /** @class SearchBarComponent */  
 		set( this, "showDropdown", false );
 		this.addRecord( query, filter );
 
-		if ( this.router.currentRouteName === "kick" ) {
+		if ( this.router.currentRouteName.startsWith( "kick" ) ) {
 			this.router.transitionTo( "kick", { queryParams: { query } } );
 			return;
 		}
@@ -165,7 +165,7 @@ export default Component.extend( HotkeyMixin, /** @class SearchBarComponent */  
 			let query = this.query.trim();
 			let filter = this.filter;
 
-			if ( this.router.currentRouteName === "kick" ) {
+			if ( this.router.currentRouteName.startsWith( "kick" ) ) {
 				query = query.replace( /^https?:\/\/(?:www\.)?kick\.com\//i, "" )
 					.split( "/" )[0];
 			}
