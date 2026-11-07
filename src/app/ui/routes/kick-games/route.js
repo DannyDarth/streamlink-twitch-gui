@@ -41,8 +41,7 @@ export default Route.extend({
 			const categories = new Map();
 			const remember = game => {
 				const key = categoryKey( game );
-				if ( game.image ) { artworkCache.set( key, game.image ); }
-				else if ( artworkCache.has( key ) ) {
+				if ( game.image ) { artworkCache.set( key, game.image ); } else if ( artworkCache.has( key ) ) {
 					game.image = artworkCache.get( key );
 				}
 			};
