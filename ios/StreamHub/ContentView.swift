@@ -23,7 +23,7 @@ struct ContentView: View {
                 if platform == .kick {
                     KickDirectoryView()
                 } else {
-                    ContentUnavailableViewPlaceholder()
+                    TwitchDirectoryView()
                 }
             }
             .navigationTitle("StreamHub")
@@ -39,20 +39,60 @@ struct ContentView: View {
     }
 }
 
-private struct ContentUnavailableViewPlaceholder: View {
-    var body: some View {
-        VStack(spacing: 14) {
-            Image(systemName: "play.rectangle")
-                .font(.largeTitle)
-                .foregroundStyle(.purple)
-            Text("Twitch browsing is next")
-                .font(.headline)
-            Text("Kick discovery is being built first. Twitch will be added in the next phase.")
-                .multilineTextAlignment(.center)
-                .foregroundStyle(.secondary)
+private struct TwitchDirectoryView: View {
+    @State private var section = 0
+    @State private var search = ""
+    @State private var submittedSearch = ""
+
+    private var browseURL: URL {
+        if !submittedSearch.isEmpty {
+            var components = URLComponents(string: "https://www.twitch.tv/search")!
+            components.queryItems = [URLQueryItem(name: "term", value: submittedSearch)]
+            return components.url!
         }
-        .padding()
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        return URL(string: section == 0
+            ? "https://www.twitch.tv/directory/all"
+            : "https://www.twitch.tv/directory")!
+    }
+
+    var body: some View {
+        VStack(spacing: 0) {
+            Picker("Twitch section", selection: $section) {
+                Text("Streams").tag(0)
+                Text("Games").tag(1)
+            }
+            .pickerStyle(.segmented)
+            .padding(.horizontal)
+            .padding(.bottom, 8)
+            .onChange(of: section) { _ in
+                submittedSearch = ""
+                search = ""
+            }
+
+            HStack(spacing: 8) {
+                TextField("Search Twitch", text: $search)
+                    .textFieldStyle(.roundedBorder)
+                    .submitLabel(.search)
+                    .onSubmit { submittedSearch = search.trimmingCharacters(in: .whitespacesAndNewlines) }
+                Button {
+                    submittedSearch = search.trimmingCharacters(in: .whitespacesAndNewlines)
+                } label: {
+                    Image(systemName: "magnifyingglass")
+                }
+                .accessibilityLabel("Search Twitch")
+                if !submittedSearch.isEmpty {
+                    Button("Clear") {
+                        search = ""
+                        submittedSearch = ""
+                    }
+                }
+            }
+            .padding(.horizontal)
+            .padding(.bottom, 8)
+
+            TwitchBrowserView(url: browseURL)
+                .id(browseURL.absoluteString)
+        }
     }
 }
 
