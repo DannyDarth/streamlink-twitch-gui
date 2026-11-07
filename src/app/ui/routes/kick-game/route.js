@@ -121,8 +121,10 @@ export default Route.extend({
 			const withIds = streams.filter( stream => stream.livestreamId );
 			let matched = 0;
 			let batchStatus = "not requested";
-			for ( let i = 0; i < withIds.length; i += 40 ) {
-				const batch = withIds.slice( i, i + 40 );
+			let accepted = 0;
+			let rejected = 0;
+			for ( let i = 0; i < withIds.length; i += 10 ) {
+				const batch = withIds.slice( i, i + 10 );
 				const params = batch.map( stream =>
 					`ids[]=${encodeURIComponent( stream.livestreamId )}`
 				).join( "&" );
@@ -132,7 +134,8 @@ export default Route.extend({
 						{ credentials: "omit" }
 					);
 					batchStatus = `HTTP ${response.status}`;
-					if ( !response.ok ) { continue; }
+					if ( !response.ok ) { rejected++; continue; }
+					accepted++;
 					const payload = await response.json();
 					if ( !Array.isArray( payload ) ) {
 						batchStatus = "Unexpected response format";
@@ -157,7 +160,8 @@ export default Route.extend({
 			}
 			set( controller, "viewerDiagnostics",
 				`Streams: ${streams.length}; IDs: ${resolved};`
-				+ ` matched: ${matched}; failed: ${failed}; ${batchStatus}` );
+				+ ` matched: ${matched}; failed: ${failed};`
+				+ ` batches OK: ${accepted}; rejected: ${rejected}; ${batchStatus}` );
 			set( controller, "streams", streams.slice() );
 			streams.sort( ( a, b ) => ( b.viewerCount || 0 ) - ( a.viewerCount || 0 ) );
 			set( controller, "streams", streams );
