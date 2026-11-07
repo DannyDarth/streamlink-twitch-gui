@@ -52,7 +52,6 @@ export default Route.extend({
 			let pagesLoaded = 0;
 			let duplicatePages = 0;
 			let consecutiveDuplicates = 0;
-			let uniquePages = 0;
 			let stopReason = "page limit";
 			const pageSizes = [];
 			const pageBatch = new Map();
@@ -138,7 +137,6 @@ export default Route.extend({
 						break;
 					}
 				} else {
-					uniquePages++;
 					consecutiveDuplicates = 0;
 				}
 			}
