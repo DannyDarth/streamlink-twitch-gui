@@ -69,7 +69,7 @@ export default Route.extend({
 					if ( !name ) { return; }
 					const key = categoryKey( item );
 					const game = categories.get( key ) || {
-						name, slug: item.slug || name, image: "", viewerCount: 0, channels: 0
+						name, slug: item.slug || name, image: "", viewerCount: null, channels: 0
 					};
 					const image = coverUrl( item );
 					if ( image && !game.image ) { game.image = image; }
@@ -77,7 +77,8 @@ export default Route.extend({
 					categories.set( key, game );
 				});
 				const initial = Array.from( categories.values() );
-				initial.forEach( game => { game.viewers = game.viewerCount.toLocaleString(); });
+				initial.forEach( game => { game.viewers = game.viewerCount === null
+						? "—" : game.viewerCount.toLocaleString(); });
 				publish( initial );
 				if ( version === loadVersion ) { set( controller, "loading", false ); }
 			};
@@ -138,17 +139,18 @@ export default Route.extend({
 						?? row.viewcount ?? ( row.livestream && row.livestream.viewcount ) ?? 0 );
 					if ( !categories.has( key ) ) {
 						categories.set( key, { name, slug: category.slug || name, image,
-							viewerCount: 0, channels: 0 } );
+							viewerCount: null, channels: 0 } );
 					}
 					const game = categories.get( key );
 					game.channels++;
 					if ( !game.image && image ) { game.image = image; }
-					if ( Number.isFinite( count ) && count > 0 ) { game.viewerCount += count; }
+					if ( Number.isFinite( count ) && count > 0 ) { game.viewerCount = ( game.viewerCount || 0 ) + count; }
 				});
 				if ( !added ) { break; }
 				const partial = Array.from( categories.values() );
 				partial.forEach( game => {
-					game.viewers = game.viewerCount.toLocaleString();
+					game.viewers = game.viewerCount === null
+						? "—" : game.viewerCount.toLocaleString();
 				});
 				partial.sort( ( a, b ) => b.viewerCount - a.viewerCount
 					|| b.channels - a.channels );
@@ -181,7 +183,7 @@ export default Route.extend({
 							name,
 							slug: item.slug || name,
 							image: "",
-							viewerCount: 0,
+							viewerCount: null,
 							channels: 0
 						};
 						if ( image && !game.image ) { game.image = image; }
@@ -192,7 +194,8 @@ export default Route.extend({
 					});
 					const partial = Array.from( categories.values() );
 					partial.forEach( game => {
-						game.viewers = game.viewerCount.toLocaleString();
+						game.viewers = game.viewerCount === null
+						? "—" : game.viewerCount.toLocaleString();
 					});
 					partial.sort( ( a, b ) => b.viewerCount - a.viewerCount
 						|| b.channels - a.channels );
@@ -218,7 +221,7 @@ export default Route.extend({
 							const count = Number( item.viewers ?? item.viewer_count );
 							const game = categories.get( key ) || {
 								name: item.name || item.slug, slug: item.slug || item.name,
-								image: "", viewerCount: 0, channels: 0
+								image: "", viewerCount: null, channels: 0
 							};
 							if ( image && !game.image ) { game.image = image; }
 							remember( game );
@@ -234,7 +237,8 @@ export default Route.extend({
 			}
 			const games = Array.from( categories.values() );
 			games.forEach( game => {
-				game.viewers = game.viewerCount.toLocaleString();
+				game.viewers = game.viewerCount === null
+						? "—" : game.viewerCount.toLocaleString();
 			});
 			games.sort( ( a, b ) => b.viewerCount - a.viewerCount
 				|| b.channels - a.channels );
