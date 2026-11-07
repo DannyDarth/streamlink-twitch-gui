@@ -60,7 +60,7 @@ export default Route.extend({
 			const streams = append ? controller.streams.slice() : [];
 			const seen = new Set( streams.map( stream => stream.slug ) );
 			const firstPage = append ? controller.nextPage : 1;
-			for ( let page = firstPage; page < firstPage + 2 && page <= 15; page++ ) {
+			for ( let page = firstPage; page < firstPage + 5 && page <= 15; page++ ) {
 				const url = page === 1
 					? "https://kick.com/stream/livestreams/en"
 					: `https://kick.com/stream/livestreams/en?page=${page}`;
@@ -118,7 +118,7 @@ export default Route.extend({
 				set( controller, "streams", streams.slice() );
 				set( controller, "loading", false );
 				set( controller, "nextPage", page + 1 );
-				if ( !batch.length || page === 15 ) {
+				if ( page === 15 ) {
 					set( controller, "hasMore", false );
 					break;
 				}
