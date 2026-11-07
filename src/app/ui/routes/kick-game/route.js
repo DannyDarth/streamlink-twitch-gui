@@ -7,7 +7,7 @@ const countFrom = (...values) => {
 		if ( typeof value !== "number" && typeof value !== "string" ) { continue; }
 		if ( value === "" || value === null ) { continue; }
 		const count = Number( value );
-		if ( Number.isFinite( count ) && count >= 0 ) { return count; }
+		if ( Number.isFinite( count ) && count > 0 ) { return count; }
 	}
 	return null;
 };
@@ -59,7 +59,7 @@ export default Route.extend({
 					const count = countFrom(
 						row.viewer_count, row.viewers, row.concurrent_viewers,
 						row.current_viewers, row.viewcount, live.viewer_count,
-						live.viewers, live.viewcount
+						live.viewers, live.viewcount, live.concurrent_viewers
 					);
 					streams.push({
 						slug: channelSlug,
@@ -118,7 +118,7 @@ export default Route.extend({
 						if ( !response.ok ) { return; }
 						const payload = await response.json();
 						const profile = payload.data || payload;
-						applyThumbnail( profile.livestream || profile );
+						applyThumbnail( profile.livestream || profile.stream || profile );
 					} catch ( error ) {
 						// Missing artwork must not prevent playback.
 					}
