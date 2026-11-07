@@ -54,13 +54,29 @@ export default Route.extend({
 			let consecutiveDuplicates = 0;
 			let stopReason = "page limit";
 			const pageSizes = [];
+			const pageBatch = new Map();
 			for ( let page = 1; page <= 40; page++ ) {
 				const base = "https://kick.com/stream/livestreams/en";
 				const category = encodeURIComponent( slug );
 				const url = `${base}?subcategory=${category}&page=${page}`;
-				let rows = null;
+				// Prefetch three pages concurrently, then merge them in page order.
+				// This mirrors Twitch's progressive directory loading approach.
+				if ( ( page - 1 ) % 3 === 0 ) {
+					const pages = [ page, page + 1, page + 2 ]
+						.filter( number => number <= 40 );
+					await Promise.all( pages.map( async number => {
+						const nextUrl = `${base}?subcategory=${category}&page=${number}`;
+						try {
+							pageBatch.set( number, await fetchDirectoryPage( nextUrl ) );
+						} catch ( error ) {
+							pageBatch.set( number, null );
+						}
+					}));
+				}
+				let rows = pageBatch.get( page ) || null;
+				pageBatch.delete( page );
 				let lastError = null;
-				for ( let attempt = 0; attempt < 2; attempt++ ) {
+				for ( let attempt = 0; attempt < 2 && !rows; attempt++ ) {
 					try {
 						rows = await fetchDirectoryPage( url );
 					} catch ( error ) {
