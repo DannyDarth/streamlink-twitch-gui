@@ -35,6 +35,14 @@ struct ContentView: View {
             }
             .padding(.top, 30)
             .navigationTitle("StreamHub")
+            .toolbar {
+                ToolbarItem(placement: .topBarTrailing) {
+                    NavigationLink(destination: SettingsView()) {
+                        Image(systemName: "gearshape")
+                    }
+                    .accessibilityLabel("Settings")
+                }
+            }
         }
     }
 }
