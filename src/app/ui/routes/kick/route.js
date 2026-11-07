@@ -48,12 +48,19 @@ export default Route.extend({
 			set( controller, "loading", false );
 		}
 	},
-	async loadDirectory( controller ) {
-		setProperties( controller, { loading: true, error: null });
+	async loadDirectory( controller, append = false ) {
+		if ( controller.loadingMore ) { return; }
+		if ( !append ) {
+			setProperties( controller, { loading: true, error: null, streams: [],
+				nextPage: 1, hasMore: true });
+		} else {
+			set( controller, "loadingMore", true );
+		}
 		try {
-			const streams = [];
-			const seen = new Set();
-			for ( let page = 1; page <= 15; page++ ) {
+			const streams = append ? controller.streams.slice() : [];
+			const seen = new Set( streams.map( stream => stream.slug ) );
+			const firstPage = append ? controller.nextPage : 1;
+			for ( let page = firstPage; page < firstPage + 2 && page <= 15; page++ ) {
 				const url = page === 1
 					? "https://kick.com/stream/livestreams/en"
 					: `https://kick.com/stream/livestreams/en?page=${page}`;
@@ -68,12 +75,16 @@ export default Route.extend({
 				const rows = Array.isArray( data )
 					? data
 					: ( data && ( data.data || data.livestreams ) ) || [];
-				if ( !Array.isArray( rows ) || !rows.length ) { break; }
+				if ( !Array.isArray( rows ) || !rows.length ) {
+					set( controller, "hasMore", false );
+					break;
+				}
 				const batch = rows.map( row => {
 					const channel = row.channel || {};
 					const slug = channel.slug || row.slug;
 					const thumbnail = row.thumbnail || row.thumbnail_url
-					|| row.stream_thumbnail || {};
+						|| row.stream_thumbnail || ( row.livestream && row.livestream.thumbnail )
+						|| ( channel.livestream && channel.livestream.thumbnail ) || {};
 					const image = typeof thumbnail === "string"
 						? thumbnail
 						: ( thumbnail.url || thumbnail.src || "" );
@@ -106,12 +117,22 @@ export default Route.extend({
 				});
 				set( controller, "streams", streams.slice() );
 				set( controller, "loading", false );
-				if ( !batch.length ) { break; }
+				set( controller, "nextPage", page + 1 );
+				if ( !batch.length || page === 15 ) {
+					set( controller, "hasMore", false );
+					break;
+				}
 			}
 		} catch ( error ) {
 			set( controller, "error", `Kick live directory could not be loaded: ${error.message}` );
 		} finally {
 			set( controller, "loading", false );
+			set( controller, "loadingMore", false );
+		}
+	},
+	actions: {
+		loadMore() {
+			this.loadDirectory( this.controller, true );
 		}
 	}
 });
