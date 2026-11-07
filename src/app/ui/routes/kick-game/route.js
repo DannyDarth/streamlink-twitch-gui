@@ -116,22 +116,36 @@ export default Route.extend({
 			// Fall back to the existing directory if category lookup fails.
 		}
 		if ( !categoryId ) { return false; }
-		const url = "https://web.kick.com/api/v1/livestreams"
-			+ `?limit=24&sort=viewer_count_desc&category_id=${categoryId}`
-			+ "&display_language=en";
-		try {
-			const response = await fetch( url, { credentials: "omit" } );
-			if ( !response.ok ) { return false; }
-			const payload = await response.json();
-			const data = payload.data || payload;
-			const rows = Array.isArray( data ) ? data
-				: ( data.livestreams || data.data || [] );
-			if ( !Array.isArray( rows ) ) { return false; }
+		const base = "https://web.kick.com/api/v1/livestreams";
+		let loaded = 0;
+		for ( let offset = 0; offset < 240; offset += 24 ) {
+			if ( this._kickCancelled ) { return loaded > 0; }
+			if ( offset > 0 ) {
+				await this.waitForMore( controller );
+				if ( this._kickCancelled ) { return loaded > 0; }
+			}
+			const url = base + `?limit=24&offset=${offset}`
+				+ `&sort=viewer_count_desc&category_id=${categoryId}`
+				+ "&display_language=en";
+			let rows;
+			try {
+				const response = await fetch( url, { credentials: "omit" } );
+				if ( !response.ok ) { break; }
+				const payload = await response.json();
+				const data = payload.data || payload;
+				rows = Array.isArray( data ) ? data
+					: ( data.livestreams || data.data || [] );
+			} catch ( error ) {
+				break;
+			}
+			if ( !Array.isArray( rows ) || !rows.length ) { break; }
+			let added = 0;
 			rows.forEach( row => {
 				const channel = row.channel || {};
 				const channelSlug = channel.slug || row.channel_slug || row.slug;
 				if ( !channelSlug || seen.has( channelSlug ) ) { return; }
 				seen.add( channelSlug );
+				added++;
 				const count = countFrom( row.viewer_count, row.viewers,
 					row.concurrent_viewers, row.current_viewers );
 				const thumbnail = row.thumbnail || row.thumbnail_url
@@ -148,14 +162,16 @@ export default Route.extend({
 					category: categoryName
 				});
 			});
-			if ( !streams.length ) { return false; }
+			if ( !added ) { break; }
+			loaded += added;
 			streams.sort( ( a, b ) => ( b.viewerCount || 0 ) - ( a.viewerCount || 0 ) );
 			set( controller, "streams", streams.slice() );
 			set( controller, "loading", false );
-			return true;
-		} catch ( error ) {
-			return false;
+			set( controller, "viewerDiagnostics",
+				`Popular API: ${loaded} streams; offset: ${offset}; sorting: viewers` );
+			if ( rows.length < 24 ) { break; }
 		}
+		return loaded > 0;
 	},
 	async loadCategory( controller, slug ) {
 		setProperties( controller, {
