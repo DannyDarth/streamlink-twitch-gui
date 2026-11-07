@@ -17,6 +17,7 @@ struct TwitchBrowserView: UIViewRepresentable {
         webView.allowsBackForwardNavigationGestures = true
         webView.scrollView.contentInsetAdjustmentBehavior = .automatic
         context.coordinator.webView = webView
+        context.coordinator.currentRootURL = url
         Task { @MainActor in
             await AdBlockingSettings.shared.configure(configuration.userContentController)
             webView.load(URLRequest(url: url))
