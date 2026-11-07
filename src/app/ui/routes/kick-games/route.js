@@ -85,6 +85,7 @@ export default Route.extend({
 							? payload.data : payload.data.data ) )
 						|| payload.subcategories || [];
 					if ( Array.isArray( catalog ) ) {
+						if ( !catalog.length ) { break; }
 						catalog.forEach( item => {
 							const name = item.name || item.slug;
 							if ( !name ) { return; }
@@ -105,6 +106,13 @@ export default Route.extend({
 							if ( Number.isFinite( count ) ) { game.viewerCount = count; }
 							categories.set( key, game );
 						});
+						const partial = Array.from( categories.values() );
+						partial.forEach( game => {
+							game.viewers = game.viewerCount.toLocaleString();
+						});
+						partial.sort( ( a, b ) => b.viewerCount - a.viewerCount
+							|| b.channels - a.channels );
+						set( controller, "games", partial );
 					}
 				}
 				if ( !response.ok ) { break; }
