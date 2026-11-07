@@ -39,6 +39,7 @@ export default EmberRouter.extend().map(function() {
 		this.route( "hotkeys" );
 		this.route( "notifications" );
 		this.route( "channels" );
+		this.route( "kickAccount" );
 	});
 	this.route( "about" );
 });
