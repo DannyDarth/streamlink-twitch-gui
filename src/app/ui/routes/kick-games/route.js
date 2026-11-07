@@ -49,7 +49,7 @@ export default Route.extend({
 			};
 			const publish = games => {
 				games.forEach( remember );
-				if ( version === loadVersion ) { publish( games ); }
+				if ( version === loadVersion ) { set( controller, "games", games ); }
 			};
 			const seen = new Set();
 			const catalogUrl = "https://kick.com/api/v1/subcategories?page=1&limit=32";
