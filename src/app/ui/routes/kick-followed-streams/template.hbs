@@ -1,17 +1,38 @@
 <main class="content content-channels">
 	<header><h2>Kick Followed Streams</h2></header>
-	<p>Live streams among your locally saved favorites. The public directory may not list every live channel.</p>
-	{{#if loading}}
-		<p>Checking Kick live streams...</p>
-	{{else}}
-		{{#if error}}<p>{{error}}</p>{{/if}}
-		{{#each streams as |stream|}}
-			<div><strong>{{stream.slug}}</strong> — {{stream.title}}
-				<button {{action "openBrowser" stream.slug}}>Open Channel</button>
-			</div>
-		{{else}}
-			<p>No saved favorites found live in the directory.</p>
+	{{#if loading}}<p>Checking followed Kick channels...</p>{{/if}}
+	{{#if error}}<p role="alert">{{error}}</p>{{/if}}
+	<div class="kick-stream-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:1.25rem;padding:1rem 0">
+		{{#each channels as |stream|}}
+			{{#if stream.isLive}}
+				<div class="kick-stream-card" style="min-width:0">
+					<button type="button" {{action "play" stream.slug}}
+						title="Play {{stream.slug}} in VLC"
+						style="display:block;width:100%;padding:0;border:0;background:transparent;cursor:pointer;text-align:left;color:inherit">
+						<div style="aspect-ratio:16/9;background:rgba(128,128,128,.18);overflow:hidden;border-radius:5px;position:relative">
+							{{#if stream.thumbnail}}
+								<img src={{stream.thumbnail}} alt=""
+									style="width:100%;height:100%;object-fit:cover">
+							{{else}}
+								<div style="display:flex;align-items:center;justify-content:center;height:100%">Kick</div>
+							{{/if}}
+							<span style="position:absolute;top:8px;left:8px;background:#d12d36;color:white;padding:2px 6px;border-radius:3px;font-size:11px;font-weight:bold">LIVE</span>
+							<span style="position:absolute;bottom:8px;left:8px;background:rgba(0,0,0,.8);color:white;padding:3px 6px;border-radius:3px;font-size:12px">{{stream.viewers}} viewers</span>
+						</div>
+						<div style="padding:8px 0 2px;font-weight:bold;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{stream.slug}}</div>
+						<div style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{stream.title}}</div>
+						{{#if stream.category}}
+							<div style="opacity:.7;font-size:12px;margin-top:3px">{{stream.category}}</div>
+						{{/if}}
+					</button>
+					<button type="button" {{action "openBrowser" stream.slug}}
+						style="margin-top:6px">Open in Browser</button>
+				</div>
+			{{/if}}
 		{{/each}}
-	{{/if}}
-	{{#link-to "kickFollowedChannels"}}Manage Kick favorites{{/link-to}}
+	</div>
+	{{#unless loading}}
+		<p>Only live channels from your saved Kick favorites are shown.</p>
+		<p>{{#link-to "kickFollowedChannels"}}Manage Kick followed channels{{/link-to}}</p>
+	{{/unless}}
 </main>
