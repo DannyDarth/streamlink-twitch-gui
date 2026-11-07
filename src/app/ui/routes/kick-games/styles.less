@@ -25,6 +25,11 @@
 	color: inherit;
 	text-decoration: none;
 	cursor: pointer;
+	animation: kick-card-reveal 180ms ease-out both;
+
+	@media ( prefers-reduced-motion: reduce ) {
+		animation: none;
+	}
 
 	&:hover .kick-game-cover {
 		outline: 2px solid #53fc18;
@@ -73,3 +78,15 @@
 	white-space: nowrap;
 	font-weight: bold;
 }
+
+@keyframes kick-card-reveal {
+	from { opacity: 0; transform: translateY( 5px ); }
+	to { opacity: 1; transform: translateY( 0 ); }
+}
+
+.kick-game-card:nth-child( 7n + 2 ) { animation-delay: 20ms; }
+.kick-game-card:nth-child( 7n + 3 ) { animation-delay: 40ms; }
+.kick-game-card:nth-child( 7n + 4 ) { animation-delay: 60ms; }
+.kick-game-card:nth-child( 7n + 5 ) { animation-delay: 80ms; }
+.kick-game-card:nth-child( 7n + 6 ) { animation-delay: 100ms; }
+.kick-game-card:nth-child( 7n + 7 ) { animation-delay: 120ms; }
