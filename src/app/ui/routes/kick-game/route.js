@@ -84,7 +84,7 @@ export default Route.extend({
 			}
 			// Kick's website fetches viewer counts by livestream ID in batches.
 			const withIds = streams.filter( stream => stream.livestreamId );
-			console.info( "[Kick viewers] Category stream IDs", {
+			window.console.info( "[Kick viewers] Category stream IDs", {
 				streams: streams.length, withIds: withIds.length,
 				sample: withIds.slice( 0, 3 ).map( stream => stream.livestreamId )
 			} );
@@ -99,12 +99,12 @@ export default Route.extend({
 						{ credentials: "omit" }
 					);
 					if ( !response.ok ) {
-						console.warn( "[Kick viewers] HTTP", response.status );
+						window.console.warn( "[Kick viewers] HTTP", response.status );
 						continue;
 					}
 					const payload = await response.json();
 					if ( !Array.isArray( payload ) ) {
-						console.warn( "[Kick viewers] Unexpected response format" );
+						window.console.warn( "[Kick viewers] Unexpected response format" );
 						continue;
 					}
 					const byId = new Map( batch.map( stream =>
@@ -120,11 +120,11 @@ export default Route.extend({
 						set( stream, "viewerCount", count );
 						set( stream, "viewers", count === null ? "—" : count.toLocaleString() );
 					});
-					console.info( "[Kick viewers] Batch result", {
+					window.console.info( "[Kick viewers] Batch result", {
 						requested: batch.length, returned: payload.length, matched
 					} );
 				} catch ( error ) {
-					console.warn( "[Kick viewers] Request failed", error );
+					window.console.warn( "[Kick viewers] Request failed", error );
 				}
 			}
 			set( controller, "streams", streams.slice() );
