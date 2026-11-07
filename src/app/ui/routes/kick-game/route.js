@@ -168,12 +168,15 @@ export default Route.extend({
 								String( candidate.livestreamId )
 									=== String( item.livestream_id )
 							);
-							if ( stream && Number( item.viewers ) > 0 ) {
+							if ( stream ) { idMatches++; }
+							if ( stream && item.show_view_count !== false
+							&& Number( item.viewers ) > 0 ) {
 								set( stream, "viewerCount", Number( item.viewers ) );
 								set( stream, "viewers", Number( item.viewers ).toLocaleString() );
 							}
 						});
-						diagnostics.push( `matched: ${sample.filter(
+						diagnostics.push( `ID matches: ${idMatches}; positive: ${positive}; hidden: ${hidden}` );
+							diagnostics.push( `displayed: ${sample.filter(
 							stream => stream.viewerCount
 						).length} of ${sample.length}` );
 					}
@@ -185,7 +188,7 @@ export default Route.extend({
 			}
 			streams.sort( ( a, b ) => ( b.viewerCount || 0 ) - ( a.viewerCount || 0 ) );
 			set( controller, "streams", streams );
-			set( controller, "diagnostic", diagnostics.slice( -6 ).join( " | " ) );
+			set( controller, "diagnostic", diagnostics.slice( -7 ).join( " | " ) );
 		} catch ( error ) {
 			set( controller, "error", `Could not load category streams: ${error.message}` );
 		} finally {
