@@ -120,6 +120,7 @@ export default Route.extend({
 			// Refresh counts in batches after resolving the real livestream IDs.
 			const withIds = streams.filter( stream => stream.livestreamId );
 			let matched = 0;
+			let batchStatus = "not requested";
 			for ( let i = 0; i < withIds.length; i += 40 ) {
 				const batch = withIds.slice( i, i + 40 );
 				const params = batch.map( stream =>
@@ -130,9 +131,14 @@ export default Route.extend({
 						`https://kick.com/current-viewers?${params}`,
 						{ credentials: "omit" }
 					);
+					batchStatus = `HTTP ${response.status}`;
 					if ( !response.ok ) { continue; }
 					const payload = await response.json();
-					if ( !Array.isArray( payload ) ) { continue; }
+					if ( !Array.isArray( payload ) ) {
+						batchStatus = "Unexpected response format";
+						continue;
+					}
+					batchStatus = `HTTP 200; returned ${payload.length}`;
 					const byId = new Map( batch.map( stream =>
 						[ String( stream.livestreamId ), stream ]
 					) );
@@ -146,12 +152,12 @@ export default Route.extend({
 						set( stream, "viewers", count === null ? "—" : count.toLocaleString() );
 					});
 				} catch ( error ) {
-					// Keep counts from the channel info response.
+					batchStatus = `Request error: ${error.message}`;
 				}
 			}
 			set( controller, "viewerDiagnostics",
 				`Streams: ${streams.length}; IDs: ${resolved};`
-				+ ` matched: ${matched}; failed: ${failed}` );
+				+ ` matched: ${matched}; failed: ${failed}; ${batchStatus}` );
 			set( controller, "streams", streams.slice() );
 			streams.sort( ( a, b ) => ( b.viewerCount || 0 ) - ( a.viewerCount || 0 ) );
 			set( controller, "streams", streams );
