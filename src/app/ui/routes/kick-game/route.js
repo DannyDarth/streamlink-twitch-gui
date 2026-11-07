@@ -208,8 +208,8 @@ export default Route.extend({
 		setProperties( controller, {
 			loading: !preview.length, error: null, streams: preview,
 			categorySlug: slug, categoryName: slug.replace( /-/g, " " ),
-			viewerDiagnostics: preview.length ? "Cached streams; refreshing..." :
-				"Waiting for directory response...", loadingMore: false
+			viewerDiagnostics: preview.length ? "Cached streams; refreshing..."
+				: "Waiting for directory response...", loadingMore: false
 		});
 		try {
 			const streams = [];
