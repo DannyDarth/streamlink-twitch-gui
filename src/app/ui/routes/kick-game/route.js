@@ -61,6 +61,7 @@ export default Route.extend({
 					if ( category.name ) { set( controller, "categoryName", category.name ); }
 				});
 				if ( streams.length ) {
+					streams.sort( ( a, b ) => ( b.viewerCount || 0 ) - ( a.viewerCount || 0 ) );
 					set( controller, "streams", streams.slice() );
 					set( controller, "loading", false );
 				}
