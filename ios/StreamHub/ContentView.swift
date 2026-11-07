@@ -295,7 +295,8 @@ private struct KickGameDetailView: View {
 
 private struct KickCategoryBrowserView: View {
     let game: KickGame
-    @State private var reloadID = 0
+    @StateObject private var discovery = KickCategoryWebModel()
+    @State private var showWebsite = false
 
     private var url: URL {
         var components = URLComponents()
@@ -314,35 +315,103 @@ private struct KickCategoryBrowserView: View {
                     Rectangle().fill(.gray.opacity(0.2))
                         .overlay(Image(systemName: "gamecontroller").foregroundStyle(.secondary))
                 }
-                .frame(width: 52, height: 70)
+                .frame(width: 48, height: 64)
                 .clipped()
                 .cornerRadius(8)
 
                 VStack(alignment: .leading, spacing: 4) {
-                    Text(game.name)
-                        .font(.headline)
-                        .lineLimit(2)
-                    Text("Live streams on Kick")
+                    Text(game.name).font(.headline).lineLimit(2)
+                    Text("Live streams · Kick")
                         .font(.caption)
                         .foregroundStyle(.secondary)
                 }
-                Spacer(minLength: 8)
+                Spacer(minLength: 4)
                 Button {
-                    reloadID += 1
+                    discovery.reload()
                 } label: {
                     Image(systemName: "arrow.clockwise")
-                        .font(.body.weight(.semibold))
-                        .frame(width: 40, height: 40)
+                        .frame(width: 36, height: 40)
                 }
-                .accessibilityLabel("Reload category streams")
+                .accessibilityLabel("Reload live streams")
             }
             .padding(.horizontal, 14)
-            .padding(.vertical, 10)
+            .padding(.vertical, 8)
+
+            HStack {
+                Text(showWebsite ? "Kick website" : "StreamHub list")
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(.secondary)
+                Spacer()
+                Button(showWebsite ? "Show StreamHub list" : "View on Kick") {
+                    showWebsite.toggle()
+                }
+                .font(.subheadline)
+            }
+            .padding(.horizontal, 14)
+            .padding(.bottom, 8)
 
             Divider()
 
-            FilteredWebPlayer(url: url)
-                .id(reloadID)
+            ZStack {
+                KickCategoryDiscoveryWebView(url: url, model: discovery)
+                    .opacity(showWebsite ? 1 : 0.01)
+                    .allowsHitTesting(showWebsite)
+
+                if !showWebsite {
+                    if discovery.channels.isEmpty {
+                        VStack(spacing: 12) {
+                            ProgressView(discovery.status)
+                            Text("If streams do not appear, choose View on Kick.")
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                                .multilineTextAlignment(.center)
+                            Button("View on Kick") { showWebsite = true }
+                        }
+                        .padding()
+                        .frame(maxWidth: .infinity, maxHeight: .infinity)
+                        .background(Color(uiColor: .systemBackground))
+                    } else {
+                        List {
+                            ForEach(discovery.channels) { channel in
+                                NavigationLink {
+                                    FilteredWebPlayer(url: URL(string: "https://kick.com/" + channel.slug)!)
+                                        .navigationTitle(channel.slug)
+                                        .navigationBarTitleDisplayMode(.inline)
+                                } label: {
+                                    HStack(alignment: .top, spacing: 12) {
+                                        AsyncImage(url: channel.imageURL) { image in
+                                            image.resizable().scaledToFill()
+                                        } placeholder: {
+                                            Rectangle().fill(.gray.opacity(0.2))
+                                                .overlay(Image(systemName: "video").foregroundStyle(.secondary))
+                                        }
+                                        .frame(width: 136, height: 78)
+                                        .clipped()
+                                        .cornerRadius(8)
+                                        VStack(alignment: .leading, spacing: 5) {
+                                            Text(channel.slug).font(.headline).lineLimit(1)
+                                            Text(channel.title).font(.subheadline).lineLimit(2)
+                                            Text(channel.viewers.isEmpty ? game.name : channel.viewers + " · " + game.name)
+                                                .font(.caption)
+                                                .foregroundStyle(.secondary)
+                                        }
+                                    }
+                                    .padding(.vertical, 5)
+                                }
+                                .task {
+                                    if channel.id == discovery.channels.last?.id {
+                                        discovery.loadMore()
+                                    }
+                                }
+                            }
+                            Button("Load more streams") { discovery.loadMore() }
+                                .frame(maxWidth: .infinity)
+                        }
+                        .listStyle(.plain)
+                        .background(Color(uiColor: .systemBackground))
+                    }
+                }
+            }
         }
         .navigationTitle(game.name)
         .navigationBarTitleDisplayMode(.inline)
