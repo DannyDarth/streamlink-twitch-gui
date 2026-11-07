@@ -172,7 +172,8 @@ export default Route.extend({
 							? payload.find( row => String( row.livestream_id ) === id ) : null;
 						if ( !entry || entry.show_view_count === false ) { return; }
 						const count = countFrom( entry.viewers );
-						if ( count === null || ( count === 1 && stream.viewerCount === 1 ) ) { return; }
+						if ( count === null || ( count === 1
+							&& stream.viewerCount === 1 ) ) { return; }
 						set( stream, "viewerCount", count );
 						set( stream, "viewers", count.toLocaleString() );
 						recovered++;
