@@ -11,12 +11,20 @@ export default Route.extend({
 	},
 	async loadCategory( controller, slug ) {
 		setProperties( controller, {
-			loading: true, error: null, streams: [],
+			loading: true, error: null, streams: [], diagnostic: "",
 			categorySlug: slug, categoryName: slug.replace( /-/g, " " )
 		});
 		try {
 			const streams = [];
 			const seen = new Set();
+			const diagnostics = [];
+			const fields = data => {
+				if ( !data || typeof data !== "object" ) { return "none"; }
+				return [ "viewers", "viewcount", "viewer_count",
+					"concurrent_viewers", "current_viewers" ]
+					.map( key => `${key}:${typeof data[key]}=${String( data[key] )}` )
+					.join( ", " );
+			};
 			for ( let page = 1; page <= 5; page++ ) {
 				const base = "https://kick.com/stream/livestreams/en";
 				const category = encodeURIComponent( slug );
@@ -44,6 +52,9 @@ export default Route.extend({
 						|| row.stream_thumbnail || row.livestream?.thumbnail || {};
 					const image = typeof thumbnail === "string" ? thumbnail
 						: ( thumbnail.src || thumbnail.url || "" );
+					if ( diagnostics.length === 0 ) {
+						diagnostics.push( `directory: ${fields( row )}` );
+					}
 					const count = row.viewer_count ?? row.viewers
 						?? row.concurrent_viewers ?? row.current_viewers
 						?? row.viewcount ?? ( row.livestream && row.livestream.viewcount );
@@ -89,9 +100,16 @@ export default Route.extend({
 						const response = await fetch(
 							`${base}/livestream`, { credentials: "omit" }
 						);
+						if ( diagnostics.length < 3 ) {
+							diagnostics.push( `livestream HTTP ${response.status}` );
+						}
 						if ( response.ok ) {
 							const payload = await response.json();
-							applyLive( payload.data || payload );
+							const live = payload.data || payload;
+							if ( diagnostics.length < 4 ) {
+								diagnostics.push( `livestream: ${fields( live )}` );
+							}
+							applyLive( live );
 						}
 					} catch ( error ) {
 						// The channel profile can still provide live details.
@@ -102,6 +120,9 @@ export default Route.extend({
 						if ( !response.ok ) { return; }
 						const payload = await response.json();
 						const profile = payload.data || payload;
+						if ( diagnostics.length < 6 ) {
+							diagnostics.push( `profile: ${fields( profile.livestream )}` );
+						}
 						applyLive( profile.livestream );
 					} catch ( error ) {
 						// Missing metadata must not prevent playback.
@@ -110,6 +131,7 @@ export default Route.extend({
 			}
 			streams.sort( ( a, b ) => ( b.viewerCount || 0 ) - ( a.viewerCount || 0 ) );
 			set( controller, "streams", streams );
+			set( controller, "diagnostic", diagnostics.slice( 0, 6 ).join( " | " ) );
 		} catch ( error ) {
 			set( controller, "error", `Could not load category streams: ${error.message}` );
 		} finally {
