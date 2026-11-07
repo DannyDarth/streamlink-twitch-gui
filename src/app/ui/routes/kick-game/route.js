@@ -109,7 +109,10 @@ export default Route.extend({
 					}
 					const payload = await response.json();
 					if ( !Array.isArray( payload ) ) {
-						set( controller, "viewerDiagnostics", "Viewer lookup returned unexpected JSON" );
+						set(
+							controller, "viewerDiagnostics",
+							"Viewer lookup returned unexpected JSON"
+						);
 						window.console.warn( "[Kick viewers] Unexpected response format" );
 						continue;
 					}
@@ -127,7 +130,8 @@ export default Route.extend({
 						set( stream, "viewers", count === null ? "—" : count.toLocaleString() );
 					});
 					set( controller, "viewerDiagnostics",
-						`IDs: ${withIds.length}; returned: ${payload.length}; matched: ${matched}` );
+						`IDs: ${withIds.length}; returned: ${payload.length};` +
+						` matched: ${matched}` );
 					window.console.info( "[Kick viewers] Batch result", {
 						requested: batch.length, returned: payload.length, matched
 					} );
