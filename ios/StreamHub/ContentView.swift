@@ -285,74 +285,11 @@ private struct KickGamesView: View {
 
 private struct KickGameDetailView: View {
     let game: KickGame
-    @StateObject private var directory: KickCategoryStreamsDirectory
-
-    init(game: KickGame) {
-        self.game = game
-        _directory = StateObject(wrappedValue: KickCategoryStreamsDirectory(slug: game.slug))
-    }
 
     var body: some View {
-        List {
-            HStack(alignment: .top, spacing: 16) {
-                AsyncImage(url: game.cover) { image in
-                    image.resizable().scaledToFill()
-                } placeholder: {
-                    Rectangle().fill(.gray.opacity(0.2))
-                }
-                .frame(width: 100, height: 135)
-                .clipped().cornerRadius(8)
-                VStack(alignment: .leading, spacing: 8) {
-                    Text(game.name).font(.title2.bold())
-                    Text(game.viewers.map { "\($0.formatted()) viewers" } ?? "Viewer count unavailable")
-                        .foregroundStyle(.secondary)
-                }
-            }
-            .listRowSeparator(.hidden)
-            if directory.loading && directory.streams.isEmpty {
-                ProgressView("Loading live streams…")
-            } else if let error = directory.error, directory.streams.isEmpty {
-                Text(error)
-                Button("Retry") { Task { await directory.refresh() } }
-            } else if directory.streams.isEmpty {
-                VStack(alignment: .leading, spacing: 12) {
-                    Text("Stream listings are unavailable for this game.")
-                        .foregroundStyle(.secondary)
-                    Text("You can still browse the category on Kick.")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                    NavigationLink("Browse live streams on Kick") {
-                        KickCategoryBrowserView(game: game)
-                    }
-                }
-                .padding(.vertical, 8)
-            } else {
-                Section("Live streams") {
-                    ForEach(directory.streams) { stream in
-                        NavigationLink(destination: KickStreamPlayerView(stream: stream)) {
-                            KickStreamRow(stream: stream)
-                        }
-                            .task { await directory.loadMoreIfNeeded(current: stream) }
-                    }
-                    if directory.loadingMore {
-                        HStack { Spacer(); ProgressView(); Spacer() }
-                    }
-                    if let error = directory.error {
-                        Button(error + " — Retry") {
-                            Task {
-                                if let last = directory.streams.last {
-                                    await directory.loadMoreIfNeeded(current: last)
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        }
-        .navigationTitle(game.name)
-        .navigationBarTitleDisplayMode(.inline)
-        .refreshable { await directory.refresh() }
-        .task { await directory.loadInitial() }
+        KickCategoryBrowserView(game: game)
+            .navigationTitle(game.name)
+            .navigationBarTitleDisplayMode(.inline)
     }
 }
 
