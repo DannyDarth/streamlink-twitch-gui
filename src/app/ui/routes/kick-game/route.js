@@ -160,6 +160,7 @@ export default Route.extend({
 			set( controller, "streams", streams.slice() );
 			set( controller, "viewerDiagnostics",
 				`Streams: ${streams.length}; resolved: ${resolved}; failed: ${failed};`
+				+ ` recovered: ${recovered}; lookup failed: ${lookupFailed};`
 				+ ` sample: ${infoSample}` );
 		} catch ( error ) {
 			set( controller, "error", `Could not load category streams: ${error.message}` );
