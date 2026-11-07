@@ -29,19 +29,40 @@ export default Route.extend({
 		try {
 			const streams = [];
 			const seen = new Set();
+			let pagesLoaded = 0;
+			let stopReason = "page limit";
+			const pageSizes = [];
 			for ( let page = 1; page <= 20; page++ ) {
 				const base = "https://kick.com/stream/livestreams/en";
 				const category = encodeURIComponent( slug );
 				const url = `${base}?subcategory=${category}&page=${page}`;
-				const response = await fetch( url, { credentials: "omit" } );
-				if ( !response.ok ) {
-					if ( page === 1 ) { throw new Error( `HTTP ${response.status}` ); }
+				let rows = null;
+				let lastError = null;
+				// Retry transient failures and unexpectedly empty pages once.
+				for ( let attempt = 0; attempt < 2; attempt++ ) {
+					try {
+						const response = await fetch( url, {
+							credentials: "omit", cache: "no-store"
+						} );
+						if ( !response.ok ) { throw new Error( `HTTP ${response.status}` ); }
+						const payload = await response.json();
+						rows = Array.isArray( payload ) ? payload
+							: ( payload && ( payload.data || payload.livestreams ) ) || [];
+						if ( !Array.isArray( rows ) ) {
+							throw new Error( "Unexpected directory response" );
+						}
+						if ( rows.length ) { break; }
+					} catch ( error ) {
+						lastError = error;
+					}
+				}
+				if ( !rows || !rows.length ) {
+					stopReason = lastError ? lastError.message : "empty page";
+					if ( page === 1 && lastError ) { throw lastError; }
 					break;
 				}
-				const payload = await response.json();
-				const rows = Array.isArray( payload ) ? payload
-					: ( payload && ( payload.data || payload.livestreams ) ) || [];
-				if ( !Array.isArray( rows ) || !rows.length ) { break; }
+				pagesLoaded++;
+				pageSizes.push( rows.length );
 				let newRows = 0;
 				rows.forEach( row => {
 					const channel = row.channel || {};
@@ -82,7 +103,10 @@ export default Route.extend({
 					set( controller, "streams", streams.slice() );
 					set( controller, "loading", false );
 				}
-				if ( !newRows ) { break; }
+				if ( !newRows ) {
+					stopReason = "duplicate page";
+					break;
+				}
 			}
 
 			// Resolve livestream IDs and counts using the verified channel info API.
@@ -159,7 +183,9 @@ export default Route.extend({
 			streams.sort( ( a, b ) => ( b.viewerCount || 0 ) - ( a.viewerCount || 0 ) );
 			set( controller, "streams", streams.slice() );
 			set( controller, "viewerDiagnostics",
-				`Streams: ${streams.length}; resolved: ${resolved}; failed: ${failed};`
+				`Streams: ${streams.length}; pages: ${pagesLoaded};`
+				+ ` page sizes: ${pageSizes.join( "," )}; stop: ${stopReason};`
+				+ ` resolved: ${resolved}; failed: ${failed};`
 				+ ` recovered: ${recovered}; lookup failed: ${lookupFailed};`
 				+ ` sample: ${infoSample}` );
 		} catch ( error ) {
