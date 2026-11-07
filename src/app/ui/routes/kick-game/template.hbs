@@ -23,7 +23,6 @@
 						<div style="display:flex;justify-content:flex-end;align-items:center;padding:7px 2px 4px;opacity:.85;font-size:13px"><span aria-label="Viewers">◉ {{stream.viewers}} viewers</span></div>
 						<div style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{stream.title}}</div>
 					</button>
-					<button type="button" {{action "openBrowser" stream.slug}} style="margin-top:6px">Open in Browser</button>
 				</div>
 			{{else}}
 				{{#unless error}}<p>No live channels found in this category.</p>{{/unless}}
