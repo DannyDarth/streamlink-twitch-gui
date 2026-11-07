@@ -1,5 +1,6 @@
 import Route from "@ember/routing/route";
 import { set, setProperties } from "@ember/object";
+import { scheduleOnce } from "@ember/runloop";
 
 // Kick's directory and channel APIs return thumbnails in different shapes.
 const thumbnailUrl = (...candidates) => {
@@ -32,11 +33,42 @@ export default Route.extend({
 	},
 	setupController( controller, model ) {
 		this._super( controller, model );
+		this._kickDirectoryId = ( this._kickDirectoryId || 0 ) + 1;
+		this.stopAutoLoad();
 		if ( model ) {
 			this.loadChannel( controller, model );
 		} else {
 			this.loadGlobalStreams( controller );
 		}
+	},
+	deactivate() {
+		this._kickDirectoryId = ( this._kickDirectoryId || 0 ) + 1;
+		this.stopAutoLoad();
+		this._super( ...arguments );
+	},
+	stopAutoLoad() {
+		if ( this._kickScrollObserver ) {
+			this._kickScrollObserver.disconnect();
+			this._kickScrollObserver = null;
+		}
+	},
+	watchForMore( controller, directoryId ) {
+		this.stopAutoLoad();
+		if ( typeof IntersectionObserver === "undefined" || !controller.hasMore ) { return; }
+		scheduleOnce( "afterRender", this, () => {
+			if ( directoryId !== this._kickDirectoryId || !controller.hasMore ) { return; }
+			const sentinel = document.querySelector( ".kick-streams-load-sentinel" );
+			if ( !sentinel ) { return; }
+			this._kickScrollObserver = new IntersectionObserver( entries => {
+				if ( directoryId !== this._kickDirectoryId ) { return; }
+				if ( entries.some( entry => entry.isIntersecting )
+					&& !controller.loadingMore && controller.hasMore ) {
+					this.stopAutoLoad();
+					this.loadGlobalStreams( controller, true, directoryId );
+				}
+			}, { rootMargin: "700px" } );
+			this._kickScrollObserver.observe( sentinel );
+		});
 	},
 	async loadChannel( controller, query ) {
 		setProperties( controller, { loading: true, error: null, streams: [] });
@@ -76,7 +108,7 @@ export default Route.extend({
 			set( controller, "loading", false );
 		}
 	},
-	async loadGlobalStreams( controller, append = false ) {
+	async loadGlobalStreams( controller, append = false, directoryId = this._kickDirectoryId ) {
 		if ( append && controller.loadingMore ) { return; }
 		if ( !append ) {
 			setProperties( controller, {
@@ -94,6 +126,7 @@ export default Route.extend({
 			const response = await fetch( url, { credentials: "omit" } );
 			if ( !response.ok ) { throw new Error( `HTTP ${response.status}` ); }
 			const payload = await response.json();
+			if ( directoryId !== this._kickDirectoryId ) { return; }
 			const data = payload.data || payload;
 			const rows = Array.isArray( data ) ? data
 				: ( data.livestreams || data.data || [] );
@@ -133,6 +166,7 @@ export default Route.extend({
 				hasMore: !!cursor && ( !append || cursor !== controller.nextCursor )
 			});
 		} catch ( error ) {
+			if ( directoryId !== this._kickDirectoryId ) { return; }
 			if ( !append ) {
 				this.loadDirectory( controller );
 				return;
@@ -141,6 +175,9 @@ export default Route.extend({
 		} finally {
 			set( controller, "loading", false );
 			set( controller, "loadingMore", false );
+			if ( directoryId === this._kickDirectoryId ) {
+				this.watchForMore( controller, directoryId );
+			}
 		}
 	},
 	async loadDirectory( controller, append = false ) {
