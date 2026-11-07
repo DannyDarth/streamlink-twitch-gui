@@ -30,7 +30,7 @@ export default Route.extend({
 	},
 	async loadGames( controller ) {
 		const version = ++loadVersion;
-		const previous = controller.games || [];
+		const previous = Array.isArray( controller.games ) ? controller.games : [];
 		previous.forEach( game => {
 			if ( game.image ) { artworkCache.set( categoryKey( game ), game.image ); }
 		});
@@ -49,7 +49,7 @@ export default Route.extend({
 			};
 			const publish = games => {
 				games.forEach( remember );
-				if ( version === loadVersion ) { set( controller, "games", games ); }
+				if ( version === loadVersion ) { set( controller, "games", games.slice() ); }
 			};
 			const seen = new Set();
 			const catalogUrl = "https://kick.com/api/v1/subcategories?page=1&limit=32";
@@ -81,7 +81,8 @@ export default Route.extend({
 				publish( initial );
 				if ( version === loadVersion ) { set( controller, "loading", false ); }
 			};
-			showCatalog().catch( () => {} );
+			await showCatalog().catch( () => {} );
+			if ( version !== loadVersion ) { return; }
 			// Begin targeted cover recovery as soon as the first directory cards appear.
 			const requested = new Set();
 			const recoverCovers = games => {
@@ -103,7 +104,7 @@ export default Route.extend({
 						.catch( () => {} );
 				});
 			};
-			for ( let page = 1; page <= 15; page++ ) {
+			for ( let page = 1; page <= 5; page++ ) {
 				const url = page === 1
 					? "https://kick.com/stream/livestreams/en"
 					: `https://kick.com/stream/livestreams/en?page=${page}`;
@@ -153,12 +154,12 @@ export default Route.extend({
 					|| b.channels - a.channels );
 				publish( partial );
 				recoverCovers( partial );
-				set( controller, "loading", false );
+				if ( version === loadVersion ) { set( controller, "loading", false ); }
 			}
 			// Enrich directory categories with the public subcategory catalog.
 			// Unlike livestream rows, subcategories include portrait banners and live viewers.
 			try {
-				for ( let page = 1; page <= 15; page++ ) {
+				for ( let page = 1; page <= 5; page++ ) {
 					const response = page === 1 ? await firstCatalog : await fetch(
 						`https://kick.com/api/v1/subcategories?page=${page}&limit=32`,
 						{ credentials: "omit" }
@@ -195,7 +196,7 @@ export default Route.extend({
 					});
 					partial.sort( ( a, b ) => b.viewerCount - a.viewerCount
 						|| b.channels - a.channels );
-					set( controller, "games", partial );
+					publish( partial );
 				}
 			} catch ( error ) {
 				// The live directory remains a usable fallback if catalog access fails.
@@ -237,7 +238,7 @@ export default Route.extend({
 			});
 			games.sort( ( a, b ) => b.viewerCount - a.viewerCount
 				|| b.channels - a.channels );
-			set( controller, "games", games );
+			publish( games );
 			recoverCovers( games );
 
 		} catch ( error ) {
@@ -245,7 +246,7 @@ export default Route.extend({
 				set( controller, "error", `Could not load Kick categories: ${error.message}` );
 			}
 		} finally {
-			set( controller, "loading", false );
+			if ( version === loadVersion ) { set( controller, "loading", false ); }
 		}
 	}
 });
