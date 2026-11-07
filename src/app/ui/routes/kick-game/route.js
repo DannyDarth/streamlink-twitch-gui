@@ -1,6 +1,8 @@
 import Route from "@ember/routing/route";
 import { set, setProperties } from "@ember/object";
 
+const categoryCache = new Map();
+
 // Ignore boolean live-status flags and nonpositive placeholder counts.
 const countFrom = (...values) => {
 	for ( const value of values ) {
@@ -99,21 +101,27 @@ export default Route.extend({
 		}
 	},
 	async loadPopular( controller, slug, streams, seen ) {
-		let categoryId = slug === "grand-theft-auto-v" ? 8 : null;
-		let categoryName = slug.replace( /-/g, " " );
-		try {
-			const lookup = await fetch(
-				`https://kick.com/api/v1/subcategories/${encodeURIComponent( slug )}`,
-				{ credentials: "omit" }
-			);
-			if ( lookup.ok ) {
-				const payload = await lookup.json();
-				const category = payload.data || payload;
-				categoryId = Number( category.id ) || categoryId;
-				categoryName = category.name || categoryName;
+		const cached = categoryCache.get( slug );
+		let categoryId = cached ? cached.id : slug === "grand-theft-auto-v" ? 8 : null;
+		let categoryName = cached ? cached.name : slug.replace( /-/g, " " );
+		if ( !cached ) {
+			try {
+				const lookup = await fetch(
+					`https://kick.com/api/v1/subcategories/${encodeURIComponent( slug )}`,
+					{ credentials: "omit" }
+				);
+				if ( lookup.ok ) {
+					const payload = await lookup.json();
+					const category = payload.data || payload;
+					categoryId = Number( category.id ) || categoryId;
+					categoryName = category.name || categoryName;
+					if ( categoryId ) {
+						categoryCache.set( slug, { id: categoryId, name: categoryName } );
+					}
+				}
+			} catch ( error ) {
+				// Fall back to the existing directory if category lookup fails.
 			}
-		} catch ( error ) {
-			// Fall back to the existing directory if category lookup fails.
 		}
 		if ( !categoryId ) { return false; }
 		const base = "https://web.kick.com/api/v1/livestreams";
