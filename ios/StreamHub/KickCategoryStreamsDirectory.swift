@@ -83,7 +83,7 @@ final class KickCategoryStreamsDirectory: ObservableObject {
             page += 1
             loaded = true
         } catch {
-            error = "Could not load streams for this game: \(error.localizedDescription)"
+            self.error = "Could not load streams for this game: \(error.localizedDescription)"
         }
     }
 }
