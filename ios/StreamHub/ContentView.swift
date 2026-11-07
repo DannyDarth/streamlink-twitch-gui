@@ -43,6 +43,7 @@ private struct TwitchDirectoryView: View {
     @State private var section = 0
     @State private var search = ""
     @State private var submittedSearch = ""
+    @State private var browserResetID = UUID()
 
     private var browseURL: URL {
         if !submittedSearch.isEmpty {
@@ -90,8 +91,24 @@ private struct TwitchDirectoryView: View {
             .padding(.horizontal)
             .padding(.bottom, 8)
 
+            if section == 1 {
+                HStack {
+                    Button {
+                        search = ""
+                        submittedSearch = ""
+                        browserResetID = UUID()
+                    } label: {
+                        Label("Back to Games", systemImage: "chevron.left")
+                    }
+                    .accessibilityLabel("Return to all Twitch game categories")
+                    Spacer()
+                }
+                .padding(.horizontal)
+                .padding(.bottom, 8)
+            }
+
             TwitchBrowserView(url: browseURL)
-                .id(browseURL.absoluteString)
+                .id(browseURL.absoluteString + browserResetID.uuidString)
         }
     }
 }
