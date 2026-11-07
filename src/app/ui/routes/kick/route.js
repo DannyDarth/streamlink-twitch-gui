@@ -35,7 +35,7 @@ export default Route.extend({
 		if ( model ) {
 			this.loadChannel( controller, model );
 		} else {
-			this.loadDirectory( controller );
+			this.loadGlobalStreams( controller );
 		}
 	},
 	async loadChannel( controller, query ) {
@@ -74,6 +74,73 @@ export default Route.extend({
 			set( controller, "error", `Kick search failed: ${error.message}` );
 		} finally {
 			set( controller, "loading", false );
+		}
+	},
+	async loadGlobalStreams( controller, append = false ) {
+		if ( append && controller.loadingMore ) { return; }
+		if ( !append ) {
+			setProperties( controller, {
+				loading: true, loadingMore: false, error: null,
+				streams: [], nextCursor: null, hasMore: true
+			});
+		} else {
+			set( controller, "loadingMore", true );
+		}
+		try {
+			const after = append && controller.nextCursor
+				? `&after=${encodeURIComponent( controller.nextCursor )}` : "";
+			const url = "https://web.kick.com/api/v1/livestreams"
+				+ `?limit=24&sort=viewer_count_desc&display_language=en${after}`;
+			const response = await fetch( url, { credentials: "omit" } );
+			if ( !response.ok ) { throw new Error( `HTTP ${response.status}` ); }
+			const payload = await response.json();
+			const data = payload.data || payload;
+			const rows = Array.isArray( data ) ? data
+				: ( data.livestreams || data.data || [] );
+			if ( !Array.isArray( rows ) ) { throw new Error( "Invalid livestream data" ); }
+			const streams = append ? controller.streams.slice() : [];
+			const seen = new Set( streams.map( stream => stream.slug ) );
+			rows.forEach( row => {
+				const channel = row.channel || {};
+				const slug = channel.slug || row.channel_slug || row.slug;
+				if ( !slug || seen.has( slug ) ) { return; }
+				seen.add( slug );
+				const count = viewerCount(
+					row.viewer_count, row.viewers, row.concurrent_viewers
+				);
+				const category = row.category || {};
+				streams.push({
+					slug,
+					livestreamId: row.id || row.livestream_id || null,
+					channel: ( channel.user && channel.user.username )
+						|| channel.slug || slug,
+					title: row.session_title || row.title || "",
+					viewerCount: count,
+					viewers: count === null ? "—" : count.toLocaleString(),
+					thumbnail: thumbnailUrl(
+						row.thumbnail, row.thumbnail_url, row.stream_thumbnail
+					),
+					category: category.name
+						|| ( row.categories && row.categories[0] && row.categories[0].name )
+						|| ""
+				});
+			});
+			streams.sort( ( a, b ) => ( b.viewerCount || 0 ) - ( a.viewerCount || 0 ) );
+			const cursor = ( data.pagination && data.pagination.next_cursor )
+				|| data.next_cursor || null;
+			setProperties( controller, {
+				streams, nextCursor: cursor,
+				hasMore: !!cursor && ( !append || cursor !== controller.nextCursor )
+			});
+		} catch ( error ) {
+			if ( !append ) {
+				this.loadDirectory( controller );
+				return;
+			}
+			set( controller, "error", `Could not load more streams: ${error.message}` );
+		} finally {
+			set( controller, "loading", false );
+			set( controller, "loadingMore", false );
 		}
 	},
 	async loadDirectory( controller, append = false ) {
@@ -187,7 +254,7 @@ export default Route.extend({
 	},
 	actions: {
 		loadMore() {
-			this.loadDirectory( this.controller, true );
+			this.loadGlobalStreams( this.controller, true );
 		}
 	}
 });
