@@ -131,7 +131,8 @@ export default Route.extend({
 					const pages = [ page, page + 1, page + 2 ]
 						.filter( number => number <= 80 );
 					await Promise.all( pages.map( async number => {
-						const nextUrl = `${base}?subcategory=${category}&sort=viewer_count_desc&page=${number}`;
+						const nextUrl = `${base}?subcategory=${category}`
+							+ `&sort=viewer_count_desc&page=${number}`;
 						try {
 							pageBatch.set( number, await fetchDirectoryPage( nextUrl ) );
 						} catch ( error ) {
@@ -195,7 +196,8 @@ export default Route.extend({
 					set( controller, "streams", streams.slice() );
 					set( controller, "loading", false );
 					set( controller, "viewerDiagnostics",
-						`Discovering: ${streams.length} streams; page ${page}/80; sort: viewers descending;`
+						`Discovering: ${streams.length} streams; page ${page}/80;`
+						+ " sort: viewers descending;"
 						+ ` duplicate pages: ${duplicatePages}` );
 				}
 				if ( !newRows ) {
