@@ -315,8 +315,17 @@ private struct KickGameDetailView: View {
                 Text(error)
                 Button("Retry") { Task { await directory.refresh() } }
             } else if directory.streams.isEmpty {
-                Text("No live streams found for this game.")
-                    .foregroundStyle(.secondary)
+                VStack(alignment: .leading, spacing: 12) {
+                    Text("Stream listings are unavailable for this game.")
+                        .foregroundStyle(.secondary)
+                    Text("You can still browse the category on Kick.")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                    NavigationLink("Browse live streams on Kick") {
+                        KickCategoryBrowserView(game: game)
+                    }
+                }
+                .padding(.vertical, 8)
             } else {
                 Section("Live streams") {
                     ForEach(directory.streams) { stream in
@@ -344,6 +353,24 @@ private struct KickGameDetailView: View {
         .navigationBarTitleDisplayMode(.inline)
         .refreshable { await directory.refresh() }
         .task { await directory.loadInitial() }
+    }
+}
+
+private struct KickCategoryBrowserView: View {
+    let game: KickGame
+
+    private var url: URL {
+        var components = URLComponents()
+        components.scheme = "https"
+        components.host = "kick.com"
+        components.path = "/category/" + game.slug.addingPercentEncoding(withAllowedCharacters: .urlPathAllowed)!
+        return components.url!
+    }
+
+    var body: some View {
+        FilteredWebPlayer(url: url)
+            .navigationTitle(game.name)
+            .navigationBarTitleDisplayMode(.inline)
     }
 }
 
