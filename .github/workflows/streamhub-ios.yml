@@ -10,7 +10,7 @@ on:
       - '.github/workflows/streamhub-ios.yml'
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
   ios:
@@ -43,3 +43,16 @@ jobs:
           name: streamhub-ios-unsigned-ipa
           path: dist/StreamHub-iOS-unsigned.ipa
           if-no-files-found: error
+
+      - name: Publish direct IPA download in GitHub Releases
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          TAG="streamhub-ios-build-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}"
+          gh release create "$TAG" \
+            "dist/StreamHub-iOS-unsigned.ipa#StreamHub-iOS-unsigned.ipa" \
+            --title "StreamHub iOS build ${GITHUB_RUN_NUMBER} (attempt ${GITHUB_RUN_ATTEMPT})" \
+            --notes "Unsigned iOS IPA from commit ${GITHUB_SHA}. Download the .ipa asset directly and sign it using your preferred Windows sideloading tool." \
+            --target "$GITHUB_SHA" \
+            --prerelease
