@@ -43,15 +43,16 @@ export default Route.extend({
 		try {
 			const slug = query.trim().replace( /^@/, "" );
 			const response = await fetch(
-				`https://kick.com/api/v2/channels/${encodeURIComponent( slug )}/livestream`,
+				`https://kick.com/api/v2/channels/${encodeURIComponent( slug )}/info`,
 				{ credentials: "omit" }
 			);
 			if ( !response.ok ) {
 				throw new Error( `Kick channel returned HTTP ${response.status}` );
 			}
 			const result = await response.json();
-			const live = result.data || result;
-			if ( !live || !live.id ) {
+			const profile = result.data || result;
+			const live = profile.livestream;
+			if ( !live || !live.id || live.is_live === false ) {
 				set( controller, "error", `No live stream found for ${slug}.` );
 				return;
 			}
@@ -60,13 +61,14 @@ export default Route.extend({
 			);
 			set( controller, "streams", [{
 				slug,
-				channel: slug,
+				channel: ( profile.user && profile.user.username ) || slug,
 				title: live.session_title || live.title || "",
 				viewers: viewers === null ? "—" : viewers.toLocaleString(),
 				thumbnail: thumbnailUrl(
 					live.thumbnail, live.thumbnail_url, live.stream_thumbnail
 				),
-				category: ( live.category && live.category.name ) || ""
+				category: ( live.categories && live.categories[0] && live.categories[0].name )
+					|| ( live.category && live.category.name ) || ""
 			}]);
 		} catch ( error ) {
 			set( controller, "error", `Kick search failed: ${error.message}` );
