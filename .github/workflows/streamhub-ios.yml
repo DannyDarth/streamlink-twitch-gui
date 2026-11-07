@@ -21,8 +21,12 @@ jobs:
         uses: actions/checkout@v4
       - name: Install XcodeGen
         run: brew install xcodegen
-      - name: Verify selected StreamHub app icon
-        run: test -s ios/StreamHub/Assets.xcassets/AppIcon.appiconset/AppIcon.png
+      - name: Prepare selected StreamHub app icon
+        run: |
+          ICON=ios/StreamHub/Assets.xcassets/AppIcon.appiconset/AppIcon.png
+          test -s "$ICON"
+          sips --resampleHeightWidth 1024 1024 "$ICON" --out "$ICON"
+          sips -g pixelWidth -g pixelHeight "$ICON"
       - name: Generate Xcode project
         run: cd ios && xcodegen generate
       - name: Build unsigned iPhone app
