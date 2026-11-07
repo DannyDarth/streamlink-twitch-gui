@@ -35,6 +35,7 @@
 			{{/each}}
 		</div>
 		{{#if hasMore}}
+			<div class="kick-streams-load-sentinel" style="height:1px"></div>
 			<button type="button" {{action "loadMore"}} disabled={{loadingMore}}>
 				{{#if loadingMore}}Loading more...{{else}}Load More Streams{{/if}}
 			</button>
