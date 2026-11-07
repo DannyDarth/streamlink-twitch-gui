@@ -35,5 +35,10 @@
 				{{/unless}}
 			{{/each}}
 		</div>
+		{{#if hasMore}}
+			<button type="button" {{action "loadMore"}} disabled={{loadingMore}}>
+				{{#if loadingMore}}Loading more...{{else}}Load More Streams{{/if}}
+			</button>
+		{{/if}}
 	{{/if}}
 </main>
