@@ -15,7 +15,7 @@
 						<div style="font-size:15px;font-weight:600;text-align:center;padding:0 0 8px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{stream.channel}}</div>
 						<div style="aspect-ratio:16/9;background:rgba(128,128,128,.18);overflow:hidden;border-radius:5px;position:relative">
 							{{#if stream.thumbnail}}
-								<img src={{stream.thumbnail}} alt="" style="width:100%;height:100%;object-fit:cover">
+								<img src={{stream.thumbnail}} alt="" loading="lazy" decoding="async" style="width:100%;height:100%;object-fit:cover">
 							{{else}}
 								<div style="display:flex;align-items:center;justify-content:center;height:100%">Kick</div>
 							{{/if}}
