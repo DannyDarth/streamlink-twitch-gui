@@ -2,9 +2,21 @@
 
 .kick-game-grid {
 	display: grid;
-	grid-template-columns: repeat( auto-fill, minmax( 145px, 1fr ) );
-	gap: 18px 14px;
+	grid-template-columns: repeat( 7, minmax( 0, 1fr ) );
+	gap: 20px 16px;
 	padding: 14px 0 24px;
+
+	@media ( max-width: 1200px ) {
+		grid-template-columns: repeat( 5, minmax( 0, 1fr ) );
+	}
+
+	@media ( max-width: 850px ) {
+		grid-template-columns: repeat( 4, minmax( 0, 1fr ) );
+	}
+
+	@media ( max-width: 600px ) {
+		grid-template-columns: repeat( 3, minmax( 0, 1fr ) );
+	}
 }
 
 .kick-game-card {
