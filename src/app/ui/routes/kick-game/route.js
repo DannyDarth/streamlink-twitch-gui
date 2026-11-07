@@ -62,54 +62,49 @@ export default Route.extend({
 				});
 				if ( !newRows ) { break; }
 			}
-			// Fill in live thumbnails and viewer counts from each channel's
-			// current livestream, in small batches to avoid request bursts.
+			// Use the same livestream lookup as Followed Channels.
+			// Fetch the channel profile only when details remain missing.
 			for ( let i = 0; i < streams.length; i += 5 ) {
 				await Promise.all( streams.slice( i, i + 5 ).map( async stream => {
-					try {
-						const channelSlug = encodeURIComponent( stream.slug );
-						const url = `https://kick.com/api/v2/channels/${channelSlug}/livestream`;
-						const response = await fetch( url, { credentials: "omit" } );
-						if ( !response.ok ) { return; }
-						const payload = await response.json();
-						const live = payload.data || payload;
-						if ( !live || !live.id ) { return; }
+					const channelSlug = encodeURIComponent( stream.slug );
+					const base = `https://kick.com/api/v2/channels/${channelSlug}`;
+					const applyLive = live => {
+						if ( !live ) { return; }
+						const count = live.viewers ?? live.viewcount
+							?? live.viewer_count ?? live.concurrent_viewers;
+						if ( Number( count ) > 0 ) {
+							set( stream, "viewerCount", Number( count ) );
+							set( stream, "viewers", Number( count ).toLocaleString() );
+						}
 						const cover = live.thumbnail || live.thumbnail_url || {};
 						const image = typeof cover === "string"
 							? cover : ( cover.src || cover.url || "" );
-						if ( image ) { set( stream, "thumbnail", image ); }
-						const count = live.viewers ?? live.viewcount ?? live.viewer_count;
-						if ( Number( count ) > 0 ) {
-							set( stream, "viewers", Number( count ).toLocaleString() );
-							set( stream, "viewerCount", Number( count ) );
+						if ( image && !stream.thumbnail ) {
+							set( stream, "thumbnail", image );
 						}
-						if ( live.session_title ) {
-							set( stream, "title", live.session_title );
-						}
-						if ( !stream.thumbnail || !stream.viewerCount ) {
-							const profileUrl = `https://kick.com/api/v2/channels/${channelSlug}`;
-							const profileResponse = await fetch(
-								profileUrl, { credentials: "omit" }
-							);
-							if ( profileResponse.ok ) {
-								const profile = await profileResponse.json();
-								const current = profile.livestream || {};
-								const preview = current.thumbnail || current.thumbnail_url || {};
-								const fallback = typeof preview === "string"
-									? preview : ( preview.src || preview.url || "" );
-								if ( !stream.thumbnail && fallback ) {
-									set( stream, "thumbnail", fallback );
-								}
-								const viewers = current.viewer_count ?? current.viewers
-									?? current.viewcount;
-								if ( Number( viewers ) > 0 && !stream.viewerCount ) {
-									set( stream, "viewerCount", Number( viewers ) );
-									set( stream, "viewers", Number( viewers ).toLocaleString() );
-								}
-							}
+						const title = live.session_title || live.title;
+						if ( title && !stream.title ) { set( stream, "title", title ); }
+					};
+					try {
+						const response = await fetch(
+							`${base}/livestream`, { credentials: "omit" }
+						);
+						if ( response.ok ) {
+							const payload = await response.json();
+							applyLive( payload.data || payload );
 						}
 					} catch ( error ) {
-						// Keep the stream card visible when enrichment fails.
+						// The channel profile can still provide live details.
+					}
+					if ( stream.viewerCount && stream.thumbnail ) { return; }
+					try {
+						const response = await fetch( base, { credentials: "omit" } );
+						if ( !response.ok ) { return; }
+						const payload = await response.json();
+						const profile = payload.data || payload;
+						applyLive( profile.livestream );
+					} catch ( error ) {
+						// Missing metadata must not prevent playback.
 					}
 				}));
 			}
