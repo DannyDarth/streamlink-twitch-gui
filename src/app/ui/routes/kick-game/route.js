@@ -99,9 +99,26 @@ export default Route.extend({
 		}
 	},
 	async loadPopular( controller, slug, streams, seen ) {
-		if ( slug !== "grand-theft-auto-v" ) { return false; }
+		let categoryId = slug === "grand-theft-auto-v" ? 8 : null;
+		let categoryName = slug.replace( /-/g, " " );
+		try {
+			const lookup = await fetch(
+				`https://kick.com/api/v1/subcategories/${encodeURIComponent( slug )}`,
+				{ credentials: "omit" }
+			);
+			if ( lookup.ok ) {
+				const payload = await lookup.json();
+				const category = payload.data || payload;
+				categoryId = Number( category.id ) || categoryId;
+				categoryName = category.name || categoryName;
+			}
+		} catch ( error ) {
+			// Fall back to the existing directory if category lookup fails.
+		}
+		if ( !categoryId ) { return false; }
 		const url = "https://web.kick.com/api/v1/livestreams"
-			+ "?limit=24&sort=viewer_count_desc&category_id=8&display_language=en";
+			+ `?limit=24&sort=viewer_count_desc&category_id=${categoryId}`
+			+ "&display_language=en";
 		try {
 			const response = await fetch( url, { credentials: "omit" } );
 			if ( !response.ok ) { return false; }
@@ -128,7 +145,7 @@ export default Route.extend({
 					thumbnail: imageFrom( thumbnail ),
 					viewerCount: count,
 					viewers: count === null ? "—" : count.toLocaleString(),
-					category: "Grand Theft Auto V (GTA)"
+					category: categoryName
 				});
 			});
 			if ( !streams.length ) { return false; }
