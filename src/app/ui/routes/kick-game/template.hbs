@@ -3,9 +3,6 @@
 		<h2>Kick: {{categoryName}}</h2>
 	</header>
 	<p>{{#link-to "kickGames"}}← All Kick Games{{/link-to}}</p>
-	{{#if diagnostic}}
-		<p style="font-size:11px;overflow-wrap:anywhere;opacity:.7">Viewer diagnostics: {{diagnostic}}</p>
-	{{/if}}
 	{{#if loading}}
 		<p>Loading live channels...</p>
 	{{else}}
