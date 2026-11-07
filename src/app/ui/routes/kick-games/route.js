@@ -145,7 +145,7 @@ export default Route.extend({
 							}
 							categories.set( key, game );
 						});
-						}
+					}
 				}
 			} catch ( error ) {
 				// Retain categories already loaded if top-category artwork is unavailable.
