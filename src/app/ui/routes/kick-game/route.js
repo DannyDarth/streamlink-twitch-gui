@@ -175,7 +175,8 @@ export default Route.extend({
 								set( stream, "viewers", Number( item.viewers ).toLocaleString() );
 							}
 						});
-						diagnostics.push( `ID matches: ${idMatches}; positive: ${positive}; hidden: ${hidden}` );
+						diagnostics.push( `ID matches: ${idMatches}; positive: ${positive}` );
+							diagnostics.push( `hidden: ${hidden}` );
 							diagnostics.push( `displayed: ${sample.filter(
 							stream => stream.viewerCount
 						).length} of ${sample.length}` );
