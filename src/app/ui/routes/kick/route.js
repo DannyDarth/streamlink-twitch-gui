@@ -1,6 +1,28 @@
 import Route from "@ember/routing/route";
 import { set, setProperties } from "@ember/object";
 
+// Kick's directory and channel APIs return thumbnails in different shapes.
+const thumbnailUrl = (...candidates) => {
+	for ( const candidate of candidates ) {
+		if ( !candidate ) { continue; }
+		const value = typeof candidate === "string" ? candidate
+			: ( candidate.src || candidate.url || candidate.responsive || "" );
+		if ( typeof value !== "string" ) { continue; }
+		const url = value.split( "," )[0].trim().split( /\\s+/ )[0];
+		if ( /^https?:\\/\\//i.test( url ) ) { return url; }
+	}
+	return "";
+};
+
+const viewerCount = (...candidates) => {
+	for ( const candidate of candidates ) {
+		if ( candidate === null || candidate === undefined || candidate === "" ) { continue; }
+		const value = Number( candidate );
+		if ( Number.isFinite( value ) && value > 0 ) { return value; }
+	}
+	return null;
+};
+
 export default Route.extend({
 	queryParams: {
 		query: { refreshModel: true }
@@ -33,13 +55,13 @@ export default Route.extend({
 				set( controller, "error", `No live stream found for ${slug}.` );
 				return;
 			}
-			const thumbnail = live.thumbnail || {};
+			const viewers = viewerCount( live.viewer_count, live.viewers, live.viewcount, live.concurrent_viewers );
 			set( controller, "streams", [{
 				slug,
 				channel: slug,
 				title: live.session_title || live.title || "",
-				viewers: Number( live.viewers ?? 0 ).toLocaleString(),
-				thumbnail: thumbnail.src || thumbnail.url || "",
+				viewers: viewers === null ? "—" : viewers.toLocaleString(),
+				thumbnail: thumbnailUrl( live.thumbnail, live.thumbnail_url, live.stream_thumbnail ),
 				category: ( live.category && live.category.name ) || ""
 			}]);
 		} catch ( error ) {
@@ -82,19 +104,18 @@ export default Route.extend({
 				const batch = rows.map( row => {
 					const channel = row.channel || {};
 					const slug = channel.slug || row.slug;
-					const thumbnail = row.thumbnail || row.thumbnail_url
-						|| row.stream_thumbnail || ( row.livestream && row.livestream.thumbnail )
-						|| ( channel.livestream && channel.livestream.thumbnail ) || {};
-					const image = typeof thumbnail === "string"
-						? thumbnail
-						: ( thumbnail.url || thumbnail.src || "" );
-					const viewers = row.viewer_count
-						?? row.viewers
-						?? row.concurrent_viewers
-						?? row.current_viewers
-						?? row.viewcount
-						?? ( row.livestream && row.livestream.viewcount )
-						?? null;
+					const live = row.livestream || channel.livestream || {};
+					const image = thumbnailUrl(
+						row.thumbnail, row.thumbnail_url, row.stream_thumbnail,
+						live.thumbnail, live.thumbnail_url, live.stream_thumbnail,
+						channel.thumbnail, channel.thumbnail_url
+					);
+					const viewers = viewerCount(
+						row.viewer_count, row.viewers, row.concurrent_viewers,
+						row.current_viewers, row.viewcount, live.viewer_count,
+						live.viewers, live.viewcount, live.concurrent_viewers,
+						channel.viewer_count
+					);
 					return {
 						slug,
 						channel: ( channel.user && channel.user.username )
@@ -102,10 +123,8 @@ export default Route.extend({
 							|| slug
 							|| "Unknown channel",
 						title: row.session_title || row.title || "",
-						viewerCount: Number( viewers ) > 0 ? Number( viewers ) : null,
-						viewers: viewers === null || viewers === undefined
-							? "—"
-							: Number( viewers ).toLocaleString(),
+						viewerCount: viewers,
+						viewers: viewers === null ? "—" : viewers.toLocaleString(),
 						thumbnail: image,
 						category: ( row.categories && row.categories[0] && row.categories[0].name )
 							|| ( row.category && row.category.name )
