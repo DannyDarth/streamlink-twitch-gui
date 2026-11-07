@@ -17,7 +17,7 @@ export default Route.extend({
 		try {
 			const streams = [];
 			const seen = new Set();
-			for ( let page = 1; page <= 5; page++ ) {
+			for ( let page = 1; page <= 20; page++ ) {
 				const base = "https://kick.com/stream/livestreams/en";
 				const category = encodeURIComponent( slug );
 				const url = `${base}?subcategory=${category}&page=${page}`;
