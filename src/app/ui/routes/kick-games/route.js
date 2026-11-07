@@ -35,6 +35,24 @@ export default Route.extend({
 			const catalogUrl = "https://kick.com/api/v1/subcategories?page=1&limit=32";
 			const firstCatalog = fetch( catalogUrl, { credentials: "omit" } )
 				.catch( () => null );
+			// Begin targeted cover recovery as soon as the first directory cards appear.
+			const requested = new Set();
+			const recoverCovers = games => {
+				games.slice( 0, 42 ).filter( game => !game.image ).forEach( game => {
+					if ( requested.has( game.slug ) ) { return; }
+					requested.add( game.slug );
+					const slug = encodeURIComponent( game.slug );
+					fetch( `https://kick.com/api/v1/subcategories/${slug}`,
+						{ credentials: "omit" } )
+						.then( response => response.ok ? response.json() : null )
+						.then( payload => {
+							if ( !payload ) { return; }
+							const image = coverUrl( payload.data || payload );
+							if ( image && !game.image ) { set( game, "image", image ); }
+						})
+						.catch( () => {} );
+				});
+			};
 			for ( let page = 1; page <= 15; page++ ) {
 				const url = page === 1
 					? "https://kick.com/stream/livestreams/en"
@@ -84,6 +102,7 @@ export default Route.extend({
 				partial.sort( ( a, b ) => b.viewerCount - a.viewerCount
 					|| b.channels - a.channels );
 				set( controller, "games", partial );
+				recoverCovers( partial );
 				set( controller, "loading", false );
 			}
 			// Enrich directory categories with the public subcategory catalog.
@@ -114,7 +133,7 @@ export default Route.extend({
 							viewerCount: 0,
 							channels: 0
 						};
-						if ( image ) { game.image = image; }
+						if ( image && !game.image ) { game.image = image; }
 						if ( Number.isFinite( count ) && count > 0 ) {
 							game.viewerCount = count;
 						}
@@ -168,31 +187,7 @@ export default Route.extend({
 			games.sort( ( a, b ) => b.viewerCount - a.viewerCount
 				|| b.channels - a.channels );
 			set( controller, "games", games );
-			// Recover missing artwork for visible categories without blocking the grid.
-			const missing = games.slice( 0, 28 ).filter( game => !game.image );
-			const recover = async () => {
-				for ( let i = 0; i < missing.length; i += 4 ) {
-					await Promise.all( missing.slice( i, i + 4 ).map( async game => {
-						try {
-							const slug = encodeURIComponent( game.slug );
-							const response = await fetch(
-								`https://kick.com/api/v1/subcategories/${slug}`,
-								{ credentials: "omit" }
-							);
-							if ( !response.ok ) { return; }
-							const payload = await response.json();
-							const item = payload.data || payload;
-							const image = coverUrl( item );
-							if ( image ) {
-								set( game, "image", image );
-							}
-						} catch ( error ) {
-							// An unavailable cover must not delay the rest of the page.
-						}
-					}));
-				}
-			};
-			recover();
+			recoverCovers( games );
 
 		} catch ( error ) {
 			set( controller, "error", `Could not load Kick categories: ${error.message}` );
