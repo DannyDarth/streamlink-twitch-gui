@@ -17,7 +17,7 @@ export default Route.extend({
 			// Build categories from several pages rather than an unavailable categories endpoint.
 			const categories = new Map();
 			const seen = new Set();
-			for ( let page = 1; page <= 5; page++ ) {
+			for ( let page = 1; page <= 15; page++ ) {
 				const url = page === 1
 					? "https://kick.com/stream/livestreams/en"
 					: `https://kick.com/stream/livestreams/en?page=${page}`;
@@ -73,8 +73,9 @@ export default Route.extend({
 			// Enrich directory categories with the public subcategory catalog.
 			// Unlike livestream rows, subcategories include portrait banners and live viewers.
 			try {
+				for ( let page = 1; page <= 15; page++ ) {
 				const response = await fetch(
-					"https://kick.com/api/v1/subcategories?page=1&limit=32",
+					`https://kick.com/api/v1/subcategories?page=${page}&limit=32`,
 					{ credentials: "omit" }
 				);
 				if ( response.ok ) {
@@ -105,6 +106,8 @@ export default Route.extend({
 							categories.set( key, game );
 						});
 					}
+				}
+				if ( !response.ok ) { break; }
 				}
 			} catch ( error ) {
 				// The live directory remains a usable fallback if catalog access fails.
