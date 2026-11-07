@@ -295,6 +295,7 @@ private struct KickGameDetailView: View {
 
 private struct KickCategoryBrowserView: View {
     let game: KickGame
+    @State private var reloadID = 0
 
     private var url: URL {
         var components = URLComponents()
@@ -305,9 +306,46 @@ private struct KickCategoryBrowserView: View {
     }
 
     var body: some View {
-        FilteredWebPlayer(url: url)
-            .navigationTitle(game.name)
-            .navigationBarTitleDisplayMode(.inline)
+        VStack(spacing: 0) {
+            HStack(spacing: 12) {
+                AsyncImage(url: game.cover) { image in
+                    image.resizable().scaledToFill()
+                } placeholder: {
+                    Rectangle().fill(.gray.opacity(0.2))
+                        .overlay(Image(systemName: "gamecontroller").foregroundStyle(.secondary))
+                }
+                .frame(width: 52, height: 70)
+                .clipped()
+                .cornerRadius(8)
+
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(game.name)
+                        .font(.headline)
+                        .lineLimit(2)
+                    Text("Live streams on Kick")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+                Spacer(minLength: 8)
+                Button {
+                    reloadID += 1
+                } label: {
+                    Image(systemName: "arrow.clockwise")
+                        .font(.body.weight(.semibold))
+                        .frame(width: 40, height: 40)
+                }
+                .accessibilityLabel("Reload category streams")
+            }
+            .padding(.horizontal, 14)
+            .padding(.vertical, 10)
+
+            Divider()
+
+            FilteredWebPlayer(url: url)
+                .id(reloadID)
+        }
+        .navigationTitle(game.name)
+        .navigationBarTitleDisplayMode(.inline)
     }
 }
 
