@@ -57,6 +57,54 @@ struct TwitchBrowserView: UIViewRepresentable {
         configuration.userContentController.addUserScript(
             WKUserScript(source: gamesGridScript, injectionTime: .atDocumentEnd, forMainFrameOnly: true)
         )
+        // Prime thumbnails just ahead of the viewport without changing Twitch's
+        // own infinite-scroll, DOM layout, navigation, or video playback.
+        let streamLoadingScript = """
+        (function() {
+          if (window.__streamhubStreamImagesInstalled) return;
+          window.__streamhubStreamImagesInstalled = true;
+
+          const isDirectory = () => {
+            const path = location.pathname;
+            return path === '/directory/all' || path.startsWith('/directory/category/');
+          };
+          const prepared = new WeakSet();
+          const observer = new IntersectionObserver(entries => {
+            if (!isDirectory()) return;
+            for (const entry of entries) {
+              if (!entry.isIntersecting) continue;
+              const img = entry.target;
+              img.loading = 'eager';
+              img.setAttribute('fetchpriority', 'high');
+              observer.unobserve(img);
+            }
+          }, { rootMargin: '650px 0px', threshold: 0 });
+
+          function scan() {
+            if (!isDirectory()) return;
+            document.querySelectorAll('img[loading="lazy"], img[data-src]').forEach(img => {
+              if (prepared.has(img)) return;
+              prepared.add(img);
+              observer.observe(img);
+            });
+          }
+          let pending = false;
+          function schedule() {
+            if (pending) return;
+            pending = true;
+            setTimeout(() => { pending = false; scan(); }, 250);
+          }
+          new MutationObserver(schedule).observe(document.documentElement, {
+            childList: true, subtree: true
+          });
+          window.addEventListener('scroll', schedule, { passive: true });
+          scan();
+        })();
+        """
+        configuration.userContentController.addUserScript(
+            WKUserScript(source: streamLoadingScript, injectionTime: .atDocumentEnd, forMainFrameOnly: true)
+        )
+
         let webView = WKWebView(frame: .zero, configuration: configuration)
         webView.navigationDelegate = context.coordinator
         webView.allowsBackForwardNavigationGestures = true
