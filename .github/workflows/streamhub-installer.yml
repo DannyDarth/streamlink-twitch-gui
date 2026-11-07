@@ -49,7 +49,7 @@ jobs:
           if (!(Test-Path $makensis)) { $makensis = 'C:\\Program Files\\NSIS\\makensis.exe' }
           & $makensis "/DAPP_SOURCE=$source" 'build/resources/streamhub-installer.nsi'
           if ($LASTEXITCODE -ne 0) { throw "NSIS installer packaging failed" }
-          Move-Item 'StreamHub-Windows-x64-Setup.exe' 'dist/StreamHub-Windows-x64-Setup.exe'
+          Move-Item 'build/resources/StreamHub-Windows-x64-Setup.exe' 'dist/StreamHub-Windows-x64-Setup.exe'
 
       - name: Upload installer
         uses: actions/upload-artifact@v4
