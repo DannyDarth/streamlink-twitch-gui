@@ -123,6 +123,8 @@ export default Route.extend({
 			let batchStatus = "not requested";
 			let accepted = 0;
 			let rejected = 0;
+			let infoPositive = streams.filter( stream => stream.viewerCount > 0 ).length;
+			let batchPositive = 0;
 			for ( let i = 0; i < withIds.length; i += 10 ) {
 				const batch = withIds.slice( i, i + 10 );
 				const params = batch.map( stream =>
@@ -151,6 +153,9 @@ export default Route.extend({
 						matched++;
 						const count = item.show_view_count === false
 							? null : countFrom( item.viewers );
+						if ( count > 0 ) { batchPositive++; }
+						// Keep a positive channel count if the batch endpoint reports zero.
+						if ( count === 0 && stream.viewerCount > 0 ) { return; }
 						set( stream, "viewerCount", count );
 						set( stream, "viewers", count === null ? "—" : count.toLocaleString() );
 					});
@@ -161,7 +166,8 @@ export default Route.extend({
 			set( controller, "viewerDiagnostics",
 				`Streams: ${streams.length}; IDs: ${resolved};`
 				+ ` matched: ${matched}; failed: ${failed};`
-				+ ` batches OK: ${accepted}; rejected: ${rejected}; ${batchStatus}` );
+				+ ` batches OK: ${accepted}; rejected: ${rejected}; ${batchStatus};`
+				+ ` info >0: ${infoPositive}; batch >0: ${batchPositive}` );
 			set( controller, "streams", streams.slice() );
 			streams.sort( ( a, b ) => ( b.viewerCount || 0 ) - ( a.viewerCount || 0 ) );
 			set( controller, "streams", streams );
