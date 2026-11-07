@@ -323,7 +323,19 @@ private struct KickGameDetailView: View {
                         NavigationLink(destination: KickStreamPlayerView(stream: stream)) {
                             KickStreamRow(stream: stream)
                         }
-                            .task { await directory.loadMoreIfNeeded(current: stream) }\n                    }\n                    if directory.loadingMore {\n                        HStack { Spacer(); ProgressView(); Spacer() }\n                    }\n                    if let error = directory.error {\n                        Button(error + " — Retry") {\n                            Task {\n                                if let last = directory.streams.last {\n                                    await directory.loadMoreIfNeeded(current: last)\n                                }\n                            }\n                        }
+                            .task { await directory.loadMoreIfNeeded(current: stream) }
+                    }
+                    if directory.loadingMore {
+                        HStack { Spacer(); ProgressView(); Spacer() }
+                    }
+                    if let error = directory.error {
+                        Button(error + " — Retry") {
+                            Task {
+                                if let last = directory.streams.last {
+                                    await directory.loadMoreIfNeeded(current: last)
+                                }
+                            }
+                        }
                     }
                 }
             }
