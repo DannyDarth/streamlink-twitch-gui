@@ -98,6 +98,48 @@ export default Route.extend({
 			}));
 		}
 	},
+	async loadPopular( controller, slug, streams, seen ) {
+		if ( slug !== "grand-theft-auto-v" ) { return false; }
+		const url = "https://web.kick.com/api/v1/livestreams"
+			+ "?limit=24&sort=viewer_count_desc&category_id=8&display_language=en";
+		try {
+			const response = await fetch( url, { credentials: "omit" } );
+			if ( !response.ok ) { return false; }
+			const payload = await response.json();
+			const data = payload.data || payload;
+			const rows = Array.isArray( data ) ? data
+				: ( data.livestreams || data.data || [] );
+			if ( !Array.isArray( rows ) ) { return false; }
+			rows.forEach( row => {
+				const channel = row.channel || {};
+				const channelSlug = channel.slug || row.channel_slug || row.slug;
+				if ( !channelSlug || seen.has( channelSlug ) ) { return; }
+				seen.add( channelSlug );
+				const count = countFrom( row.viewer_count, row.viewers,
+					row.concurrent_viewers, row.current_viewers );
+				const thumbnail = row.thumbnail || row.thumbnail_url
+					|| row.stream_thumbnail || {};
+				streams.push({
+					slug: channelSlug,
+					livestreamId: row.id || row.livestream_id || null,
+					channel: ( channel.user && channel.user.username )
+						|| channel.slug || channelSlug,
+					title: row.session_title || row.title || "",
+					thumbnail: imageFrom( thumbnail ),
+					viewerCount: count,
+					viewers: count === null ? "—" : count.toLocaleString(),
+					category: "Grand Theft Auto V (GTA)"
+				});
+			});
+			if ( !streams.length ) { return false; }
+			streams.sort( ( a, b ) => ( b.viewerCount || 0 ) - ( a.viewerCount || 0 ) );
+			set( controller, "streams", streams.slice() );
+			set( controller, "loading", false );
+			return true;
+		} catch ( error ) {
+			return false;
+		}
+	},
 	async loadCategory( controller, slug ) {
 		setProperties( controller, {
 			loading: true, error: null, streams: [],
@@ -114,6 +156,8 @@ export default Route.extend({
 			const pageSizes = [];
 			const pageBatch = new Map();
 			let batchStart = 0;
+			const popular = await this.loadPopular( controller, slug, streams, seen );
+			if ( this._kickCancelled ) { return; }
 			for ( let page = 1; page <= 80; page++ ) {
 				if ( this._kickCancelled ) { return; }
 				if ( page > 1 && ( page - 1 ) % 12 === 0 ) {
@@ -196,6 +240,7 @@ export default Route.extend({
 					set( controller, "loading", false );
 					set( controller, "viewerDiagnostics",
 						`Discovering: ${streams.length} streams; page ${page}/80;`
+						+ ` popular endpoint: ${popular ? "yes" : "fallback"};`
 						+ ` duplicate pages: ${duplicatePages}` );
 				}
 				if ( !newRows ) {
