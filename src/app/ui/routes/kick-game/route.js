@@ -121,65 +121,13 @@ export default Route.extend({
 				set( controller, "viewerDiagnostics",
 					`Streams: ${streams.length}; IDs: ${resolved}; failed: ${failed}` );
 			}
-			// Refresh counts in batches after resolving the real livestream IDs.
-			const withIds = streams.filter( stream => stream.livestreamId );
-			let matched = 0;
-			let batchStatus = "not requested";
-			let accepted = 0;
-			let rejected = 0;
-			let infoPositive = streams.filter( stream => stream.viewerCount > 0 ).length;
-			let batchPositive = 0;
-			let batchSample = "none";
-			for ( let i = 0; i < withIds.length; i += 10 ) {
-				const batch = withIds.slice( i, i + 10 );
-				const params = batch.map( stream =>
-					`ids[]=${encodeURIComponent( stream.livestreamId )}`
-				).join( "&" );
-				try {
-					const response = await fetch(
-						`https://kick.com/current-viewers?${params}`,
-						{ credentials: "omit" }
-					);
-					batchStatus = `HTTP ${response.status}`;
-					if ( !response.ok ) { rejected++; continue; }
-					accepted++;
-					const payload = await response.json();
-					if ( !Array.isArray( payload ) ) {
-						batchStatus = "Unexpected response format";
-						continue;
-					}
-					batchStatus = `HTTP 200; returned ${payload.length}`;
-					const byId = new Map( batch.map( stream =>
-						[ String( stream.livestreamId ), stream ]
-					) );
-					payload.forEach( item => {
-						const stream = byId.get( String( item.livestream_id ) );
-						if ( !stream ) { return; }
-						matched++;
-						const count = item.show_view_count === false
-							? null : countFrom( item.viewers );
-						if ( count > 0 ) { batchPositive++; }
-						if ( batchSample === "none" ) {
-							batchSample = `${stream.slug}: ${String( item.viewers )}`;
-						}
-						// Keep a positive channel count if the batch endpoint reports zero.
-						if ( count === 0 && stream.viewerCount > 0 ) { return; }
-						set( stream, "viewerCount", count );
-						set( stream, "viewers", count === null ? "—" : count.toLocaleString() );
-					});
-				} catch ( error ) {
-					batchStatus = `Request error: ${error.message}`;
-				}
-			}
-			set( controller, "viewerDiagnostics",
-				`Streams: ${streams.length}; IDs: ${resolved};`
-				+ ` matched: ${matched}; failed: ${failed};`
-				+ ` batches OK: ${accepted}; rejected: ${rejected}; ${batchStatus};`
-				+ ` info >0: ${infoPositive}; batch >0: ${batchPositive};`
-				+ ` info sample: ${infoSample}; batch sample: ${batchSample}` );
-			set( controller, "streams", streams.slice() );
+			// Channel info is the authoritative source for per-stream viewer counts.
+			// Do not overwrite it with the unreliable current-viewers batch endpoint.
 			streams.sort( ( a, b ) => ( b.viewerCount || 0 ) - ( a.viewerCount || 0 ) );
-			set( controller, "streams", streams );
+			set( controller, "streams", streams.slice() );
+			set( controller, "viewerDiagnostics",
+				`Streams: ${streams.length}; resolved: ${resolved}; failed: ${failed};`
+				+ ` sample: ${infoSample}` );
 		} catch ( error ) {
 			set( controller, "error", `Could not load category streams: ${error.message}` );
 		} finally {
