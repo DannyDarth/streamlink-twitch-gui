@@ -63,7 +63,9 @@ export default Route.extend({
 				channel: slug,
 				title: live.session_title || live.title || "",
 				viewers: viewers === null ? "—" : viewers.toLocaleString(),
-				thumbnail: thumbnailUrl( live.thumbnail, live.thumbnail_url, live.stream_thumbnail ),
+				thumbnail: thumbnailUrl(
+					live.thumbnail, live.thumbnail_url, live.stream_thumbnail
+				),
 				category: ( live.category && live.category.name ) || ""
 			}]);
 		} catch ( error ) {
