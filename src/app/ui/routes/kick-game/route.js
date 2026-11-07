@@ -128,6 +128,9 @@ export default Route.extend({
 					streams.sort( ( a, b ) => ( b.viewerCount || 0 ) - ( a.viewerCount || 0 ) );
 					set( controller, "streams", streams.slice() );
 					set( controller, "loading", false );
+					set( controller, "viewerDiagnostics",
+						`Discovering: ${streams.length} streams; page ${page}/80;`
+						+ ` duplicate pages: ${duplicatePages}` );
 				}
 				if ( !newRows ) {
 					duplicatePages++;
