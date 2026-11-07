@@ -191,7 +191,7 @@ private struct KickGamesView: View {
                                 .cornerRadius(8)
                                 VStack(alignment: .leading, spacing: 6) {
                                     Text(game.name).font(.headline)
-                                    Text(game.viewers.map { "\\($0.formatted()) viewers" } ?? "Viewers unavailable")
+                                    Text(game.viewers.map { "\($0.formatted()) viewers" } ?? "Viewers unavailable")
                                         .font(.caption).foregroundStyle(.secondary)
                                 }
                             }
@@ -246,7 +246,7 @@ private struct KickGameDetailView: View {
                 .clipped().cornerRadius(8)
                 VStack(alignment: .leading, spacing: 8) {
                     Text(game.name).font(.title2.bold())
-                    Text(game.viewers.map { "\\($0.formatted()) viewers" } ?? "Viewer count unavailable")
+                    Text(game.viewers.map { "\($0.formatted()) viewers" } ?? "Viewer count unavailable")
                         .foregroundStyle(.secondary)
                 }
             }
