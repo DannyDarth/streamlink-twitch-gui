@@ -2,6 +2,18 @@ import Route from "@ember/routing/route";
 import { set, setProperties } from "@ember/object";
 
 const categoryCache = new Map();
+const streamCache = new Map();
+const CACHE_TTL = 10 * 60 * 1000;
+const CACHE_LIMIT = 12;
+
+const rememberStreams = ( slug, streams ) => {
+	streamCache.delete( slug );
+	streamCache.set( slug, { savedAt: Date.now(), streams: streams.map( stream =>
+		({ ...stream }) ) } );
+	if ( streamCache.size > CACHE_LIMIT ) {
+		streamCache.delete( streamCache.keys().next().value );
+	}
+};
 
 // Ignore boolean live-status flags and nonpositive placeholder counts.
 const countFrom = (...values) => {
@@ -41,7 +53,8 @@ export default Route.extend({
 	setupController( controller, slug ) {
 		this._super( controller, slug );
 		this._kickCancelled = false;
-		this.loadCategory( controller, slug );
+		this._kickLoadId = ( this._kickLoadId || 0 ) + 1;
+		this.loadCategory( controller, slug, this._kickLoadId );
 	},
 	deactivate() {
 		this._kickCancelled = true;
@@ -188,11 +201,15 @@ export default Route.extend({
 		}
 		return loaded > 0;
 	},
-	async loadCategory( controller, slug ) {
+	async loadCategory( controller, slug, loadId ) {
+		const cached = streamCache.get( slug );
+		const fresh = cached && Date.now() - cached.savedAt < CACHE_TTL;
+		const preview = fresh ? cached.streams.map( stream => ({ ...stream }) ) : [];
 		setProperties( controller, {
-			loading: true, error: null, streams: [],
+			loading: !preview.length, error: null, streams: preview,
 			categorySlug: slug, categoryName: slug.replace( /-/g, " " ),
-			viewerDiagnostics: "Waiting for directory response...", loadingMore: false
+			viewerDiagnostics: preview.length ? "Cached streams; refreshing..." :
+				"Waiting for directory response...", loadingMore: false
 		});
 		try {
 			const streams = [];
@@ -205,7 +222,8 @@ export default Route.extend({
 			const pageBatch = new Map();
 			let batchStart = 0;
 			const popular = await this.loadPopular( controller, slug, streams, seen );
-			if ( this._kickCancelled ) { return; }
+			if ( this._kickCancelled || loadId !== this._kickLoadId ) { return; }
+			if ( popular ) { rememberStreams( slug, streams ); }
 			for ( let page = 1; page <= 80; page++ ) {
 				if ( this._kickCancelled ) { return; }
 				if ( page > 1 && ( page - 1 ) % 12 === 0 ) {
@@ -304,7 +322,7 @@ export default Route.extend({
 			}
 
 			await this.enrichBatch( controller, streams.slice( batchStart ) );
-			if ( this._kickCancelled ) { return; }
+			if ( this._kickCancelled || loadId !== this._kickLoadId ) { return; }
 			// Resolve livestream IDs and counts using the verified channel info API.
 			let resolved = 0;
 			let failed = 0;
@@ -413,6 +431,7 @@ export default Route.extend({
 			const oneViewerStreams = streams.filter( stream => stream.viewerCount === 1 ).length;
 			streams.sort( ( a, b ) => ( b.viewerCount || 0 ) - ( a.viewerCount || 0 ) );
 			set( controller, "streams", streams.slice() );
+			rememberStreams( slug, streams );
 			set( controller, "viewerDiagnostics",
 				`Streams: ${streams.length}; pages: ${pagesLoaded}; duplicates: ${duplicatePages};`
 				+ ` page sizes: ${pageSizes.join( "," )}; stop: ${stopReason};`
