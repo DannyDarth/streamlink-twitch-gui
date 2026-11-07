@@ -200,10 +200,7 @@ private struct KickGamesView: View {
     @StateObject private var catalog = KickGamesDirectory()
     @State private var search = ""
 
-    private let columns = [
-        GridItem(.flexible(), spacing: 12),
-        GridItem(.flexible(), spacing: 12)
-    ]
+    private let columns = Array(repeating: GridItem(.flexible(), spacing: 8), count: 3)
 
     private var filtered: [KickGame] {
         catalog.games.filter { search.isEmpty || $0.name.localizedCaseInsensitiveContains(search) }
@@ -226,7 +223,7 @@ private struct KickGamesView: View {
                 Spacer()
             } else {
                 ScrollView {
-                    LazyVGrid(columns: columns, alignment: .center, spacing: 18) {
+                    LazyVGrid(columns: columns, alignment: .center, spacing: 12) {
                         ForEach(filtered) { game in
                             NavigationLink(destination: KickGameDetailView(game: game)) {
                                 VStack(alignment: .leading, spacing: 6) {
@@ -257,7 +254,7 @@ private struct KickGamesView: View {
                             .task { await catalog.loadMoreIfNeeded(current: game) }
                         }
                     }
-                    .padding(.horizontal, 12)
+                    .padding(.horizontal, 8)
                     .padding(.top, 8)
 
                     if catalog.loadingMore {
