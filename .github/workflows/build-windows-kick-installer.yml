@@ -1,4 +1,4 @@
-name: Build Windows StreamHub installer and portable
+name: Build Windows StreamHub portable
 
 on:
   workflow_dispatch:
@@ -32,7 +32,7 @@ permissions:
 
 jobs:
   windows-installer:
-    name: Package Windows x64 test installer
+    name: Package Windows x64 portable
     runs-on: ubuntu-24.04
     timeout-minutes: 90
     steps:
@@ -66,16 +66,8 @@ jobs:
       - name: Compile production app
         run: yarn run grunt clean:tmp_prod webpack:prod
 
-      - name: Package Windows 64-bit installer and portable ZIP
-        run: yarn run grunt clean:dist dist:installer_win64:archive_win64
-
-      - name: Upload test installer
-        uses: actions/upload-artifact@v4
-        with:
-          name: streamkickfusion-windows-x64-test-installer
-          path: dist/*win64-installer.exe
-          if-no-files-found: error
-          retention-days: 14
+      - name: Package portable Windows 64-bit ZIP
+        run: yarn run grunt clean:dist dist:archive_win64
 
       - name: Upload portable Windows app
         uses: actions/upload-artifact@v4
