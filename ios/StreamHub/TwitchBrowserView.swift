@@ -12,6 +12,20 @@ struct TwitchBrowserView: UIViewRepresentable {
         let configuration = WKWebViewConfiguration()
         configuration.allowsInlineMediaPlayback = true
         configuration.mediaTypesRequiringUserActionForPlayback = []
+        // Set a dark page canvas before Twitch's own styles load to prevent
+        // the bright white flash during initial navigation and tab switches.
+        let darkStartupScript = """
+        (function() {
+          if (document.getElementById('streamhub-startup-background')) return;
+          const style = document.createElement('style');
+          style.id = 'streamhub-startup-background';
+          style.textContent = 'html, body { background-color: #0e0e10 !important; }';
+          (document.head || document.documentElement).appendChild(style);
+        })();
+        """
+        configuration.userContentController.addUserScript(
+            WKUserScript(source: darkStartupScript, injectionTime: .atDocumentStart, forMainFrameOnly: true)
+        )
         // Compact only the Twitch Games directory. Leave streams and player pages alone.
         let gamesGridScript = """
         (function() {
@@ -106,6 +120,9 @@ struct TwitchBrowserView: UIViewRepresentable {
         )
 
         let webView = WKWebView(frame: .zero, configuration: configuration)
+        webView.isOpaque = false
+        webView.backgroundColor = UIColor(red: 14/255, green: 14/255, blue: 16/255, alpha: 1)
+        webView.scrollView.backgroundColor = webView.backgroundColor
         webView.navigationDelegate = context.coordinator
         webView.allowsBackForwardNavigationGestures = true
         webView.scrollView.contentInsetAdjustmentBehavior = .automatic
