@@ -6,9 +6,13 @@ import "./styles.less";
 // Kick returns banner artwork in several formats, including responsive URLs.
 const coverUrl = item => {
 	const banner = item.banner || item.thumbnail || item.image || {};
-	if ( typeof banner === "string" ) { return banner; }
-	return banner.src || banner.url || banner.responsive
-		|| item.banner_url || item.thumbnail_url || item.responsive || "";
+	const raw = typeof banner === "string" ? banner
+		: ( banner.src || banner.url || banner.responsive
+			|| item.banner_url || item.thumbnail_url || item.responsive || "" );
+	if ( typeof raw !== "string" ) { return ""; }
+	// Kick sometimes returns an entire srcset in banner.src, not a single URL.
+	const first = raw.split( "," )[0].trim().split( /\\s+/ )[0];
+	return /^https?:\\/\\//.test( first ) ? first : "";
 };
 const categoryKey = item => String( item.slug || item.name || "" )
 	.toLowerCase().replace( /[^a-z0-9]+/g, "-" ).replace( /^-|-$/g, "" );
