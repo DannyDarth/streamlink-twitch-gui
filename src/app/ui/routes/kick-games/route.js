@@ -102,7 +102,9 @@ export default Route.extend({
 							channels: 0
 						};
 						if ( image ) { game.image = image; }
-						if ( Number.isFinite( count ) ) { game.viewerCount = count; }
+						if ( Number.isFinite( count ) && count > 0 ) {
+							game.viewerCount = count;
+						}
 						categories.set( key, game );
 					});
 					const partial = Array.from( categories.values() );
@@ -115,6 +117,38 @@ export default Route.extend({
 				}
 			} catch ( error ) {
 				// The live directory remains a usable fallback if catalog access fails.
+			}
+			// Top categories expose portrait banner artwork for popular games.
+			try {
+				const response = await fetch(
+					"https://kick.com/api/v1/categories-top", { credentials: "omit" }
+				);
+				if ( response.ok ) {
+					const payload = await response.json();
+					const rows = Array.isArray( payload ) ? payload
+						: ( payload.data || payload.categories || [] );
+					if ( Array.isArray( rows ) ) {
+						rows.forEach( item => {
+							const key = String( item.slug || item.name || "" ).toLowerCase();
+							if ( !key ) { return; }
+							const banner = item.banner || item.thumbnail || item.image || {};
+							const image = typeof banner === "string" ? banner
+								: ( banner.src || banner.url || item.banner_url || "" );
+							const count = Number( item.viewers ?? item.viewer_count );
+							const game = categories.get( key ) || {
+								name: item.name || item.slug, slug: item.slug || item.name,
+								image: "", viewerCount: 0, channels: 0
+							};
+							if ( image ) { game.image = image; }
+							if ( Number.isFinite( count ) && count > 0 ) {
+								game.viewerCount = count;
+							}
+							categories.set( key, game );
+						});
+						}
+				}
+			} catch ( error ) {
+				// Retain categories already loaded if top-category artwork is unavailable.
 			}
 			const games = Array.from( categories.values() );
 			games.forEach( game => {
