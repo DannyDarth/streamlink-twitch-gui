@@ -105,8 +105,8 @@ export default Route.extend({
 							const total = Number( details.viewers ?? details.viewer_count );
 							if ( game.viewerCount === null && Number.isFinite( total )
 							&& total >= 0 && version === loadVersion ) {
-							set( game, "viewerCount", total );
-							set( game, "viewers", total.toLocaleString() );
+								set( game, "viewerCount", total );
+								set( game, "viewers", total.toLocaleString() );
 							}
 							if ( image && !game.image ) {
 								set( game, "image", image );
