@@ -56,6 +56,7 @@ export default Route.extend({
 					const image = typeof thumbnail === "string" ? thumbnail
 						: ( thumbnail.src || thumbnail.url || "" );
 					const live = row.livestream || {};
+					const livestreamId = live.id || row.livestream_id || row.id;
 					const count = countFrom(
 						row.viewer_count, row.viewers, row.concurrent_viewers,
 						row.current_viewers, row.viewcount, live.viewer_count,
@@ -63,6 +64,7 @@ export default Route.extend({
 					);
 					streams.push({
 						slug: channelSlug,
+						livestreamId: livestreamId || null,
 						channel: ( channel.user && channel.user.username )
 							|| channel.slug || channelSlug,
 						title: row.session_title || row.title || "",
@@ -80,6 +82,37 @@ export default Route.extend({
 				}
 				if ( !newRows ) { break; }
 			}
+			// Kick's website fetches viewer counts by livestream ID in batches.
+			const withIds = streams.filter( stream => stream.livestreamId );
+			for ( let i = 0; i < withIds.length; i += 40 ) {
+				const batch = withIds.slice( i, i + 40 );
+				const params = batch.map( stream =>
+					`ids[]=${encodeURIComponent( stream.livestreamId )}`
+				).join( "&" );
+				try {
+					const response = await fetch(
+						`https://kick.com/current-viewers?${params}`,
+						{ credentials: "omit" }
+					);
+					if ( !response.ok ) { continue; }
+					const payload = await response.json();
+					if ( !Array.isArray( payload ) ) { continue; }
+					const byId = new Map( batch.map( stream =>
+						[ String( stream.livestreamId ), stream ]
+					) );
+					payload.forEach( item => {
+						const stream = byId.get( String( item.livestream_id ) );
+						if ( !stream ) { return; }
+						const count = item.show_view_count === false
+							? null : countFrom( item.viewers );
+						set( stream, "viewerCount", count );
+						set( stream, "viewers", count === null ? "—" : count.toLocaleString() );
+					});
+				} catch ( error ) {
+					// Leave counts unavailable if Kick rejects the batch.
+				}
+			}
+			set( controller, "streams", streams.slice() );
 			// Only fetch extra channel data when the directory lacks a thumbnail.
 			for ( let i = 0; i < streams.length; i += 5 ) {
 				await Promise.all( streams.slice( i, i + 5 ).map( async stream => {
