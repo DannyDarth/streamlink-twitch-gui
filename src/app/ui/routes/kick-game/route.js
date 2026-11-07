@@ -53,9 +53,9 @@ export default Route.extend({
 							|| channel.slug || channelSlug,
 						title: row.session_title || row.title || "",
 						thumbnail: image,
-						viewerCount: Number( count ) || 0,
-						viewers: ( count === null || count === undefined )
-							? "—" : Number( count ).toLocaleString(),
+						viewerCount: Number( count ) > 0 ? Number( count ) : null,
+						viewers: Number( count ) > 0
+							? Number( count ).toLocaleString() : "—",
 						category: category.name || ""
 					});
 					if ( category.name ) { set( controller, "categoryName", category.name ); }
@@ -74,17 +74,39 @@ export default Route.extend({
 						const payload = await response.json();
 						const live = payload.data || payload;
 						if ( !live || !live.id ) { return; }
-						const cover = live.thumbnail || {};
+						const cover = live.thumbnail || live.thumbnail_url || {};
 						const image = typeof cover === "string"
 							? cover : ( cover.src || cover.url || "" );
 						if ( image ) { set( stream, "thumbnail", image ); }
 						const count = live.viewers ?? live.viewcount ?? live.viewer_count;
-						if ( count !== null && count !== undefined ) {
+						if ( Number( count ) > 0 ) {
 							set( stream, "viewers", Number( count ).toLocaleString() );
 							set( stream, "viewerCount", Number( count ) );
 						}
 						if ( live.session_title ) {
 							set( stream, "title", live.session_title );
+						}
+						if ( !stream.thumbnail || !stream.viewerCount ) {
+							const profileUrl = `https://kick.com/api/v2/channels/${channelSlug}`;
+							const profileResponse = await fetch(
+								profileUrl, { credentials: "omit" }
+							);
+							if ( profileResponse.ok ) {
+								const profile = await profileResponse.json();
+								const current = profile.livestream || {};
+								const preview = current.thumbnail || current.thumbnail_url || {};
+								const fallback = typeof preview === "string"
+									? preview : ( preview.src || preview.url || "" );
+								if ( !stream.thumbnail && fallback ) {
+									set( stream, "thumbnail", fallback );
+								}
+								const viewers = current.viewer_count ?? current.viewers
+									?? current.viewcount;
+								if ( Number( viewers ) > 0 && !stream.viewerCount ) {
+									set( stream, "viewerCount", Number( viewers ) );
+									set( stream, "viewers", Number( viewers ).toLocaleString() );
+								}
+							}
 						}
 					} catch ( error ) {
 						// Keep the stream card visible when enrichment fails.
