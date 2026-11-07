@@ -61,6 +61,14 @@ export default Route.extend({
 					if ( Number.isFinite( count ) && count > 0 ) { game.viewerCount += count; }
 				});
 				if ( !added ) { break; }
+				const partial = Array.from( categories.values() );
+				partial.forEach( game => {
+					game.viewers = game.viewerCount.toLocaleString();
+				});
+				partial.sort( ( a, b ) => b.viewerCount - a.viewerCount
+					|| b.channels - a.channels );
+				set( controller, "games", partial );
+				set( controller, "loading", false );
 			}
 			// Enrich directory categories with the public subcategory catalog.
 			// Unlike livestream rows, subcategories include portrait banners and live viewers.
