@@ -1,6 +1,17 @@
 import Route from "@ember/routing/route";
 import { set, setProperties } from "@ember/object";
 
+// Ignore boolean live-status flags masquerading as viewer counts.
+const countFrom = (...values) => {
+	for ( const value of values ) {
+		if ( typeof value !== "number" && typeof value !== "string" ) { continue; }
+		if ( value === "" || value === null ) { continue; }
+		const count = Number( value );
+		if ( Number.isFinite( count ) && count >= 0 ) { return count; }
+	}
+	return null;
+};
+
 export default Route.extend({
 	model( params ) {
 		return params.category_slug;
@@ -44,18 +55,20 @@ export default Route.extend({
 						|| row.stream_thumbnail || row.livestream?.thumbnail || {};
 					const image = typeof thumbnail === "string" ? thumbnail
 						: ( thumbnail.src || thumbnail.url || "" );
-					const count = row.viewer_count ?? row.viewers
-						?? row.concurrent_viewers ?? row.current_viewers
-						?? row.viewcount ?? ( row.livestream && row.livestream.viewcount );
+					const live = row.livestream || {};
+					const count = countFrom(
+						row.viewer_count, row.viewers, row.concurrent_viewers,
+						row.current_viewers, row.viewcount, live.viewer_count,
+						live.viewers, live.viewcount
+					);
 					streams.push({
 						slug: channelSlug,
 						channel: ( channel.user && channel.user.username )
 							|| channel.slug || channelSlug,
 						title: row.session_title || row.title || "",
 						thumbnail: image,
-						viewerCount: Number( count ) > 0 ? Number( count ) : null,
-						viewers: Number( count ) > 0
-							? Number( count ).toLocaleString() : "—",
+						viewerCount: count,
+						viewers: count === null ? "—" : count.toLocaleString(),
 						category: category.name || ""
 					});
 					if ( category.name ) { set( controller, "categoryName", category.name ); }
@@ -70,11 +83,19 @@ export default Route.extend({
 			// Only fetch extra channel data when the directory lacks a thumbnail.
 			for ( let i = 0; i < streams.length; i += 5 ) {
 				await Promise.all( streams.slice( i, i + 5 ).map( async stream => {
-					if ( stream.thumbnail ) { return; }
+					if ( stream.thumbnail && stream.viewerCount !== null ) { return; }
 					const channelSlug = encodeURIComponent( stream.slug );
 					const base = `https://kick.com/api/v2/channels/${channelSlug}`;
 					const applyThumbnail = live => {
 						if ( !live ) { return; }
+						const count = countFrom(
+							live.viewer_count, live.viewers, live.viewcount,
+							live.concurrent_viewers
+						);
+						if ( count !== null ) {
+							set( stream, "viewerCount", count );
+							set( stream, "viewers", count.toLocaleString() );
+						}
 						const cover = live.thumbnail || live.thumbnail_url || {};
 						const image = typeof cover === "string"
 							? cover : ( cover.src || cover.url || "" );
@@ -91,13 +112,13 @@ export default Route.extend({
 					} catch ( error ) {
 						// Keep the channel available if its thumbnail fails.
 					}
-					if ( stream.thumbnail ) { return; }
+					if ( stream.thumbnail && stream.viewerCount !== null ) { return; }
 					try {
 						const response = await fetch( base, { credentials: "omit" } );
 						if ( !response.ok ) { return; }
 						const payload = await response.json();
 						const profile = payload.data || payload;
-						applyThumbnail( profile.livestream );
+						applyThumbnail( profile.livestream || profile );
 					} catch ( error ) {
 						// Missing artwork must not prevent playback.
 					}
