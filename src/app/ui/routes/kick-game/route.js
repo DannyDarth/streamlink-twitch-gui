@@ -148,6 +148,21 @@ export default Route.extend({
 						const payload = await response.json();
 						const rows = Array.isArray( payload ) ? payload : [];
 						diagnostics.push( `current-viewers rows: ${rows.length}` );
+						const shape = value => {
+							if ( value === null ) { return "null"; }
+							if ( Array.isArray( value ) ) { return "array"; }
+							return typeof value;
+						};
+						const describe = item => {
+							if ( !item || typeof item !== "object" ) {
+								return shape( item );
+							}
+							return Object.keys( item ).slice( 0, 12 ).map( key =>
+								`${key}:${shape( item[key] )}`
+							).join( ", " );
+						};
+						diagnostics.push( `row fields: ${describe( rows[0] )}` );
+						diagnostics.push( `response fields: ${describe( payload )}` );
 						rows.forEach( item => {
 							const stream = sample.find( candidate =>
 								String( candidate.livestreamId )
