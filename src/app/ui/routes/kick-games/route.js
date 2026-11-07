@@ -144,7 +144,9 @@ export default Route.extend({
 					const game = categories.get( key );
 					game.channels++;
 					if ( !game.image && image ) { game.image = image; }
-					if ( Number.isFinite( count ) && count > 0 ) { game.viewerCount = ( game.viewerCount || 0 ) + count; }
+					if ( Number.isFinite( count ) && count > 0 ) {
+						game.viewerCount = ( game.viewerCount || 0 ) + count;
+					}
 				});
 				if ( !added ) { break; }
 				const partial = Array.from( categories.values() );
