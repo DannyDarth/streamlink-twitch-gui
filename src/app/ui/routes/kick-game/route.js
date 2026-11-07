@@ -7,7 +7,7 @@ const countFrom = (...values) => {
 		if ( typeof value !== "number" && typeof value !== "string" ) { continue; }
 		if ( value === "" || value === null ) { continue; }
 		const count = Number( value );
-		if ( Number.isFinite( count ) && count > 0 ) { return count; }
+		if ( Number.isFinite( count ) && count >= 0 ) { return count; }
 	}
 	return null;
 };
@@ -59,7 +59,7 @@ export default Route.extend({
 					const live = row.livestream || {};
 					const livestreamId = live.id || row.livestream_id || row.stream_id || null;
 					const count = countFrom(
-						row.viewer_count, row.viewers, row.concurrent_viewers,
+						row.viewer_count, row.concurrent_viewers,
 						row.current_viewers, row.viewcount, live.viewer_count,
 						live.viewers, live.viewcount, live.concurrent_viewers
 					);
@@ -83,14 +83,43 @@ export default Route.extend({
 				}
 				if ( !newRows ) { break; }
 			}
-			// Kick's website fetches viewer counts by livestream ID in batches.
+
+			// Resolve livestream IDs and counts using the verified channel info API.
+			let resolved = 0;
+			let failed = 0;
+			for ( let i = 0; i < streams.length; i += 5 ) {
+				await Promise.all( streams.slice( i, i + 5 ).map( async stream => {
+					const channelSlug = encodeURIComponent( stream.slug );
+					const url = `https://kick.com/api/v2/channels/${channelSlug}/info`;
+					try {
+						const response = await fetch( url, { credentials: "omit" } );
+						if ( !response.ok ) { failed++; return; }
+						const payload = await response.json();
+						const profile = payload.data || payload;
+						const live = profile.livestream;
+						if ( !live || !live.id ) { return; }
+						set( stream, "livestreamId", live.id );
+						const count = live.show_view_count === false
+							? null : countFrom( live.viewer_count );
+						set( stream, "viewerCount", count );
+						set( stream, "viewers", count === null ? "—" : count.toLocaleString() );
+						const cover = live.thumbnail || {};
+						const image = typeof cover === "string"
+							? cover : ( cover.url || cover.src || "" );
+						if ( !stream.thumbnail && image ) {
+							set( stream, "thumbnail", image );
+						}
+						resolved++;
+					} catch ( error ) {
+						failed++;
+					}
+				}));
+				set( controller, "viewerDiagnostics",
+					`Streams: ${streams.length}; IDs: ${resolved}; failed: ${failed}` );
+			}
+			// Refresh counts in batches after resolving the real livestream IDs.
 			const withIds = streams.filter( stream => stream.livestreamId );
-			set( controller, "viewerDiagnostics",
-				`Streams: ${streams.length}; livestream IDs: ${withIds.length}` );
-			window.console.info( "[Kick viewers] Category stream IDs", {
-				streams: streams.length, withIds: withIds.length,
-				sample: withIds.slice( 0, 3 ).map( stream => stream.livestreamId )
-			} );
+			let matched = 0;
 			for ( let i = 0; i < withIds.length; i += 40 ) {
 				const batch = withIds.slice( i, i + 40 );
 				const params = batch.map( stream =>
@@ -101,25 +130,12 @@ export default Route.extend({
 						`https://kick.com/current-viewers?${params}`,
 						{ credentials: "omit" }
 					);
-					if ( !response.ok ) {
-						set( controller, "viewerDiagnostics",
-						`Viewer lookup HTTP ${response.status}; IDs: ${withIds.length}` );
-						window.console.warn( "[Kick viewers] HTTP", response.status );
-						continue;
-					}
+					if ( !response.ok ) { continue; }
 					const payload = await response.json();
-					if ( !Array.isArray( payload ) ) {
-						set(
-							controller, "viewerDiagnostics",
-							"Viewer lookup returned unexpected JSON"
-						);
-						window.console.warn( "[Kick viewers] Unexpected response format" );
-						continue;
-					}
+					if ( !Array.isArray( payload ) ) { continue; }
 					const byId = new Map( batch.map( stream =>
 						[ String( stream.livestreamId ), stream ]
 					) );
-					let matched = 0;
 					payload.forEach( item => {
 						const stream = byId.get( String( item.livestream_id ) );
 						if ( !stream ) { return; }
@@ -129,63 +145,13 @@ export default Route.extend({
 						set( stream, "viewerCount", count );
 						set( stream, "viewers", count === null ? "—" : count.toLocaleString() );
 					});
-					set( controller, "viewerDiagnostics",
-						`IDs: ${withIds.length}; returned: ${payload.length};`
-						+ ` matched: ${matched}` );
-					window.console.info( "[Kick viewers] Batch result", {
-						requested: batch.length, returned: payload.length, matched
-					} );
 				} catch ( error ) {
-					set( controller, "viewerDiagnostics",
-						`Viewer lookup failed: ${error.message}` );
-					window.console.warn( "[Kick viewers] Request failed", error );
+					// Keep counts from the channel info response.
 				}
 			}
+			set( controller, "viewerDiagnostics",
+				`Streams: ${streams.length}; IDs: ${resolved}; matched: ${matched}; failed: ${failed}` );
 			set( controller, "streams", streams.slice() );
-			// Only fetch extra channel data when the directory lacks a thumbnail.
-			for ( let i = 0; i < streams.length; i += 5 ) {
-				await Promise.all( streams.slice( i, i + 5 ).map( async stream => {
-					if ( stream.thumbnail && stream.viewerCount !== null ) { return; }
-					const channelSlug = encodeURIComponent( stream.slug );
-					const base = `https://kick.com/api/v2/channels/${channelSlug}`;
-					const applyThumbnail = live => {
-						if ( !live ) { return; }
-						const count = countFrom(
-							live.viewer_count, live.viewers, live.viewcount,
-							live.concurrent_viewers
-						);
-						if ( count !== null ) {
-							set( stream, "viewerCount", count );
-							set( stream, "viewers", count.toLocaleString() );
-						}
-						const cover = live.thumbnail || live.thumbnail_url || {};
-						const image = typeof cover === "string"
-							? cover : ( cover.src || cover.url || "" );
-						if ( image ) { set( stream, "thumbnail", image ); }
-					};
-					try {
-						const response = await fetch(
-							`${base}/livestream`, { credentials: "omit" }
-						);
-						if ( response.ok ) {
-							const payload = await response.json();
-							applyThumbnail( payload.data || payload );
-						}
-					} catch ( error ) {
-						// Keep the channel available if its thumbnail fails.
-					}
-					if ( stream.thumbnail && stream.viewerCount !== null ) { return; }
-					try {
-						const response = await fetch( base, { credentials: "omit" } );
-						if ( !response.ok ) { return; }
-						const payload = await response.json();
-						const profile = payload.data || payload;
-						applyThumbnail( profile.livestream || profile.stream || profile );
-					} catch ( error ) {
-						// Missing artwork must not prevent playback.
-					}
-				}));
-			}
 			streams.sort( ( a, b ) => ( b.viewerCount || 0 ) - ( a.viewerCount || 0 ) );
 			set( controller, "streams", streams );
 		} catch ( error ) {
