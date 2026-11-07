@@ -26,9 +26,13 @@ final class AdBlockingSettings: ObservableObject {
         controller.removeAllContentRuleLists()
         guard enabled else { return }
         do {
-            let list = try await WKContentRuleListStore.default().compileContentRuleList(
+            guard let list = try await WKContentRuleListStore.default().compileContentRuleList(
                 forIdentifier: "StreamHubBasicAdFiltering", encodedContentRuleList: rules
             )
+            else {
+                NSLog("StreamHub: web content filtering returned no rule list")
+                return
+            }
             controller.add(list)
         } catch {
             NSLog("StreamHub: could not compile web content filtering rules: %@", String(describing: error))
