@@ -130,8 +130,8 @@ export default Route.extend({
 						set( stream, "viewers", count === null ? "—" : count.toLocaleString() );
 					});
 					set( controller, "viewerDiagnostics",
-						`IDs: ${withIds.length}; returned: ${payload.length};` +
-						` matched: ${matched}` );
+						`IDs: ${withIds.length}; returned: ${payload.length};`
+						+ ` matched: ${matched}` );
 					window.console.info( "[Kick viewers] Batch result", {
 						requested: batch.length, returned: payload.length, matched
 					} );
