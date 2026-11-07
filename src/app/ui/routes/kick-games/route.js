@@ -85,33 +85,33 @@ export default Route.extend({
 							? payload.data : payload.data.data ) )
 						|| payload.subcategories || [];
 					if ( !Array.isArray( catalog ) || !catalog.length ) { break; }
-						catalog.forEach( item => {
-							const name = item.name || item.slug;
-							if ( !name ) { return; }
-							const key = String( item.slug || name ).toLowerCase();
-							const banner = item.banner || item.thumbnail || item.image || {};
-							const image = typeof banner === "string" ? banner
-								: ( banner.src || banner.url
-									|| item.banner_url || item.thumbnail_url || "" );
-							const count = Number( item.viewers ?? item.viewer_count );
-							const game = categories.get( key ) || {
-								name,
-								slug: item.slug || name,
-								image: "",
-								viewerCount: 0,
-								channels: 0
-							};
-							if ( image ) { game.image = image; }
-							if ( Number.isFinite( count ) ) { game.viewerCount = count; }
-							categories.set( key, game );
-						});
-						const partial = Array.from( categories.values() );
-						partial.forEach( game => {
-							game.viewers = game.viewerCount.toLocaleString();
-						});
-						partial.sort( ( a, b ) => b.viewerCount - a.viewerCount
-							|| b.channels - a.channels );
-						set( controller, "games", partial );
+					catalog.forEach( item => {
+						const name = item.name || item.slug;
+						if ( !name ) { return; }
+						const key = String( item.slug || name ).toLowerCase();
+						const banner = item.banner || item.thumbnail || item.image || {};
+						const image = typeof banner === "string" ? banner
+							: ( banner.src || banner.url
+								|| item.banner_url || item.thumbnail_url || "" );
+						const count = Number( item.viewers ?? item.viewer_count );
+						const game = categories.get( key ) || {
+							name,
+							slug: item.slug || name,
+							image: "",
+							viewerCount: 0,
+							channels: 0
+						};
+						if ( image ) { game.image = image; }
+						if ( Number.isFinite( count ) ) { game.viewerCount = count; }
+						categories.set( key, game );
+					});
+					const partial = Array.from( categories.values() );
+					partial.forEach( game => {
+						game.viewers = game.viewerCount.toLocaleString();
+					});
+					partial.sort( ( a, b ) => b.viewerCount - a.viewerCount
+						|| b.channels - a.channels );
+					set( controller, "games", partial );
 				}
 			} catch ( error ) {
 				// The live directory remains a usable fallback if catalog access fails.
