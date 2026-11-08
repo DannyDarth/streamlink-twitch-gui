@@ -13,6 +13,26 @@ struct ContentView: View {
     var body: some View {
         NavigationStack {
             VStack(spacing: 0) {
+                HStack(spacing: 12) {
+                    Text("StreamHub")
+                        .font(.largeTitle.bold())
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.8)
+                    Button { showingFollowed = true } label: {
+                        Text("Followed")
+                            .font(.subheadline.weight(.semibold))
+                            .padding(.horizontal, 13)
+                            .padding(.vertical, 8)
+                            .background(Color(uiColor: .secondarySystemFill), in: Capsule())
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityLabel("Followed channels")
+                    Spacer(minLength: 0)
+                }
+                .padding(.horizontal)
+                .padding(.top, 12)
+                .padding(.bottom, 4)
+
                 Picker("Platform", selection: $platform) {
                     ForEach(StreamPlatform.allCases) { item in
                         Text(item.rawValue).tag(item)
@@ -27,22 +47,12 @@ struct ContentView: View {
                     TwitchDirectoryView()
                 }
             }
-            .navigationTitle("StreamHub")
-            .navigationBarTitleDisplayMode(.large)
+            .navigationTitle("")
+            .navigationBarTitleDisplayMode(.inline)
             .sheet(isPresented: $showingFollowed) {
                 NavigationStack { FollowedView() }
             }
             .toolbar {
-                ToolbarItem(placement: .navigationBarTrailing) {
-                    Button { showingFollowed = true } label: {
-                        Text("Followed")
-                            .font(.subheadline.weight(.semibold))
-                            .padding(.horizontal, 12)
-                            .padding(.vertical, 7)
-                            .background(Color(uiColor: .secondarySystemFill), in: Capsule())
-                    }
-                    .accessibilityLabel("Followed channels")
-                }
                 ToolbarItem(placement: .navigationBarTrailing) {
                     NavigationLink(destination: SettingsView()) {
                         Image(systemName: "gearshape")
