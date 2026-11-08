@@ -8,6 +8,7 @@ private enum StreamPlatform: String, CaseIterable, Identifiable {
 
 struct ContentView: View {
     @State private var platform: StreamPlatform = .kick
+    @State private var showingFollowed = false
 
     var body: some View {
         NavigationStack {
@@ -27,7 +28,18 @@ struct ContentView: View {
                 }
             }
             .navigationTitle("StreamHub")
+            .navigationBarTitleDisplayMode(.inline)
+            .sheet(isPresented: $showingFollowed) {
+                NavigationStack { FollowedView() }
+            }
             .toolbar {
+                ToolbarItem(placement: .principal) {
+                    HStack(spacing: 12) {
+                        Text("StreamHub").font(.headline)
+                        Button("Followed") { showingFollowed = true }
+                            .font(.subheadline.weight(.semibold))
+                    }
+                }
                 ToolbarItem(placement: .navigationBarTrailing) {
                     NavigationLink(destination: SettingsView()) {
                         Image(systemName: "gearshape")
