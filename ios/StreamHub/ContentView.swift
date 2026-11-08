@@ -954,12 +954,19 @@ private struct TwitchEmbeddedPlayerView: View {
             newPlayer.play()
             if !isAutomaticRetry {
                 startupWatchdog = Task { @MainActor in
-                    try? await Task.sleep(nanoseconds: 9_000_000_000)
+                    try? await Task.sleep(nanoseconds: 1_000_000_000)
                     guard !Task.isCancelled, connectionID == attemptID,
                           player === newPlayer else { return }
+                    let item = newPlayer.currentItem
                     let position = newPlayer.currentTime().seconds
-                    let advanced = position.isFinite && position > 1.0
-                    if !advanced || newPlayer.currentItem?.status == .failed {
+                    let advanced = position.isFinite && position > 0.25
+                    // Only reconnect when AVPlayer has reported a failure or
+                    // claims it is ready and playing but time is not advancing.
+                    // Do not restart a legitimately buffering stream.
+                    let failed = item?.status == .failed
+                    let stuckWhilePlaying = item?.status == .readyToPlay
+                        && newPlayer.timeControlStatus == .playing && !advanced
+                    if failed || stuckWhilePlaying {
                         await connect(isAutomaticRetry: true)
                     }
                 }
