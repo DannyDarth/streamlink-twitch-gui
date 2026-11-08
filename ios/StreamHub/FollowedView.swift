@@ -1,5 +1,6 @@
 import SwiftUI
 import WebKit
+import UIKit
 
 /// Followed channels use the providers' own authenticated following pages.
 /// Credentials are entered on Twitch/Kick, never collected by StreamHub.
@@ -13,6 +14,22 @@ struct FollowedView: View {
             : "https://kick.com/following")!
     }
 
+    private func openInBrave(_ url: URL) {
+        var components = URLComponents()
+        components.scheme = "brave"
+        components.host = "open-url"
+        components.queryItems = [URLQueryItem(name: "url", value: url.absoluteString)]
+        guard let braveURL = components.url else {
+            UIApplication.shared.open(url)
+            return
+        }
+        UIApplication.shared.open(braveURL, options: [:]) { opened in
+            if !opened {
+                UIApplication.shared.open(url)
+            }
+        }
+    }
+
     var body: some View {
         VStack(spacing: 0) {
             Picker("Following platform", selection: $selectedPlatform) {
@@ -23,14 +40,34 @@ struct FollowedView: View {
             .padding(.horizontal)
             .padding(.vertical, 10)
 
-            Text("Sign in on each service to view the channels you follow. StreamHub does not collect your password.")
+            Text("Twitch opens in Brave for sign-in. Kick uses its website inside StreamHub. StreamHub does not collect your password.")
                 .font(.caption)
                 .foregroundStyle(.secondary)
                 .padding(.horizontal)
                 .padding(.bottom, 8)
 
-            FollowingBrowser(url: followingURL)
-                .id(selectedPlatform)
+            if selectedPlatform == 0 {
+                VStack(spacing: 18) {
+                    Image(systemName: "safari")
+                        .font(.system(size: 44))
+                        .foregroundStyle(.secondary)
+                    Text("Open your Twitch following page in Brave to sign in and complete verification.")
+                        .multilineTextAlignment(.center)
+                    Button("Open Twitch in Brave") {
+                        openInBrave(followingURL)
+                    }
+                    .buttonStyle(.borderedProminent)
+                    Text("If Brave is not installed, the page opens in your default browser.")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                        .multilineTextAlignment(.center)
+                }
+                .padding(24)
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+            } else {
+                FollowingBrowser(url: followingURL)
+                    .id(selectedPlatform)
+            }
         }
         .navigationTitle("Followed")
         .navigationBarTitleDisplayMode(.inline)
