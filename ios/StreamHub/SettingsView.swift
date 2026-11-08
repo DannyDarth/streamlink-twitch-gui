@@ -2,6 +2,8 @@ import SwiftUI
 
 struct SettingsView: View {
     @ObservedObject private var adBlocking = AdBlockingSettings.shared
+    @State private var proxyProbeResults: [String] = []
+    @State private var probing = false
 
     @AppStorage("streamhub.twitchProxyEnabled") private var twitchProxyEnabled = false
     @AppStorage("streamhub.twitchProxyURL") private var twitchProxyURL = ""
@@ -35,6 +37,23 @@ struct SettingsView: View {
                     .font(.caption).textSelection(.enabled)
                 Text("Chromium: chromium.api.cdn-perfprod.com:2023")
                     .font(.caption).textSelection(.enabled)
+                Button(probing ? "Checking proxies…" : "Test proxy connectivity") {
+                    probing = true
+                    proxyProbeResults = []
+                    Task {
+                        let endpoints = TwitchForwardProxyDiagnostics.ordered(
+                            preference: forwardProxyPreference, allowFallback: forwardProxyFallback)
+                        for endpoint in endpoints {
+                            let result = await TwitchForwardProxyDiagnostics.probe(endpoint)
+                            await MainActor.run { proxyProbeResults.append(result) }
+                        }
+                        await MainActor.run { probing = false }
+                    }
+                }
+                .disabled(probing)
+                ForEach(proxyProbeResults, id: \.self) { result in
+                    Text(result).font(.caption).textSelection(.enabled)
+                }
                 Text("These are HTTP forward proxies, not HTTPS playlist endpoints. This saves the preferred order for a future native proxy transport; it does not yet route video traffic through them. The HTTPS playlist proxy player above remains the only active proxy playback mode.")
                     .font(.footnote)
                     .foregroundStyle(.secondary)
