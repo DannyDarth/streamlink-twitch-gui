@@ -4,6 +4,7 @@ import AVKit
 /// Optional HLS playlist-proxy playback. Never sends Twitch login cookies or tokens.
 struct TwitchProxyPlayerView: View {
     let channel: String
+    @Environment(\.dismiss) private var dismiss
     var onReturnToWebPlayer: (() -> Void)?
     @AppStorage("streamhub.twitchProxyURL") private var proxyBase = ""
     @State private var activeProxy: URL?
@@ -218,6 +219,7 @@ struct TwitchProxyPlayerView: View {
         hlsBridge?.stop()
         hlsBridge = nil
         onReturnToWebPlayer?()
+        dismiss()
     }
 
     @MainActor
