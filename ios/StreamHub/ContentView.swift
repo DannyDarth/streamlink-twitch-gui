@@ -82,7 +82,6 @@ private struct TwitchDirectoryView: View {
     @State private var browserResetID = UUID()
     @State private var proxyChannel: TwitchChannelSelection?
     @State private var webChannel: String?
-    @AppStorage("streamhub.twitchEmbeddedPlayerEnabled") private var embeddedEnabled = false
     @State private var showingPlaybackLab = false
     @State private var labChannel = ""
 
@@ -136,9 +135,6 @@ private struct TwitchDirectoryView: View {
             .padding(.bottom, 8)
 
             HStack(spacing: 8) {
-                Toggle("Embedded player", isOn: $embeddedEnabled)
-                    .font(.caption)
-                    .fixedSize(horizontal: true, vertical: false)
                 Button("Twitch playback lab") {
                     labChannel = webChannel ?? ""
                     showingPlaybackLab = true
