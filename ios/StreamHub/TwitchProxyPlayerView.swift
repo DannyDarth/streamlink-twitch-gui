@@ -205,6 +205,9 @@ struct TwitchProxyPlayerView: View {
                    !entry.hasPrefix("HLS metadata: markers=none") {
                     twitchAdBlockStatus = "\(endpoints.isEmpty ? "Direct" : result.endpoint.label): ad marker detected; not blocked"
                 }
+                if entry.hasPrefix("Proxy fetched ") {
+                    twitchAdBlockStatus = "Proxied HLS resource: \(result.endpoint.label) (ads not guaranteed blocked)"
+                }
                 if entry.contains("Direct CDN fallback") {
                     twitchAdBlockProxyError = "Media CDN used direct fallback; proxy does not cover all media requests."
                 }
