@@ -76,7 +76,7 @@ private struct FollowingBrowser: UIViewRepresentable {
         (function() {
           if (window.__streamhubFollowingTap) return;
           window.__streamhubFollowingTap = true;
-          const reserved = new Set(['directory','search','settings','videos','downloads',
+          const reserved = new Set(['home','following','directory','search','settings','videos','downloads',
             'subscriptions','inventory','wallet','drops','p','login','signup',
             'moderator','popout','clip','clips','collections','products']);
           document.addEventListener('click', function(event) {
@@ -169,7 +169,7 @@ private struct FollowingBrowser: UIViewRepresentable {
                action.targetFrame?.isMainFrame == true,
                ["twitch.tv","www.twitch.tv","m.twitch.tv"].contains(host) {
                 let parts = url.pathComponents.filter { $0 != "/" }
-                let reserved: Set<String> = ["directory","search","settings","videos","downloads",
+                let reserved: Set<String> = ["home","following","directory","search","settings","videos","downloads",
                     "subscriptions","inventory","wallet","drops","p","login","signup",
                     "moderator","popout","clip","clips","collections","products"]
                 if parts.count == 1, let channel = parts.first,
