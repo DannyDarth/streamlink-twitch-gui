@@ -147,13 +147,13 @@ private struct TwitchDirectoryView: View {
                 .padding(.bottom, 8)
             }
 
-            TwitchBrowserView(url: browseURL, onChannelSelected: { channel in
+            TwitchBrowserView(url: browseURL, allowedWebChannel: webChannel, onChannelSelected: { channel in
                 // Returning to web playback navigates to the same channel. Do not
                 // interpret that navigation as a request to reopen the HLS sheet.
                 guard webChannel?.lowercased() != channel.lowercased() else { return }
                 proxyChannel = TwitchChannelSelection(value: channel)
             })
-                .id(browseURL.absoluteString + browserResetID.uuidString)
+                .id(browserResetID)
                 .onReceive(NotificationCenter.default.publisher(for: Notification.Name("StreamHubTwitchAdMarkerDetected"))) { _ in
                     guard UserDefaults.standard.bool(forKey: "streamhub.autoReturnOnTwitchAdMarker"),
                           let selected = proxyChannel else { return }
