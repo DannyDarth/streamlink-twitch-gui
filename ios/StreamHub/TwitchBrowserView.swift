@@ -120,6 +120,42 @@ struct TwitchBrowserView: UIViewRepresentable {
             WKUserScript(source: streamLoadingScript, injectionTime: .atDocumentEnd, forMainFrameOnly: true)
         )
 
+        // Twitch uses client-side routing for stream cards, so WKNavigationDelegate
+        // often never receives a .linkActivated navigation. Intercept genuine taps
+        // on channel anchors before Twitch's SPA click handler consumes them.
+        let channelTapScript = """
+        (function() {
+          if (window.__streamhubChannelTapInstalled) return;
+          window.__streamhubChannelTapInstalled = true;
+          const reserved = new Set(['directory','search','settings','videos','downloads','subscriptions',
+            'inventory','wallet','drops','p','login','signup','moderator','popout',
+            'clip','clips','collections','products']);
+          document.addEventListener('click', function(event) {
+            if (!window.__streamhubProxyEnabled) return;
+            if (!event.isTrusted || event.defaultPrevented || event.button !== 0 ||
+                event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
+            const anchor = event.target.closest && event.target.closest('a[href]');
+            if (!anchor) return;
+            let target;
+            try { target = new URL(anchor.href, location.href); } catch (_) { return; }
+            if (!['www.twitch.tv','m.twitch.tv','twitch.tv'].includes(target.hostname)) return;
+            const parts = target.pathname.split('/').filter(Boolean);
+            if (parts.length !== 1 || !/^[a-zA-Z0-9_]{3,25}$/.test(parts[0]) ||
+                reserved.has(parts[0].toLowerCase())) return;
+            if (window.webkit && window.webkit.messageHandlers &&
+                window.webkit.messageHandlers.streamhubChannelTap) {
+              event.preventDefault();
+              event.stopImmediatePropagation();
+              window.webkit.messageHandlers.streamhubChannelTap.postMessage(parts[0]);
+            }
+          }, true);
+        })();
+        """
+        configuration.userContentController.addUserScript(
+            WKUserScript(source: channelTapScript, injectionTime: .atDocumentStart, forMainFrameOnly: true)
+        )
+        configuration.userContentController.add(context.coordinator, name: "streamhubChannelTap")
+
         let webView = WKWebView(frame: .zero, configuration: configuration)
         webView.isOpaque = false
         webView.backgroundColor = UIColor(red: 14/255, green: 14/255, blue: 16/255, alpha: 1)
@@ -127,6 +163,7 @@ struct TwitchBrowserView: UIViewRepresentable {
         webView.navigationDelegate = context.coordinator
         webView.allowsBackForwardNavigationGestures = true
         webView.scrollView.contentInsetAdjustmentBehavior = .automatic
+        webView.evaluateJavaScript("window.__streamhubProxyEnabled = " + (UserDefaults.standard.bool(forKey: "streamhub.twitchProxyEnabled") ? "true" : "false") + ";", completionHandler: nil)
         context.coordinator.webView = webView
         context.coordinator.onChannelSelected = onChannelSelected
         context.coordinator.currentRootURL = url
@@ -139,16 +176,27 @@ struct TwitchBrowserView: UIViewRepresentable {
 
     func updateUIView(_ webView: WKWebView, context: Context) {
         context.coordinator.onChannelSelected = onChannelSelected
+        let enabled = UserDefaults.standard.bool(forKey: "streamhub.twitchProxyEnabled")
+        webView.evaluateJavaScript("window.__streamhubProxyEnabled = " + (enabled ? "true" : "false") + ";", completionHandler: nil)
         if context.coordinator.currentRootURL != url {
             context.coordinator.currentRootURL = url
             webView.load(URLRequest(url: url))
         }
     }
 
-    final class Coordinator: NSObject, WKNavigationDelegate {
+    final class Coordinator: NSObject, WKNavigationDelegate, WKScriptMessageHandler {
         weak var webView: WKWebView?
         var currentRootURL: URL?
         var onChannelSelected: ((String) -> Void)?
+
+        func userContentController(_ userContentController: WKUserContentController,
+                                   didReceive message: WKScriptMessage) {
+            guard message.name == "streamhubChannelTap",
+                  UserDefaults.standard.bool(forKey: "streamhub.twitchProxyEnabled"),
+                  let channel = message.body as? String,
+                  channel.range(of: "^[A-Za-z0-9_]{3,25}$", options: .regularExpression) != nil else { return }
+            DispatchQueue.main.async { [weak self] in self?.onChannelSelected?(channel) }
+        }
 
         func webView(_ webView: WKWebView, decidePolicyFor navigationAction: WKNavigationAction,
                      decisionHandler: @escaping (WKNavigationActionPolicy) -> Void) {
