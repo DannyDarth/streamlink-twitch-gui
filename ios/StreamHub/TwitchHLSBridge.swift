@@ -16,6 +16,12 @@ final class TwitchHLSBridge {
     private let endpoints: [TwitchForwardProxyDiagnostics.Endpoint]
     private let preferred: TwitchForwardProxyDiagnostics.Endpoint
     private let sessionByHost: [String: URLSession]
+    private let directSession: URLSession = {
+        let config = URLSessionConfiguration.ephemeral
+        config.timeoutIntervalForRequest = 15
+        config.timeoutIntervalForResource = 35
+        return URLSession(configuration: config)
+    }()
     private(set) var port: UInt16 = 0
 
     init(preferred: TwitchForwardProxyDiagnostics.Endpoint,
@@ -149,7 +155,28 @@ final class TwitchHLSBridge {
                     throw URLError(.badServerResponse)
                 }
                 return (data, response)
-            } catch { lastError = error }
+            } catch {
+                lastError = error
+                log("\(endpoint.label) failed for \(url.pathExtension): \((error as NSError).domain) \((error as NSError).code)")
+            }
+        }
+        // Twitch media CDN URLs can reject CONNECT proxying even when playlists succeed.
+        // Direct media fallback is explicitly reported: it does not provide proxy ad mitigation.
+        if url.pathExtension.lowercased() != "m3u8" {
+            do {
+                var request = URLRequest(url: url)
+                request.setValue("https://player.twitch.tv", forHTTPHeaderField: "Referer")
+                if let range { request.setValue(range, forHTTPHeaderField: "Range") }
+                let (data, response) = try await directSession.data(for: request)
+                guard let http = response as? HTTPURLResponse, (200...299).contains(http.statusCode) else {
+                    throw URLError(.badServerResponse)
+                }
+                log("Direct CDN fallback for \(url.pathExtension) (NOT proxied)")
+                return (data, response)
+            } catch {
+                log("Direct CDN fallback failed: \((error as NSError).domain) \((error as NSError).code)")
+                lastError = error
+            }
         }
         throw lastError
     }
@@ -208,6 +235,7 @@ final class TwitchHLSBridge {
         lock.unlock()
         active.forEach { $0.cancel() }
         sessionByHost.values.forEach { $0.invalidateAndCancel() }
+        directSession.invalidateAndCancel()
     }
 
     deinit { stop() }
