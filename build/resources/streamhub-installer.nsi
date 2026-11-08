@@ -2,8 +2,8 @@ Unicode true
 !include "MUI2.nsh"
 
 Name "StreamHub"
-Icon "build\\resources\\icons\\icon-16-32-48-256.ico"
-UninstallIcon "build\\resources\\icons\\icon-16-32-48-256.ico"
+Icon "${__FILEDIR__}\\icons\\icon-16-32-48-256.ico"
+UninstallIcon "${__FILEDIR__}\\icons\\icon-16-32-48-256.ico"
 OutFile "StreamHub-Windows-x64-Setup.exe"
 InstallDir "$LOCALAPPDATA\\Programs\\StreamHub"
 RequestExecutionLevel user
