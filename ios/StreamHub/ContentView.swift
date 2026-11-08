@@ -850,7 +850,7 @@ private struct TwitchPlaybackLabView: View {
     }
 }
 
-private struct TwitchEmbeddedPlayerView: View {
+struct TwitchEmbeddedPlayerView: View {
     let channel: String
     var onReturnToWebPlayer: (() -> Void)?
     @Environment(\.dismiss) private var dismiss
