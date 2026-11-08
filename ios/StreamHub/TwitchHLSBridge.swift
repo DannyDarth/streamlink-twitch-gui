@@ -222,7 +222,12 @@ final class TwitchHLSBridge {
             let shouldReport = !didReportAdMarker
             didReportAdMarker = true
             lock.unlock()
-            if shouldReport { DispatchQueue.main.async { [weak self] in self?.onAdMarkerDetected?() } }
+            if shouldReport {
+                DispatchQueue.main.async { [weak self] in
+                    self?.onAdMarkerDetected?()
+                    NotificationCenter.default.post(name: Notification.Name("StreamHubTwitchAdMarkerDetected"), object: nil)
+                }
+            }
         }
         if changed || adActive {
             let kind = matchedKinds.isEmpty ? "none" : matchedKinds.joined(separator: ", ")
