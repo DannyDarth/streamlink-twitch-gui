@@ -7,6 +7,8 @@ import Network
 final class TwitchHLSBridge {
     private let queue = DispatchQueue(label: "streamhub.hls.bridge")
     var onDiagnostic: ((String) -> Void)?
+    var onAdMarkerDetected: (() -> Void)?
+    private var didReportAdMarker = false
     private func log(_ message: String) { DispatchQueue.main.async { [weak self] in self?.onDiagnostic?(message) } }
     private var listener: NWListener?
     private var connections: [NWConnection] = []
@@ -215,6 +217,13 @@ final class TwitchHLSBridge {
         let changed = lastAdState != adActive
         lastAdState = adActive
         lock.unlock()
+        if adActive {
+            lock.lock()
+            let shouldReport = !didReportAdMarker
+            didReportAdMarker = true
+            lock.unlock()
+            if shouldReport { DispatchQueue.main.async { [weak self] in self?.onAdMarkerDetected?() } }
+        }
         if changed || adActive {
             let kind = matchedKinds.isEmpty ? "none" : matchedKinds.joined(separator: ", ")
             log("HLS metadata: markers=\(kind); entries=\(segmentCount); live=\(!hasEndList). Diagnostic only; no segments removed.")
