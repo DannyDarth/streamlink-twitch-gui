@@ -970,6 +970,7 @@ private struct TwitchEmbeddedPlayerView: View {
                     // Allow one fresh connection when the first attempt has
                     // not advanced at all after the startup grace period.
                     if item?.status == .failed || !advanced {
+                        startupWatchdog = nil
                         await connect(isAutomaticRetry: true)
                     }
                 }
@@ -980,21 +981,22 @@ private struct TwitchEmbeddedPlayerView: View {
             if let resolution = error as? TwitchProxyPlaylistResolver.ResolutionError {
                 details = resolution.localizedDescription
             } else if let network = error as? URLError {
-                details = "Network connection (code \\(network.errorCode))"
+                details = "Network connection (code \(network.errorCode))"
             } else if error is DecodingError {
                 details = "Playback token response format"
             } else {
                 details = "Connection error"
             }
             if !isAutomaticRetry {
-                status = "\\(details). Retrying connection once…"
+                status = "\(details). Retrying connection once…"
                 retryTask = Task { @MainActor in
                     try? await Task.sleep(nanoseconds: 500_000_000)
                     guard !Task.isCancelled, connectionID == attemptID else { return }
+                    retryTask = nil
                     await connect(isAutomaticRetry: true)
                 }
             } else {
-                status = "\\(details). Embedded playback unavailable; use regular Twitch player or retry."
+                status = "\(details). Embedded playback unavailable; use regular Twitch player or retry."
             }
         }
     }
