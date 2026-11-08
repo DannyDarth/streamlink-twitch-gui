@@ -17,10 +17,10 @@ struct SettingsView: View {
                     .textInputAutocapitalization(.never)
                     .autocorrectionDisabled()
                     .keyboardType(.URL)
-                Text("An HTTPS playlist proxy can use the /playlist/CHANNEL.m3u8 format. An optional example is https://luminous.level3tjg.me, published by the TwitchAdBlock developer. Third-party proxies can see your IP and channel requests. Video ads may still appear.")
+                Text("An HTTPS playlist proxy can use the /playlist/CHANNEL.m3u8 format. If left blank, StreamHub tries https://luminous.level3tjg.me, published by the TwitchAdBlock developer. Third-party proxies can see your IP and channel requests. Video ads may still appear.")
                     .font(.footnote)
                     .foregroundStyle(.secondary)
-                if twitchProxyEnabled && !twitchProxyURL.trimmingCharacters(in: .whitespacesAndNewlines).hasPrefix("https://") {
+                if twitchProxyEnabled && !twitchProxyURL.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty && !twitchProxyURL.trimmingCharacters(in: .whitespacesAndNewlines).hasPrefix("https://") {
                     Text("Enter an HTTPS proxy URL to enable native playback.")
                         .font(.footnote)
                         .foregroundStyle(.orange)
