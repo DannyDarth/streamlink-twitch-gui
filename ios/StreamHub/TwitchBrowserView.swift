@@ -129,7 +129,7 @@ struct TwitchBrowserView: UIViewRepresentable {
         (function() {
           if (window.__streamhubChannelTapInstalled) return;
           window.__streamhubChannelTapInstalled = true;
-          const reserved = new Set(['home','following','directory','search','settings','videos','downloads','subscriptions',
+          const reserved = new Set(['directory','search','settings','videos','downloads','subscriptions',
             'inventory','wallet','drops','p','login','signup','moderator','popout',
             'clip','clips','collections','products']);
           document.addEventListener('click', function(event) {
@@ -277,12 +277,10 @@ struct TwitchBrowserView: UIViewRepresentable {
                 return
             }
             guard message.name == "streamhubChannelTap",
-                  !playbackSuspended,
+                  true,
                   let channel = message.body as? String,
                   channel.range(of: "^[A-Za-z0-9_]{3,25}$", options: .regularExpression) != nil else { return }
-            let reserved: Set<String> = ["home", "following", "directory", "search", "settings", "videos", "downloads", "subscriptions", "inventory", "wallet", "drops", "p", "login", "signup", "moderator", "popout", "clip", "clips", "collections", "products"]
-            guard !reserved.contains(channel.lowercased()),
-                  allowedWebChannel?.lowercased() != channel.lowercased(),
+            guard allowedWebChannel?.lowercased() != channel.lowercased(),
                   lastReportedChannel != channel else { return }
             lastReportedChannel = channel
             DispatchQueue.main.async { [weak self] in self?.onChannelSelected?(channel) }
@@ -304,7 +302,7 @@ struct TwitchBrowserView: UIViewRepresentable {
                navigationAction.targetFrame?.isMainFrame == true,
                host == "www.twitch.tv" || host == "m.twitch.tv" || host == "twitch.tv" {
                 let parts = destination.pathComponents.filter { $0 != "/" }
-                let reserved: Set<String> = ["home", "following", "directory", "search", "settings", "videos", "downloads", "subscriptions", "inventory", "wallet", "drops", "p", "login", "signup", "moderator", "popout", "clip", "clips", "collections", "products"]
+                let reserved: Set<String> = ["directory", "search", "settings", "videos", "downloads", "subscriptions", "inventory", "wallet", "drops", "p", "login", "signup", "moderator", "popout", "clip", "clips", "collections", "products"]
                 if parts.count == 1, let channel = parts.first,
                    !reserved.contains(channel.lowercased()),
                    allowedWebChannel?.lowercased() != channel.lowercased(),
