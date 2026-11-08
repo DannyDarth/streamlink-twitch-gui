@@ -37,8 +37,9 @@ enum TwitchProxyPlaylistResolver {
         guard channel.range(of: "^[A-Za-z0-9_]{3,25}$", options: .regularExpression) != nil else {
             throw ResolutionError.invalidChannel
         }
+        let randomPlatform = UUID().uuidString
         let token = try await playbackToken(
-            channel: channel, playerType: "site", platform: UUID().uuidString
+            channel: channel, playerType: "site", platform: randomPlatform
         )
         var components = URLComponents(string: "https://usher.ttvnw.net/api/v2/channel/hls/\(channel.lowercased()).m3u8")!
         components.queryItems = [
@@ -46,6 +47,7 @@ enum TwitchProxyPlaylistResolver {
             URLQueryItem(name: "token", value: token.value),
             URLQueryItem(name: "allow_source", value: "true"),
             URLQueryItem(name: "allow_audio_only", value: "true"),
+            URLQueryItem(name: "platform", value: randomPlatform),
             URLQueryItem(name: "supported_codecs", value: "h264"),
             URLQueryItem(name: "p", value: String(Int.random(in: 1...999999)))
         ]
