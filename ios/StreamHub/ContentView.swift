@@ -69,11 +69,17 @@ struct ContentView: View {
     }
 }
 
+private struct TwitchChannelSelection: Identifiable {
+    let value: String
+    var id: String { value }
+}
+
 private struct TwitchDirectoryView: View {
     @State private var section = 0
     @State private var search = ""
     @State private var submittedSearch = ""
     @State private var browserResetID = UUID()
+    @State private var proxyChannel: TwitchChannelSelection?
 
     private var browseURL: URL {
         if !submittedSearch.isEmpty {
@@ -137,8 +143,20 @@ private struct TwitchDirectoryView: View {
                 .padding(.bottom, 8)
             }
 
-            TwitchBrowserView(url: browseURL)
+            TwitchBrowserView(url: browseURL, onChannelSelected: { channel in
+                proxyChannel = TwitchChannelSelection(value: channel)
+            })
                 .id(browseURL.absoluteString + browserResetID.uuidString)
+                .sheet(item: $proxyChannel) { channel in
+                    NavigationStack {
+                        TwitchProxyPlayerView(channel: channel.value)
+                            .toolbar {
+                                ToolbarItem(placement: .navigationBarTrailing) {
+                                    Button("Done") { proxyChannel = nil }
+                                }
+                            }
+                    }
+                }
         }
     }
 }
