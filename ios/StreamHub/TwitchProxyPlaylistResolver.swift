@@ -29,11 +29,11 @@ enum TwitchProxyPlaylistResolver {
         let data: DataValue?
     }
 
-    static func resolve(channel: String, preference: String, allowFallback: Bool, directOnly: Bool = false) async throws -> Result {
+    static func resolve(channel: String, preference: String, allowFallback: Bool, directOnly: Bool = false, playerType: String = "site", platform: String = "web") async throws -> Result {
         guard channel.range(of: "^[A-Za-z0-9_]{3,25}$", options: .regularExpression) != nil else {
             throw ResolutionError.invalidChannel
         }
-        let token = try await playbackToken(channel: channel)
+        let token = try await playbackToken(channel: channel, playerType: playerType, platform: platform)
         var components = URLComponents(string: "https://usher.ttvnw.net/api/channel/hls/\(channel).m3u8")!
         components.path = "/api/v2/channel/hls/\(channel.lowercased()).m3u8"
         components.queryItems = [
@@ -41,7 +41,7 @@ enum TwitchProxyPlaylistResolver {
             URLQueryItem(name: "token", value: token.value),
             URLQueryItem(name: "allow_source", value: "true"),
             URLQueryItem(name: "allow_audio_only", value: "true"),
-            URLQueryItem(name: "platform", value: "web"),
+            URLQueryItem(name: "platform", value: platform),
             URLQueryItem(name: "supported_codecs", value: "h264"),
             URLQueryItem(name: "p", value: String(Int.random(in: 1...999999)))
         ]
@@ -86,13 +86,13 @@ enum TwitchProxyPlaylistResolver {
         throw ResolutionError.noProxySucceeded(failures.joined(separator: "; "))
     }
 
-    private static func playbackToken(channel: String) async throws -> TokenResponse.DataValue.Token {
+    private static func playbackToken(channel: String, playerType: String, platform: String) async throws -> TokenResponse.DataValue.Token {
         let url = URL(string: "https://gql.twitch.tv/gql")!
         let payload: [String: Any] = [
             "operationName": "PlaybackAccessToken",
             "variables": [
                 "isLive": true, "login": channel.lowercased(), "isVod": false, "vodID": "",
-                "playerType": "site", "platform": "web"
+                "playerType": playerType, "platform": platform
             ] as [String: Any],
             "extensions": [
                 "persistedQuery": [
