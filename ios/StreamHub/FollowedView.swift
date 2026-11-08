@@ -100,6 +100,49 @@ private struct FollowingBrowser: UIViewRepresentable {
         configuration.userContentController.addUserScript(
             WKUserScript(source: tapScript, injectionTime: .atDocumentStart, forMainFrameOnly: true)
         )
+        // Hide Twitch's native-app upsell without clicking its buttons or
+        // changing the page route. Run after DOM changes because Twitch is an SPA.
+        let hideAppPromptScript = """
+        (function() {
+          if (window.__streamhubHideAppPromptInstalled) return;
+          window.__streamhubHideAppPromptInstalled = true;
+          const hide = () => {
+            if (!/(^|\\.)twitch\\.tv$/.test(location.hostname)) return;
+            const elements = document.querySelectorAll('button, [role="button"]');
+            for (const button of elements) {
+              const label = (button.textContent || '').trim().replace(/\\s+/g, ' ');
+              if (label !== 'Keep using web') continue;
+              let sheet = button;
+              for (let i = 0; i < 7 && sheet.parentElement; i++) {
+                sheet = sheet.parentElement;
+                const text = (sheet.innerText || '').slice(0, 350);
+                if (!text.includes('Open in App')) continue;
+                if (text.length > 220) break;
+                if (sheet === document.body || sheet === document.documentElement) break;
+                // The prompt may be in a modal dialog or a bottom-sheet portal.
+                const dialog = sheet.closest('[role="dialog"], [aria-modal="true"]');
+                const target = dialog || sheet;
+                target.style.setProperty('display', 'none', 'important');
+                target.setAttribute('aria-hidden', 'true');
+                // A dismissed bottom sheet must not keep scrolling locked.
+                if (document.body.style.overflow === 'hidden') document.body.style.overflow = '';
+                if (document.documentElement.style.overflow === 'hidden') document.documentElement.style.overflow = '';
+                break;
+              }
+            }
+          };
+          let scheduled = false;
+          new MutationObserver(() => {
+            if (scheduled) return;
+            scheduled = true;
+            requestAnimationFrame(() => { scheduled = false; hide(); });
+          }).observe(document.documentElement, { childList: true, subtree: true });
+          hide();
+        })();
+        """
+        configuration.userContentController.addUserScript(
+            WKUserScript(source: hideAppPromptScript, injectionTime: .atDocumentEnd, forMainFrameOnly: true)
+        )
         configuration.userContentController.add(context.coordinator, name: "followedTwitchChannel")
         let webView = WKWebView(frame: .zero, configuration: configuration)
         webView.isOpaque = false
