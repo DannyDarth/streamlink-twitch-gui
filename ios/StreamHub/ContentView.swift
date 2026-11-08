@@ -13,28 +13,28 @@ struct ContentView: View {
     var body: some View {
         NavigationStack {
             VStack(spacing: 0) {
-                // Match the original large navigation title's size and left inset,
-                // with Followed immediately beside it rather than in the toolbar.
-                HStack(alignment: .center, spacing: 10) {
-                    Text("StreamHub")
-                        .font(.system(size: 34, weight: .bold))
-                        .tracking(0.3)
-                        .lineLimit(1)
-                        .minimumScaleFactor(0.8)
-                        .layoutPriority(1)
+                HStack(spacing: 4) {
+                    HStack(spacing: 0) {
+                        Text("Stream").foregroundColor(Color(red: 169/255, green: 112/255, blue: 1))
+                        Text("Hub").foregroundColor(Color(red: 83/255, green: 252/255, blue: 24/255))
+                    }
+                    .font(.system(size: 32, weight: .bold))
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.75)
+                    .frame(maxWidth: .infinity)
+
                     Button { showingFollowed = true } label: {
                         Text("Followed")
                             .font(.subheadline.weight(.semibold))
-                            .padding(.horizontal, 12)
-                            .padding(.vertical, 8)
+                            .frame(maxWidth: .infinity)
+                            .padding(.vertical, 12)
                             .background(Color(uiColor: .secondarySystemFill), in: Capsule())
                     }
                     .buttonStyle(.plain)
                     .accessibilityLabel("Followed channels")
-                    Spacer(minLength: 0)
+                    .frame(maxWidth: .infinity)
                 }
-                .padding(.leading, 20)
-                .padding(.trailing, 16)
+                .padding(.horizontal, 16)
                 .padding(.top, 8)
                 .padding(.bottom, 4)
 
