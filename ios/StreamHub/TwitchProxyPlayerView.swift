@@ -4,6 +4,7 @@ import AVKit
 /// Optional HLS playlist-proxy playback. Never sends Twitch login cookies or tokens.
 struct TwitchProxyPlayerView: View {
     let channel: String
+    var onReturnToWebPlayer: (() -> Void)?
     @AppStorage("streamhub.twitchProxyURL") private var proxyBase = ""
     @State private var activeProxy: URL?
     @State private var player: AVPlayer?
@@ -17,6 +18,8 @@ struct TwitchProxyPlayerView: View {
     @State private var playbackDiagnostics: String?
     @State private var relayDiagnostics: [String] = []
     @State private var lastDirectOnly = false
+    @AppStorage("streamhub.autoReturnOnTwitchAdMarker") private var autoReturnOnAdMarker = false
+    @State private var returnedToWeb = false
     @State private var playbackObserver: NSKeyValueObservation?
 
     private var twitchURL: URL {
@@ -71,6 +74,10 @@ struct TwitchProxyPlayerView: View {
             }
             .buttonStyle(.bordered)
             .disabled(resolvingForwardProxy)
+            if autoReturnOnAdMarker {
+                Text("Experimental auto-return enabled: when HLS ad metadata is detected, StreamHub opens this channel in the regular Twitch web player. This does not guarantee ad-free playback.")
+                    .font(.caption).foregroundStyle(.secondary).padding(.horizontal)
+            }
             Button("Reconnect current HLS stream") {
                 Task { await playForwardProxy(directOnly: lastDirectOnly) }
             }
@@ -121,6 +128,7 @@ struct TwitchProxyPlayerView: View {
     @MainActor
     private func playForwardProxy(directOnly: Bool = false) async {
         resolvingForwardProxy = true
+        returnedToWeb = false
         lastDirectOnly = directOnly
         forwardProxyStatus = directOnly ? "Testing direct-only HLS relay (no proxy)…" : "Connecting to Firefox / Chromium HLS proxy…"
         defer { resolvingForwardProxy = false }
@@ -135,6 +143,11 @@ struct TwitchProxyPlayerView: View {
                 ).filter { $0.host != result.endpoint.host }
             relayDiagnostics = []
             let bridge = TwitchHLSBridge(preferred: result.endpoint, endpoints: endpoints)
+            bridge.onAdMarkerDetected = {
+                guard autoReturnOnAdMarker, !returnedToWeb else { return }
+                returnedToWeb = true
+                avReturnToWebPlayer()
+            }
             bridge.onDiagnostic = { entry in
                 relayDiagnostics.append(entry)
                 if relayDiagnostics.count > 20 { relayDiagnostics.removeFirst(relayDiagnostics.count - 20) }
@@ -170,6 +183,16 @@ struct TwitchProxyPlayerView: View {
         } catch {
             forwardProxyStatus = "Forward proxy playback failed: \(error.localizedDescription)"
         }
+    }
+
+    @MainActor
+    private func avReturnToWebPlayer() {
+        player?.pause()
+        playbackObserver?.invalidate()
+        playbackObserver = nil
+        hlsBridge?.stop()
+        hlsBridge = nil
+        onReturnToWebPlayer?()
     }
 
     @MainActor
