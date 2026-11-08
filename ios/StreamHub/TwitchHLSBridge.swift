@@ -82,16 +82,18 @@ final class TwitchHLSBridge {
             guard error == nil, let data,
                   let request = String(data: data, encoding: .utf8),
                   let first = request.components(separatedBy: "\r\n").first,
-                  first.hasPrefix("GET "),
+                  (first.hasPrefix("GET ") || first.hasPrefix("HEAD ")),
                   let path = first.split(separator: " ").dropFirst().first else {
                 self.reply(connection, status: 400, contentType: "text/plain", body: Data())
                 return
             }
+            let isHead = first.hasPrefix("HEAD ")
+            let rangeHeader = request.components(separatedBy: "\r\n").first { $0.lowercased().hasPrefix("range:") }?.dropFirst(6).trimmingCharacters(in: .whitespaces)
             let cleanPath = String(path).components(separatedBy: "?").first ?? ""
             if cleanPath == "/master.m3u8" {
                 let body = self.rewrite(masterPlaylist, base: masterURL)
                 self.reply(connection, status: 200, contentType: "application/vnd.apple.mpegurl",
-                           body: Data(body.utf8))
+                           body: Data(body.utf8), headOnly: isHead)
                 return
             }
             let identifier = String(cleanPath.dropFirst())
@@ -104,17 +106,19 @@ final class TwitchHLSBridge {
             }
             Task {
                 do {
-                    let (bytes, response) = try await self.fetch(upstream)
+                    let (bytes, response) = try await self.fetch(upstream, range: rangeHeader)
                     let type = (response as? HTTPURLResponse)?.value(forHTTPHeaderField: "Content-Type") ?? ""
                     let isPlaylist = upstream.pathExtension.lowercased() == "m3u8" ||
                         type.contains("mpegurl") || bytes.starts(with: Data("#EXTM3U".utf8))
                     if isPlaylist, let text = String(data: bytes, encoding: .utf8) {
                         self.reply(connection, status: 200, contentType: "application/vnd.apple.mpegurl",
-                                   body: Data(self.rewrite(text, base: upstream).utf8))
+                                   body: Data(self.rewrite(text, base: upstream).utf8), headOnly: isHead)
                     } else {
-                        self.reply(connection, status: 200,
+                        let upstreamStatus = (response as? HTTPURLResponse)?.statusCode ?? 200
+                        let contentRange = (response as? HTTPURLResponse)?.value(forHTTPHeaderField: "Content-Range")
+                        self.reply(connection, status: upstreamStatus,
                                    contentType: type.isEmpty ? "application/octet-stream" : type,
-                                   body: bytes)
+                                   body: bytes, headOnly: isHead, contentRange: contentRange)
                     }
                 } catch {
                     self.reply(connection, status: 502, contentType: "text/plain",
@@ -124,13 +128,14 @@ final class TwitchHLSBridge {
         }
     }
 
-    private func fetch(_ url: URL) async throws -> (Data, URLResponse) {
+    private func fetch(_ url: URL, range: String? = nil) async throws -> (Data, URLResponse) {
         var lastError: Error = URLError(.cannotConnectToHost)
         for endpoint in endpoints {
             guard let session = sessionByHost[endpoint.host] else { continue }
             do {
                 var request = URLRequest(url: url)
                 request.setValue("https://player.twitch.tv", forHTTPHeaderField: "Referer")
+                if let range { request.setValue(range, forHTTPHeaderField: "Range") }
                 let (data, response) = try await session.data(for: request)
                 guard let http = response as? HTTPURLResponse,
                       (200...299).contains(http.statusCode) else {
@@ -176,11 +181,14 @@ final class TwitchHLSBridge {
         }.joined(separator: "\n")
     }
 
-    private func reply(_ connection: NWConnection, status: Int, contentType: String, body: Data) {
-        let reason = status == 200 ? "OK" : "Error"
-        let header = "HTTP/1.1 \(status) \(reason)\r\nContent-Type: \(contentType)\r\nContent-Length: \(body.count)\r\nAccess-Control-Allow-Origin: *\r\nConnection: close\r\n\r\n"
+    private func reply(_ connection: NWConnection, status: Int, contentType: String,
+                       body: Data, headOnly: Bool = false, contentRange: String? = nil) {
+        let reason = status == 200 ? "OK" : status == 206 ? "Partial Content" : "Error"
+        var header = "HTTP/1.1 \(status) \(reason)\r\nContent-Type: \(contentType)\r\nContent-Length: \(body.count)\r\nAccept-Ranges: bytes\r\nAccess-Control-Allow-Origin: *\r\nConnection: close\r\n"
+        if let contentRange { header += "Content-Range: \(contentRange)\r\n" }
+        header += "\r\n"
         var payload = Data(header.utf8)
-        payload.append(body)
+        if !headOnly { payload.append(body) }
         connection.send(content: payload, completion: .contentProcessed { _ in connection.cancel() })
     }
 
