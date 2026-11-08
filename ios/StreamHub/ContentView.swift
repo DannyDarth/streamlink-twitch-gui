@@ -13,15 +13,19 @@ struct ContentView: View {
     var body: some View {
         NavigationStack {
             VStack(spacing: 0) {
-                HStack(spacing: 12) {
+                // Match the original large navigation title's size and left inset,
+                // with Followed immediately beside it rather than in the toolbar.
+                HStack(alignment: .center, spacing: 10) {
                     Text("StreamHub")
-                        .font(.largeTitle.bold())
+                        .font(.system(size: 34, weight: .bold))
+                        .tracking(0.3)
                         .lineLimit(1)
                         .minimumScaleFactor(0.8)
+                        .layoutPriority(1)
                     Button { showingFollowed = true } label: {
                         Text("Followed")
                             .font(.subheadline.weight(.semibold))
-                            .padding(.horizontal, 13)
+                            .padding(.horizontal, 12)
                             .padding(.vertical, 8)
                             .background(Color(uiColor: .secondarySystemFill), in: Capsule())
                     }
@@ -29,8 +33,9 @@ struct ContentView: View {
                     .accessibilityLabel("Followed channels")
                     Spacer(minLength: 0)
                 }
-                .padding(.horizontal)
-                .padding(.top, 12)
+                .padding(.leading, 20)
+                .padding(.trailing, 16)
+                .padding(.top, 8)
                 .padding(.bottom, 4)
 
                 Picker("Platform", selection: $platform) {
