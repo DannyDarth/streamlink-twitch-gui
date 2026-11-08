@@ -80,8 +80,10 @@ private struct TwitchDirectoryView: View {
     @State private var submittedSearch = ""
     @State private var browserResetID = UUID()
     @State private var proxyChannel: TwitchChannelSelection?
+    @State private var webChannel: String?
 
     private var browseURL: URL {
+        if let webChannel { return URL(string: "https://www.twitch.tv/" + webChannel)! }
         if !submittedSearch.isEmpty {
             var components = URLComponents(string: "https://www.twitch.tv/search")!
             components.queryItems = [URLQueryItem(name: "term", value: submittedSearch)]
@@ -104,6 +106,7 @@ private struct TwitchDirectoryView: View {
             .onChange(of: section) { _ in
                 submittedSearch = ""
                 search = ""
+                webChannel = nil
             }
 
             HStack(spacing: 8) {
@@ -149,7 +152,10 @@ private struct TwitchDirectoryView: View {
                 .id(browseURL.absoluteString + browserResetID.uuidString)
                 .sheet(item: $proxyChannel) { channel in
                     NavigationStack {
-                        TwitchProxyPlayerView(channel: channel.value)
+                        TwitchProxyPlayerView(channel: channel.value, onReturnToWebPlayer: {
+                            webChannel = channel.value
+                            proxyChannel = nil
+                        })
                             .toolbar {
                                 ToolbarItem(placement: .navigationBarTrailing) {
                                     Button("Done") { proxyChannel = nil }
