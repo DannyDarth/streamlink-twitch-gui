@@ -220,7 +220,7 @@ struct TwitchBrowserView: UIViewRepresentable {
         context.coordinator.currentRootURL = url
         context.coordinator.proxyEnabled = UserDefaults.standard.bool(forKey: "streamhub.twitchProxyEnabled")
         Task { @MainActor in
-            await AdBlockingSettings.shared.configure(configuration.userContentController)
+            await AdBlockingSettings.shared.configure(configuration.userContentController, forTwitch: true)
             webView.load(URLRequest(url: url))
         }
         return webView
