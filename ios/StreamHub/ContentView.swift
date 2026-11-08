@@ -871,6 +871,7 @@ private struct TwitchEmbeddedPlayerView: View {
     @State private var observation: NSKeyValueObservation?
     @State private var startupWatchdog: Task<Void, Never>?
     @State private var connectionID = UUID()
+    @State private var retryTask: Task<Void, Never>?
 
     var body: some View {
         VStack(spacing: 16) {
@@ -913,6 +914,8 @@ private struct TwitchEmbeddedPlayerView: View {
         connectionID = UUID()
         startupWatchdog?.cancel()
         startupWatchdog = nil
+        retryTask?.cancel()
+        retryTask = nil
         observation?.invalidate()
         observation = nil
         player?.pause()
@@ -973,8 +976,26 @@ private struct TwitchEmbeddedPlayerView: View {
             }
         } catch {
             guard connectionID == attemptID else { return }
-            loading = false
-            status = "Embedded stream unavailable. Use regular Twitch player or retry."
+            let details: String
+            if let resolution = error as? TwitchProxyPlaylistResolver.ResolutionError {
+                details = resolution.localizedDescription
+            } else if let network = error as? URLError {
+                details = "Network connection (code \\(network.errorCode))"
+            } else if error is DecodingError {
+                details = "Playback token response format"
+            } else {
+                details = "Connection error"
+            }
+            if !isAutomaticRetry {
+                status = "\\(details). Retrying connection once…"
+                retryTask = Task { @MainActor in
+                    try? await Task.sleep(nanoseconds: 500_000_000)
+                    guard !Task.isCancelled, connectionID == attemptID else { return }
+                    await connect(isAutomaticRetry: true)
+                }
+            } else {
+                status = "\\(details). Embedded playback unavailable; use regular Twitch player or retry."
+            }
         }
     }
 }
