@@ -960,13 +960,13 @@ private struct TwitchEmbeddedPlayerView: View {
                     let item = newPlayer.currentItem
                     let position = newPlayer.currentTime().seconds
                     let advanced = position.isFinite && position > 0.25
-                    // Only reconnect when AVPlayer has reported a failure or
-                    // claims it is ready and playing but time is not advancing.
-                    // Do not restart a legitimately buffering stream.
-                    let failed = item?.status == .failed
-                    let stuckWhilePlaying = item?.status == .readyToPlay
-                        && newPlayer.timeControlStatus == .playing && !advanced
-                    if failed || stuckWhilePlaying {
+                    // The first connection can remain indefinitely in
+                    // waitingToPlayAtSpecifiedRate without advancing. That
+                    // state was excluded by the old watchdog, so it never
+                    // retried the exact startup freeze users reported.
+                    // Allow one fresh connection when the first attempt has
+                    // not advanced at all after the startup grace period.
+                    if item?.status == .failed || !advanced {
                         await connect(isAutomaticRetry: true)
                     }
                 }
