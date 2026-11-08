@@ -130,7 +130,7 @@ enum TwitchProxyPlaylistResolver {
                       playlist.trimmingCharacters(in: .whitespacesAndNewlines).hasPrefix("#EXTM3U") else {
                     throw ResolutionError.invalidPlaylist
                 }
-                return Result(endpoint: endpoint, url: playlistURL, playlist: playlist)
+                return Result(endpoint: endpoint, url: playlistURL, playlist: playlist, playbackIdentity: "forward proxy HLS")
             } catch {
                 failures.append("\(endpoint.label): \(error.localizedDescription)")
             }
