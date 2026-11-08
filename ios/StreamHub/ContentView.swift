@@ -869,6 +869,8 @@ private struct TwitchEmbeddedPlayerView: View {
     @State private var status = "Connecting to Embedded stream…"
     @State private var loading = true
     @State private var observation: NSKeyValueObservation?
+    @State private var startupWatchdog: Task<Void, Never>?
+    @State private var connectionID = UUID()
 
     var body: some View {
         VStack(spacing: 16) {
@@ -908,6 +910,9 @@ private struct TwitchEmbeddedPlayerView: View {
 
     @MainActor
     private func stop() {
+        connectionID = UUID()
+        startupWatchdog?.cancel()
+        startupWatchdog = nil
         observation?.invalidate()
         observation = nil
         player?.pause()
@@ -916,10 +921,11 @@ private struct TwitchEmbeddedPlayerView: View {
     }
 
     @MainActor
-    private func connect() async {
+    private func connect(isAutomaticRetry: Bool = false) async {
         stop()
+        let attemptID = connectionID
         loading = true
-        status = "Connecting to Embedded stream…"
+        status = isAutomaticRetry ? "Initial playback stalled; reconnecting once…" : "Connecting to Embedded stream…"
         guard channel.range(of: "^[A-Za-z0-9_]{3,25}$", options: .regularExpression) != nil else {
             status = "Invalid Twitch channel"
             loading = false
@@ -930,7 +936,7 @@ private struct TwitchEmbeddedPlayerView: View {
                 channel: channel, preference: "firefox", allowFallback: false,
                 directOnly: true, playerType: "embed", platform: "web"
             )
-            guard !Task.isCancelled else { loading = false; return }
+            guard !Task.isCancelled, connectionID == attemptID else { return }
             let item = AVPlayerItem(url: result.url)
             observation = item.observe(\.status, options: [.new, .initial]) { item, _ in
                 DispatchQueue.main.async {
@@ -944,8 +950,22 @@ private struct TwitchEmbeddedPlayerView: View {
             let newPlayer = AVPlayer(playerItem: item)
             player = newPlayer
             loading = false
+            newPlayer.automaticallyWaitsToMinimizeStalling = true
             newPlayer.play()
+            if !isAutomaticRetry {
+                startupWatchdog = Task { @MainActor in
+                    try? await Task.sleep(nanoseconds: 9_000_000_000)
+                    guard !Task.isCancelled, connectionID == attemptID,
+                          player === newPlayer else { return }
+                    let position = newPlayer.currentTime().seconds
+                    let advanced = position.isFinite && position > 1.0
+                    if !advanced || newPlayer.currentItem?.status == .failed {
+                        await connect(isAutomaticRetry: true)
+                    }
+                }
+            }
         } catch {
+            guard connectionID == attemptID else { return }
             loading = false
             status = "Embedded stream unavailable. Use regular Twitch player or retry."
         }
