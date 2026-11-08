@@ -17,7 +17,32 @@ final class KickCategoryWebModel: NSObject, ObservableObject, WKScriptMessageHan
     @Published var status = "Loading live streams…"
     @Published var isReady = false
     weak var webView: WKWebView?
-    private var previousCount = 0
+    // In-memory snapshots survive navigation back to the Games grid.
+    // Bound the cache to avoid retaining unlimited channel thumbnails/metadata.
+    private static var snapshots: [String: [KickCategoryChannel]] = [:]
+    private static var snapshotOrder: [String] = []
+    private static let maxCachedCategories = 12
+    private var categoryKey: String?
+
+    func prepare(for url: URL) {
+        let key = url.absoluteString
+        guard categoryKey != key else { return }
+        categoryKey = key
+        channels = Self.snapshots[key] ?? []
+        isReady = !channels.isEmpty
+        status = channels.isEmpty ? "Loading live streams…" : ""
+    }
+
+    private func saveSnapshot() {
+        guard let key = categoryKey, !channels.isEmpty else { return }
+        Self.snapshots[key] = Array(channels.prefix(250))
+        Self.snapshotOrder.removeAll { $0 == key }
+        Self.snapshotOrder.append(key)
+        while Self.snapshotOrder.count > Self.maxCachedCategories {
+            let oldest = Self.snapshotOrder.removeFirst()
+            Self.snapshots.removeValue(forKey: oldest)
+        }
+    }
 
     func userContentController(_ userContentController: WKUserContentController, didReceive message: WKScriptMessage) {
         guard let json = message.body as? String,
@@ -35,6 +60,7 @@ final class KickCategoryWebModel: NSObject, ObservableObject, WKScriptMessageHan
         if !channels.isEmpty {
             isReady = true
             status = ""
+            saveSnapshot()
         }
     }
 
@@ -43,6 +69,10 @@ final class KickCategoryWebModel: NSObject, ObservableObject, WKScriptMessageHan
     }
 
     func reload() {
+        if let key = categoryKey {
+            Self.snapshots.removeValue(forKey: key)
+            Self.snapshotOrder.removeAll { $0 == key }
+        }
         channels = []
         isReady = false
         status = "Loading live streams…"
@@ -63,6 +93,7 @@ struct KickCategoryDiscoveryWebView: UIViewRepresentable {
         config.userContentController.addUserScript(WKUserScript(source: Self.discoveryScript, injectionTime: .atDocumentEnd, forMainFrameOnly: true))
         let web = WKWebView(frame: .zero, configuration: config)
         web.navigationDelegate = context.coordinator
+        model.prepare(for: url)
         model.webView = web
         Task { @MainActor in
             await AdBlockingSettings.shared.configure(config.userContentController)
