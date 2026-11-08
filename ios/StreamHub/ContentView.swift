@@ -81,6 +81,8 @@ private struct TwitchDirectoryView: View {
     @State private var browserResetID = UUID()
     @State private var proxyChannel: TwitchChannelSelection?
     @State private var webChannel: String?
+    @State private var showingPlaybackLab = false
+    @State private var labChannel = ""
 
     private var browseURL: URL {
         if let webChannel { return URL(string: "https://www.twitch.tv/" + webChannel)! }
@@ -130,6 +132,28 @@ private struct TwitchDirectoryView: View {
             }
             .padding(.horizontal)
             .padding(.bottom, 8)
+
+            HStack(spacing: 8) {
+                Button("Twitch playback lab") {
+                    labChannel = webChannel ?? ""
+                    showingPlaybackLab = true
+                }
+                .font(.caption)
+                .buttonStyle(.bordered)
+                Spacer()
+            }
+            .padding(.horizontal)
+            .padding(.bottom, 6)
+            .sheet(isPresented: $showingPlaybackLab) {
+                NavigationStack {
+                    TwitchPlaybackLabView(channel: $labChannel)
+                        .toolbar {
+                            ToolbarItem(placement: .navigationBarTrailing) {
+                                Button("Done") { showingPlaybackLab = false }
+                            }
+                        }
+                }
+            }
 
             if section == 1 {
                 HStack {
@@ -641,5 +665,68 @@ private struct KickStreamPlayerView: View {
             }
             .statusBarHidden()
         }
+    }
+}
+
+private struct TwitchPlaybackLabView: View {
+    @Binding var channel: String
+    @State private var running = false
+    @State private var results: [String] = []
+
+    private let identities: [(String, String, String)] = [
+        ("Standard web", "site", "web"),
+        ("Frontpage", "frontpage", "web"),
+        ("Embedded", "embed", "web")
+    ]
+
+    var body: some View {
+        Form {
+            Section("Direct iPhone playback experiment") {
+                TextField("Twitch channel", text: $channel)
+                    .textInputAutocapitalization(.never)
+                    .autocorrectionDisabled()
+                Text("Tests Twitch playback identities directly from the iPhone. No public proxies, PC, stream interruption, or automatic player switching.")
+                    .font(.footnote).foregroundStyle(.secondary)
+                Button(running ? "Checking…" : "Compare playback sessions") {
+                    Task { await compare() }
+                }
+                .disabled(running || channel.range(of: "^[A-Za-z0-9_]{3,25}$", options: .regularExpression) == nil)
+            }
+            Section("Results") {
+                if results.isEmpty {
+                    Text("No tests run yet. A clean playlist snapshot does not prove ads will stay absent.")
+                        .foregroundStyle(.secondary)
+                }
+                ForEach(results, id: \.self) { line in
+                    Text(line).font(.caption.monospaced()).textSelection(.enabled)
+                }
+            }
+        }
+        .navigationTitle("Playback lab")
+    }
+
+    @MainActor
+    private func compare() async {
+        running = true
+        results = []
+        defer { running = false }
+        let testedChannel = channel.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard testedChannel.range(of: "^[A-Za-z0-9_]{3,25}$", options: .regularExpression) != nil else { return }
+        for (label, playerType, platform) in identities {
+            do {
+                let result = try await TwitchProxyPlaylistResolver.resolve(
+                    channel: testedChannel, preference: "firefox",
+                    allowFallback: false, directOnly: true,
+                    playerType: playerType, platform: platform
+                )
+                let variants = result.playlist.split(separator: "\n").filter { $0.hasPrefix("#EXT-X-STREAM-INF") }.count
+                let adMarker = result.playlist.localizedCaseInsensitiveContains("stitched-ad")
+                    || result.playlist.localizedCaseInsensitiveContains("scte35")
+                results.append("\(label): master HLS available, \(variants) variants; ad metadata \(adMarker ? "present" : "not present in master")")
+            } catch {
+                results.append("\(label): unavailable (\(error.localizedDescription))")
+            }
+        }
+        results.append("This is a connection test, not proof of uninterrupted ad-free playback. The regular Twitch player was not changed.")
     }
 }
