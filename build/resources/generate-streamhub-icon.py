@@ -37,6 +37,11 @@ font_path = next((p for p in fonts if p.exists()), None)
 font = ImageFont.truetype(str(font_path), 106) if font_path else ImageFont.load_default()
 d.text((SIZE // 2, 815), "StreamHub", font=font, anchor="mm",
        fill="white", stroke_width=5, stroke_fill="#24142e")
+# Prefer the user-supplied StreamHub artwork when present in the repository.
+# Keep the legacy generated icon as a fallback until the new PNG is uploaded.
+custom_icon = ROOT / "build" / "resources" / "streamhub-custom-icon.png"
+if custom_icon.is_file():
+    im = Image.open(custom_icon).convert("RGBA").resize((SIZE, SIZE), Image.Resampling.LANCZOS)
 im.save(ICONS / "streamhub-1024.png")
 im.save(ICONS / "icon-16-32-48-256.ico", format="ICO",
         sizes=[(16, 16), (32, 32), (48, 48), (64, 64), (128, 128), (256, 256)])
