@@ -8,6 +8,10 @@ struct TwitchProxyPlayerView: View {
     @State private var player: AVPlayer?
     @State private var message: String?
     @State private var loading = true
+    @AppStorage("streamhub.twitchForwardProxyPreference") private var forwardProxyPreference = "firefox"
+    @AppStorage("streamhub.twitchForwardProxyFallback") private var forwardProxyFallback = true
+    @State private var forwardProxyStatus: String?
+    @State private var resolvingForwardProxy = false
 
     private var twitchURL: URL {
         URL(string: "https://www.twitch.tv/" + channel)!
@@ -44,7 +48,18 @@ struct TwitchProxyPlayerView: View {
                 Text(message).font(.footnote).foregroundStyle(.secondary)
                     .multilineTextAlignment(.center).padding(.horizontal)
             }
-            Button("Retry proxy") { Task { await start() } }
+            Button("Test Firefox / Chromium HLS playlist") {
+                Task { await testForwardProxyPlaylist() }
+            }
+            .disabled(resolvingForwardProxy)
+            if let forwardProxyStatus {
+                Text(forwardProxyStatus)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .multilineTextAlignment(.center)
+                    .padding(.horizontal)
+            }
+            Button("Retry HTTPS playlist proxy") { Task { await start() } }
                 .buttonStyle(.bordered)
             Link("Open on Twitch (normal playback)", destination: twitchURL)
                 .buttonStyle(.borderedProminent)
@@ -58,6 +73,23 @@ struct TwitchProxyPlayerView: View {
         .navigationBarTitleDisplayMode(.inline)
         .task(id: proxyBase) { await start() }
         .onDisappear { player?.pause(); player = nil }
+    }
+
+    @MainActor
+    private func testForwardProxyPlaylist() async {
+        resolvingForwardProxy = true
+        forwardProxyStatus = "Resolving Twitch playlist through forward proxies…"
+        defer { resolvingForwardProxy = false }
+        do {
+            let result = try await TwitchProxyPlaylistResolver.resolve(
+                channel: channel,
+                preference: forwardProxyPreference,
+                allowFallback: forwardProxyFallback
+            )
+            forwardProxyStatus = "\(result.endpoint.label) returned a valid HLS playlist. Media playback via HTTP forward proxy is not implemented yet."
+        } catch {
+            forwardProxyStatus = error.localizedDescription
+        }
     }
 
     @MainActor
