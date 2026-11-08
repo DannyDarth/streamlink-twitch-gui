@@ -8,6 +8,7 @@ enum TwitchProxyPlaylistResolver {
         let url: URL
         let playlist: String
         let playbackIdentity: String
+        let proxyFailure: String?
     }
 
     enum ResolutionError: LocalizedError {
@@ -75,7 +76,8 @@ enum TwitchProxyPlaylistResolver {
                     throw ResolutionError.invalidPlaylist
                 }
                 return Result(endpoint: TwitchForwardProxyDiagnostics.firefox,
-                              url: candidate, playlist: playlist, playbackIdentity: identity)
+                              url: candidate, playlist: playlist, playbackIdentity: identity,
+                              proxyFailure: identity == "randomized Twitch token" ? errors.joined(separator: "; ") : nil)
             } catch {
                 errors.append("\(identity): \(error.localizedDescription)")
             }
@@ -109,7 +111,7 @@ enum TwitchProxyPlaylistResolver {
                   playlist.trimmingCharacters(in: .whitespacesAndNewlines).hasPrefix("#EXTM3U") else {
                 throw ResolutionError.invalidPlaylist
             }
-            return Result(endpoint: TwitchForwardProxyDiagnostics.firefox, url: playlistURL, playlist: playlist, playbackIdentity: directOnly ? "direct Twitch HLS" : "forward proxy HLS")
+            return Result(endpoint: TwitchForwardProxyDiagnostics.firefox, url: playlistURL, playlist: playlist, playbackIdentity: directOnly ? "direct Twitch HLS" : "forward proxy HLS", proxyFailure: nil)
         }
         var failures: [String] = []
         for endpoint in TwitchForwardProxyDiagnostics.ordered(preference: preference, allowFallback: allowFallback) {
@@ -132,7 +134,7 @@ enum TwitchProxyPlaylistResolver {
                       playlist.trimmingCharacters(in: .whitespacesAndNewlines).hasPrefix("#EXTM3U") else {
                     throw ResolutionError.invalidPlaylist
                 }
-                return Result(endpoint: endpoint, url: playlistURL, playlist: playlist, playbackIdentity: "forward proxy HLS")
+                return Result(endpoint: endpoint, url: playlistURL, playlist: playlist, playbackIdentity: "forward proxy HLS", proxyFailure: nil)
             } catch {
                 failures.append("\(endpoint.label): \(error.localizedDescription)")
             }
