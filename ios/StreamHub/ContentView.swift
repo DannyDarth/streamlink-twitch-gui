@@ -82,6 +82,7 @@ private struct TwitchDirectoryView: View {
     @State private var browserResetID = UUID()
     @State private var proxyChannel: TwitchChannelSelection?
     @State private var webChannel: String?
+    @AppStorage("streamhub.twitchEmbeddedPlayerEnabled") private var embeddedEnabled = false
     @State private var showingPlaybackLab = false
     @State private var labChannel = ""
 
@@ -135,6 +136,9 @@ private struct TwitchDirectoryView: View {
             .padding(.bottom, 8)
 
             HStack(spacing: 8) {
+                Toggle("Embedded player", isOn: $embeddedEnabled)
+                    .font(.caption)
+                    .fixedSize(horizontal: true, vertical: false)
                 Button("Twitch playback lab") {
                     labChannel = webChannel ?? ""
                     showingPlaybackLab = true
@@ -179,15 +183,9 @@ private struct TwitchDirectoryView: View {
                 proxyChannel = TwitchChannelSelection(value: channel)
             })
                 .id(browserResetID)
-                .onReceive(NotificationCenter.default.publisher(for: Notification.Name("StreamHubTwitchAdMarkerDetected"))) { _ in
-                    guard UserDefaults.standard.bool(forKey: "streamhub.autoReturnOnTwitchAdMarker"),
-                          let selected = proxyChannel else { return }
-                    proxyChannel = nil
-                    webChannel = selected.value
-                }
                 .sheet(item: $proxyChannel) { channel in
                     NavigationStack {
-                        TwitchProxyPlayerView(channel: channel.value, onReturnToWebPlayer: {
+                        TwitchEmbeddedPlayerView(channel: channel.value, onReturnToWebPlayer: {
                             proxyChannel = nil
                             webChannel = channel.value
                         })
@@ -860,5 +858,96 @@ private struct TwitchPlaybackLabView: View {
         }
         results.append("Three near-simultaneous rounds completed. Different segment paths or missing ad markers do not prove different video content or uninterrupted ad-free playback.")
         results.append("The regular Twitch player was not changed.")
+    }
+}
+
+private struct TwitchEmbeddedPlayerView: View {
+    let channel: String
+    var onReturnToWebPlayer: (() -> Void)?
+    @Environment(\.dismiss) private var dismiss
+    @State private var player: AVPlayer?
+    @State private var status = "Connecting to Embedded stream…"
+    @State private var loading = true
+    @State private var observation: NSKeyValueObservation?
+
+    var body: some View {
+        VStack(spacing: 16) {
+            if let player {
+                VideoPlayer(player: player)
+                    .aspectRatio(16.0 / 9.0, contentMode: .fit)
+            } else if loading {
+                ProgressView("Connecting…")
+                    .frame(maxWidth: .infinity, minHeight: 210)
+            }
+            Text(status)
+                .font(.caption)
+                .foregroundStyle(.secondary)
+                .multilineTextAlignment(.center)
+                .padding(.horizontal)
+            Button("Use regular Twitch player") {
+                stop()
+                onReturnToWebPlayer?()
+                dismiss()
+            }
+            .buttonStyle(.borderedProminent)
+            Button("Retry Embedded playback") { Task { await connect() } }
+                .buttonStyle(.bordered)
+            Text("Experimental direct iPhone playback. Ad-free viewing is not guaranteed; no external proxy or PC is used.")
+                .font(.footnote)
+                .foregroundStyle(.secondary)
+                .multilineTextAlignment(.center)
+                .padding(.horizontal)
+            Spacer()
+        }
+        .padding(.top)
+        .navigationTitle(channel)
+        .navigationBarTitleDisplayMode(.inline)
+        .task { await connect() }
+        .onDisappear { stop() }
+    }
+
+    @MainActor
+    private func stop() {
+        observation?.invalidate()
+        observation = nil
+        player?.pause()
+        player?.replaceCurrentItem(with: nil)
+        player = nil
+    }
+
+    @MainActor
+    private func connect() async {
+        stop()
+        loading = true
+        status = "Connecting to Embedded stream…"
+        guard channel.range(of: "^[A-Za-z0-9_]{3,25}$", options: .regularExpression) != nil else {
+            status = "Invalid Twitch channel"
+            loading = false
+            return
+        }
+        do {
+            let result = try await TwitchProxyPlaylistResolver.resolve(
+                channel: channel, preference: "firefox", allowFallback: false,
+                directOnly: true, playerType: "embed", platform: "web"
+            )
+            guard !Task.isCancelled else { loading = false; return }
+            let item = AVPlayerItem(url: result.url)
+            observation = item.observe(\.status, options: [.new, .initial]) { item, _ in
+                DispatchQueue.main.async {
+                    switch item.status {
+                    case .readyToPlay: status = "Embedded stream ready"
+                    case .failed: status = "Embedded playback failed. Use regular Twitch player or retry."
+                    default: break
+                    }
+                }
+            }
+            let newPlayer = AVPlayer(playerItem: item)
+            player = newPlayer
+            loading = false
+            newPlayer.play()
+        } catch {
+            loading = false
+            status = "Embedded stream unavailable. Use regular Twitch player or retry."
+        }
     }
 }
