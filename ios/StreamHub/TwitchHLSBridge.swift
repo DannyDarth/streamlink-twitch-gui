@@ -211,7 +211,7 @@ final class TwitchHLSBridge {
                 ? "Possible ad marker detected in HLS playlist (\(markedLines.count) lines); preserving playback"
                 : "No ad marker in current HLS playlist; normal segment delivery")
         }
-        playlist.components(separatedBy: "\n").map { line in
+        return playlist.components(separatedBy: "\n").map { line in
             if line.hasPrefix("#") {
                 // HLS keys, maps, and media URI attributes also need local URLs.
                 let pattern = "URI=\\\"([^\\\"]+)\\\""
