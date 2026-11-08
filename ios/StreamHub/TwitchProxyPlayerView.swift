@@ -161,44 +161,57 @@ struct TwitchProxyPlayerView: View {
         .onDisappear { playbackObserver?.invalidate(); playbackObserver = nil; player?.pause(); player = nil; hlsBridge?.stop(); hlsBridge = nil }
     }
 
-    /// Built from the MIT-licensed level3tjg TwitchAdBlock request strategy,
-    /// without injecting its tweak into Twitch or altering StreamHub's UI.
+    /// Prefer an HTTP CONNECT proxy for the Twitch HLS manifest and relay.
+    /// If both proxies fail, offer direct playback with a clearly labeled status.
     @MainActor
     private func playTwitchAdBlock() async {
         testingTwitchAdBlock = true
-        twitchAdBlockStatus = "Resolving alternative Twitch playback…"
+        twitchAdBlockStatus = "Checking Firefox / Chromium forward proxies…"
         twitchAdBlockProxyError = nil
         defer { testingTwitchAdBlock = false }
-        let configured = proxyBase.trimmingCharacters(in: .whitespacesAndNewlines)
-        let address = configured.isEmpty ? "https://luminous.level3tjg.me" : configured
-        guard let components = URLComponents(string: address),
-              components.scheme?.lowercased() == "https",
-              components.host != nil, components.user == nil,
-              components.password == nil,
-              components.query == nil, components.fragment == nil,
-              let base = components.url else {
-            twitchAdBlockStatus = "Proxy URL must be HTTPS; check Settings."
-            return
+        let ordered = TwitchForwardProxyDiagnostics.ordered(
+            preference: forwardProxyPreference, allowFallback: forwardProxyFallback
+        )
+        let result: TwitchProxyPlaylistResolver.Result
+        let endpoints: [TwitchForwardProxyDiagnostics.Endpoint]
+        do {
+            result = try await TwitchProxyPlaylistResolver.resolve(
+                channel: channel, preference: forwardProxyPreference,
+                allowFallback: forwardProxyFallback
+            )
+            endpoints = [result.endpoint] + ordered.filter { $0.host != result.endpoint.host }
+            twitchAdBlockStatus = "Forward proxy connected: \(result.endpoint.label)"
+        } catch {
+            twitchAdBlockProxyError = "Forward proxies unavailable: \(error.localizedDescription)"
+            twitchAdBlockStatus = "Proxy unavailable; trying direct Twitch playback…"
+            do {
+                result = try await TwitchProxyPlaylistResolver.resolve(
+                    channel: channel, preference: forwardProxyPreference,
+                    allowFallback: false, directOnly: true
+                )
+                endpoints = []
+            } catch {
+                twitchAdBlockStatus = "No playable HLS session: \(error.localizedDescription)"
+                return
+            }
         }
         do {
-            let result = try await TwitchProxyPlaylistResolver.resolveTwitchAdBlock(
-                channel: channel, proxyBase: base
-            )
-            twitchAdBlockProxyError = result.proxyFailure
-            // Route playlists and segment URLs through the existing local bridge.
-            // Do not strip or skip video segments when ad markers are present.
-            let bridge = TwitchHLSBridge(preferred: result.endpoint, endpoints: [])
+            relayDiagnostics = []
+            let bridge = TwitchHLSBridge(preferred: result.endpoint, endpoints: endpoints)
             bridge.onDiagnostic = { entry in
                 relayDiagnostics.append(entry)
                 if relayDiagnostics.count > 20 { relayDiagnostics.removeFirst(relayDiagnostics.count - 20) }
                 if entry.hasPrefix("HLS metadata: markers="),
                    !entry.hasPrefix("HLS metadata: markers=none") {
-                    twitchAdBlockStatus = "\(result.playbackIdentity): ad marker reported (not blocked)"
+                    twitchAdBlockStatus = "\(endpoints.isEmpty ? "Direct" : result.endpoint.label): ad marker detected; not blocked"
+                }
+                if entry.contains("Direct CDN fallback") {
+                    twitchAdBlockProxyError = "Media CDN used direct fallback; proxy does not cover all media requests."
                 }
             }
             bridge.onAdMarkerDetected = {
                 adEventReceived = true
-                twitchAdBlockStatus = "\(result.playbackIdentity): stitched-ad marker detected"
+                twitchAdBlockStatus = "\(endpoints.isEmpty ? "Direct" : result.endpoint.label): stitched-ad marker detected"
             }
             let localURL = try await bridge.start(masterURL: result.url, masterPlaylist: result.playlist)
             player?.pause()
@@ -210,7 +223,7 @@ struct TwitchProxyPlayerView: View {
             playbackObserver = item.observe(\.status, options: [.initial, .new]) { observed, _ in
                 DispatchQueue.main.async {
                     if observed.status == .failed {
-                        twitchAdBlockStatus = "Playback error: \(observed.error?.localizedDescription ?? "unknown")"
+                        twitchAdBlockStatus = "Playback failed: \(observed.error?.localizedDescription ?? "unknown")"
                     }
                 }
             }
@@ -218,10 +231,12 @@ struct TwitchProxyPlayerView: View {
             player = newPlayer
             loading = false
             message = nil
-            twitchAdBlockStatus = "Playing via \(result.playbackIdentity); ad-free playback not guaranteed"
+            twitchAdBlockStatus = endpoints.isEmpty
+                ? "Direct Twitch fallback (no ad blocking)"
+                : "Forward proxy: \(result.endpoint.label) (ads may still appear)"
             newPlayer.play()
         } catch {
-            twitchAdBlockStatus = "Unavailable: \(error.localizedDescription). Existing playback unchanged."
+            twitchAdBlockStatus = "HLS relay failed: \(error.localizedDescription). Existing player unchanged."
         }
     }
 
