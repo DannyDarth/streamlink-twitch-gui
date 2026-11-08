@@ -1,3 +1,4 @@
+import AVKit
 import SwiftUI
 
 private enum StreamPlatform: String, CaseIterable, Identifiable {
@@ -672,6 +673,8 @@ private struct TwitchPlaybackLabView: View {
     @Binding var channel: String
     @State private var running = false
     @State private var results: [String] = []
+    @State private var embeddedPlayer: AVPlayer?
+    @State private var playerMessage = "Not started"
 
     private let identities: [(String, String, String)] = [
         ("Standard web", "site", "web"),
@@ -687,10 +690,25 @@ private struct TwitchPlaybackLabView: View {
                     .autocorrectionDisabled()
                 Text("Compares actual HLS media playlists and segment identities directly on this iPhone. No proxies, PC, playback switching, or video interruption.")
                     .font(.footnote).foregroundStyle(.secondary)
-                Button(running ? "Checking media playlists…" : "Compare playback sessions") {
+                Button(running ? "Running 3 comparison rounds…" : "Compare playback sessions") {
                     Task { await compare() }
                 }
                 .disabled(running || channel.range(of: "^[A-Za-z0-9_]{3,25}$", options: .regularExpression) == nil)
+            }
+            Section("Embedded playback test") {
+                Button("Test Embedded video (manual)") {
+                    Task { await playEmbedded() }
+                }
+                .disabled(running || channel.range(of: "^[A-Za-z0-9_]{3,25}$", options: .regularExpression) == nil)
+                if let embeddedPlayer {
+                    VideoPlayer(player: embeddedPlayer)
+                        .frame(height: 210)
+                    Button("Stop test video") { embeddedPlayer.pause(); self.embeddedPlayer = nil }
+                }
+                Text(playerMessage)
+                    .font(.caption).foregroundStyle(.secondary)
+                Text("This plays the Embedded HLS stream only inside the lab. It does not replace the regular Twitch player or guarantee ad-free playback.")
+                    .font(.footnote).foregroundStyle(.secondary)
             }
             Section("Results") {
                 if results.isEmpty {
@@ -710,6 +728,9 @@ private struct TwitchPlaybackLabView: View {
         let segmentIDs: Set<String>
         let hasAdMarkers: Bool
         let segmentCount: Int
+        let mediaSequence: String
+        let firstProgramDate: String
+        let lastProgramDate: String
     }
 
     /// Fetch the first video variant, not just the master playlist.
@@ -752,9 +773,43 @@ private struct TwitchPlaybackLabView: View {
             // Compare only path-level media identifiers; never retain or display signed URLs.
             return url.path
         }
+        func tag(_ prefix: String) -> String {
+            let value = playlist.components(separatedBy: .newlines)
+                .first(where: { $0.hasPrefix(prefix) })?
+                .dropFirst(prefix.count)
+            return value.map(String.init) ?? "unknown"
+        }
+        let dates = playlist.components(separatedBy: .newlines)
+            .filter { $0.hasPrefix("#EXT-X-PROGRAM-DATE-TIME:") }
+            .map { String($0.dropFirst("#EXT-X-PROGRAM-DATE-TIME:".count)) }
         return MediaSnapshot(label: label, segmentIDs: Set(segments),
                              hasAdMarkers: adMarkers.contains(where: { lower.contains($0) }),
-                             segmentCount: segments.count)
+                             segmentCount: segments.count,
+                             mediaSequence: tag("#EXT-X-MEDIA-SEQUENCE:"),
+                             firstProgramDate: dates.first ?? "unknown",
+                             lastProgramDate: dates.last ?? "unknown")
+    }
+
+    @MainActor
+    private func playEmbedded() async {
+        embeddedPlayer?.pause()
+        embeddedPlayer = nil
+        playerMessage = "Connecting directly to Embedded HLS…"
+        let name = channel.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard name.range(of: "^[A-Za-z0-9_]{3,25}$", options: .regularExpression) != nil else { return }
+        do {
+            let result = try await TwitchProxyPlaylistResolver.resolve(
+                channel: name, preference: "firefox", allowFallback: false,
+                directOnly: true, playerType: "embed", platform: "web"
+            )
+            let item = AVPlayerItem(url: result.url)
+            let player = AVPlayer(playerItem: item)
+            embeddedPlayer = player
+            player.play()
+            playerMessage = "Embedded playback requested. Check whether video plays continuously; this is not an ad-free verification."
+        } catch {
+            playerMessage = "Embedded playback unavailable (playlist could not be resolved)."
+        }
     }
 
     @MainActor
@@ -762,31 +817,48 @@ private struct TwitchPlaybackLabView: View {
         running = true
         results = []
         defer { running = false }
-        let testedChannel = channel.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard testedChannel.range(of: "^[A-Za-z0-9_]{3,25}$", options: .regularExpression) != nil else { return }
-        var snapshots: [MediaSnapshot] = []
-        for (label, playerType, platform) in identities {
-            do {
-                let result = try await TwitchProxyPlaylistResolver.resolve(
-                    channel: testedChannel, preference: "firefox",
-                    allowFallback: false, directOnly: true,
-                    playerType: playerType, platform: platform
-                )
-                let snapshot = try await inspect(result, label: label)
-                snapshots.append(snapshot)
-                results.append("\(label): \(snapshot.segmentCount) media segments; ad markers \(snapshot.hasAdMarkers ? "detected" : "not detected")")
-            } catch {
-                // Errors may contain signed URLs. Report a sanitized failure instead.
-                results.append("\(label): media playlist unavailable")
+        let name = channel.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard name.range(of: "^[A-Za-z0-9_]{3,25}$", options: .regularExpression) != nil else { return }
+        for round in 1...3 {
+            results.append("Round \(round) — concurrent session checks")
+            // All identities are resolved and inspected concurrently to minimize
+            // live-window drift. Never show signed playlist or segment URLs.
+            let snapshots = await withTaskGroup(of: (String, MediaSnapshot?).self) { group in
+                for (label, playerType, platform) in identities {
+                    group.addTask {
+                        do {
+                            let resolved = try await TwitchProxyPlaylistResolver.resolve(
+                                channel: name, preference: "firefox",
+                                allowFallback: false, directOnly: true,
+                                playerType: playerType, platform: platform
+                            )
+                            return (label, try await inspect(resolved, label: label))
+                        } catch {
+                            return (label, nil)
+                        }
+                    }
+                }
+                var collected: [String: MediaSnapshot] = [:]
+                for await (label, snapshot) in group {
+                    if let snapshot { collected[label] = snapshot }
+                }
+                return collected
+            }
+            for (label, _, _) in identities {
+                if let snapshot = snapshots[label] {
+                    results.append("\(label): \(snapshot.segmentCount) segments; ad markers \(snapshot.hasAdMarkers ? "yes" : "no"); sequence \(snapshot.mediaSequence); program time \(snapshot.firstProgramDate) to \(snapshot.lastProgramDate)")
+                } else {
+                    results.append("\(label): media playlist unavailable")
+                }
+            }
+            if let baseline = snapshots["Standard web"] {
+                for label in ["Frontpage", "Embedded"] {
+                    guard let candidate = snapshots[label] else { continue }
+                    results.append("Standard vs \(label): \(baseline.segmentIDs.intersection(candidate.segmentIDs).count) shared segment paths")
+                }
             }
         }
-        if let baseline = snapshots.first {
-            for snapshot in snapshots.dropFirst() {
-                let overlap = baseline.segmentIDs.intersection(snapshot.segmentIDs).count
-                results.append("Standard web vs \(snapshot.label): \(overlap) matching segment paths in current snapshots")
-            }
-        }
-        results.append("Snapshots are fetched sequentially, so live segments can change between checks. Matching paths do not prove identical video; absent markers do not prove ad-free playback.")
-        results.append("No video was downloaded or played by this test. The regular Twitch player was not changed.")
+        results.append("Three near-simultaneous rounds completed. Different segment paths or missing ad markers do not prove different video content or uninterrupted ad-free playback.")
+        results.append("The regular Twitch player was not changed.")
     }
 }
