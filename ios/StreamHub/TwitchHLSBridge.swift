@@ -157,6 +157,7 @@ final class TwitchHLSBridge {
                       (200...299).contains(http.statusCode) else {
                     throw URLError(.badServerResponse)
                 }
+                log("Proxy fetched \(url.pathExtension.isEmpty ? "media" : url.pathExtension): \(endpoint.label), \(data.count) bytes")
                 return (data, response)
             } catch {
                 lastError = error
