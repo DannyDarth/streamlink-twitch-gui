@@ -20,6 +20,8 @@ struct TwitchProxyPlayerView: View {
     @State private var relayDiagnostics: [String] = []
     @State private var lastDirectOnly = false
     @State private var testingAlternate = false
+    @State private var testingTwitchAdBlock = false
+    @State private var twitchAdBlockStatus = "Not tested"
     @AppStorage("streamhub.autoReturnOnTwitchAdMarker") private var autoReturnOnAdMarker = false
     @State private var returnedToWeb = false
     @State private var adEventReceived = false
@@ -68,6 +70,14 @@ struct TwitchProxyPlayerView: View {
                 Text(message).font(.footnote).foregroundStyle(.secondary)
                     .multilineTextAlignment(.center).padding(.horizontal)
             }
+            Button(testingTwitchAdBlock ? "Connecting to TwitchAdBlock…" : "Play with TwitchAdBlock engine (experimental)") {
+                Task { await playTwitchAdBlock() }
+            }
+            .buttonStyle(.borderedProminent)
+            .disabled(testingTwitchAdBlock || resolvingForwardProxy || testingAlternate)
+            Text("TwitchAdBlock: " + twitchAdBlockStatus)
+                .font(.caption.monospaced()).foregroundStyle(.secondary)
+                .textSelection(.enabled).padding(.horizontal)
             Button(resolvingForwardProxy ? "Connecting…" : "Play via Firefox / Chromium proxy") {
                 Task { await playForwardProxy() }
             }
@@ -143,6 +153,68 @@ struct TwitchProxyPlayerView: View {
         .navigationBarTitleDisplayMode(.inline)
         .task(id: proxyBase) { await start() }
         .onDisappear { playbackObserver?.invalidate(); playbackObserver = nil; player?.pause(); player = nil; hlsBridge?.stop(); hlsBridge = nil }
+    }
+
+    /// Built from the MIT-licensed level3tjg TwitchAdBlock request strategy,
+    /// without injecting its tweak into Twitch or altering StreamHub's UI.
+    @MainActor
+    private func playTwitchAdBlock() async {
+        testingTwitchAdBlock = true
+        twitchAdBlockStatus = "Resolving alternative Twitch playback…"
+        defer { testingTwitchAdBlock = false }
+        let configured = proxyBase.trimmingCharacters(in: .whitespacesAndNewlines)
+        let address = configured.isEmpty ? "https://luminous.level3tjg.me" : configured
+        guard let components = URLComponents(string: address),
+              components.scheme?.lowercased() == "https",
+              components.host != nil, components.user == nil,
+              components.password == nil,
+              components.query == nil, components.fragment == nil,
+              let base = components.url else {
+            twitchAdBlockStatus = "Proxy URL must be HTTPS; check Settings."
+            return
+        }
+        do {
+            let result = try await TwitchProxyPlaylistResolver.resolveTwitchAdBlock(
+                channel: channel, proxyBase: base
+            )
+            // Route playlists and segment URLs through the existing local bridge.
+            // Do not strip or skip video segments when ad markers are present.
+            let bridge = TwitchHLSBridge(preferred: result.endpoint, endpoints: [])
+            bridge.onDiagnostic = { entry in
+                relayDiagnostics.append(entry)
+                if relayDiagnostics.count > 20 { relayDiagnostics.removeFirst(relayDiagnostics.count - 20) }
+                if entry.hasPrefix("HLS metadata: markers="),
+                   !entry.hasPrefix("HLS metadata: markers=none") {
+                    twitchAdBlockStatus = "\(result.playbackIdentity): ad marker reported (not blocked)"
+                }
+            }
+            bridge.onAdMarkerDetected = {
+                adEventReceived = true
+                twitchAdBlockStatus = "\(result.playbackIdentity): stitched-ad marker detected"
+            }
+            let localURL = try await bridge.start(masterURL: result.url, masterPlaylist: result.playlist)
+            player?.pause()
+            playbackObserver?.invalidate()
+            playbackObserver = nil
+            hlsBridge?.stop()
+            hlsBridge = bridge
+            let item = AVPlayerItem(url: localURL)
+            playbackObserver = item.observe(\.status, options: [.initial, .new]) { observed, _ in
+                DispatchQueue.main.async {
+                    if observed.status == .failed {
+                        twitchAdBlockStatus = "Playback error: \(observed.error?.localizedDescription ?? "unknown")"
+                    }
+                }
+            }
+            let newPlayer = AVPlayer(playerItem: item)
+            player = newPlayer
+            loading = false
+            message = nil
+            twitchAdBlockStatus = "Playing via \(result.playbackIdentity); ad-free playback not guaranteed"
+            newPlayer.play()
+        } catch {
+            twitchAdBlockStatus = "Unavailable: \(error.localizedDescription). Existing playback unchanged."
+        }
     }
 
     @MainActor
