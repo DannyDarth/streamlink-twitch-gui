@@ -22,6 +22,7 @@ struct TwitchProxyPlayerView: View {
     @State private var testingAlternate = false
     @State private var testingTwitchAdBlock = false
     @State private var twitchAdBlockStatus = "Not tested"
+    @State private var twitchAdBlockProxyError: String?
     @AppStorage("streamhub.autoReturnOnTwitchAdMarker") private var autoReturnOnAdMarker = false
     @State private var returnedToWeb = false
     @State private var adEventReceived = false
@@ -78,6 +79,11 @@ struct TwitchProxyPlayerView: View {
             Text("TwitchAdBlock: " + twitchAdBlockStatus)
                 .font(.caption.monospaced()).foregroundStyle(.secondary)
                 .textSelection(.enabled).padding(.horizontal)
+            if let twitchAdBlockProxyError {
+                Text("Proxy attempt: " + twitchAdBlockProxyError)
+                    .font(.caption2.monospaced()).foregroundStyle(.orange)
+                    .textSelection(.enabled).padding(.horizontal)
+            }
             Button(resolvingForwardProxy ? "Connecting…" : "Play via Firefox / Chromium proxy") {
                 Task { await playForwardProxy() }
             }
@@ -161,6 +167,7 @@ struct TwitchProxyPlayerView: View {
     private func playTwitchAdBlock() async {
         testingTwitchAdBlock = true
         twitchAdBlockStatus = "Resolving alternative Twitch playback…"
+        twitchAdBlockProxyError = nil
         defer { testingTwitchAdBlock = false }
         let configured = proxyBase.trimmingCharacters(in: .whitespacesAndNewlines)
         let address = configured.isEmpty ? "https://luminous.level3tjg.me" : configured
@@ -177,6 +184,7 @@ struct TwitchProxyPlayerView: View {
             let result = try await TwitchProxyPlaylistResolver.resolveTwitchAdBlock(
                 channel: channel, proxyBase: base
             )
+            twitchAdBlockProxyError = result.proxyFailure
             // Route playlists and segment URLs through the existing local bridge.
             // Do not strip or skip video segments when ad markers are present.
             let bridge = TwitchHLSBridge(preferred: result.endpoint, endpoints: [])
