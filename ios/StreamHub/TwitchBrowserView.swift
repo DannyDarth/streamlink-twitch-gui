@@ -177,6 +177,35 @@ struct TwitchBrowserView: UIViewRepresentable {
             WKUserScript(source: channelTapScript, injectionTime: .atDocumentStart, forMainFrameOnly: true)
         )
         configuration.userContentController.add(context.coordinator, name: "streamhubChannelTap")
+        // Opt-in Twitch-specific player diagnostics. Observe ad state without
+        // modifying media requests or removing playlist segments.
+        if UserDefaults.standard.bool(forKey: "streamhub.twitchWebAdDiagnostics") {
+            let adObservationScript = """
+            (function() {
+              if (window.__streamhubAdObserverInstalled) return;
+              window.__streamhubAdObserverInstalled = true;
+              let last = '';
+              function scan() {
+                const text = (document.body?.innerText || '').slice(0, 30000);
+                const adVisible = /commercial break in progress|advertisement|ad break/i.test(text);
+                const video = document.querySelector('video');
+                const state = adVisible ? 'Possible Twitch ad UI visible'
+                    : video && !video.paused ? 'Video playing; no ad UI detected'
+                    : 'No active video or ad UI detected';
+                if (state === last) return;
+                last = state;
+                window.webkit?.messageHandlers?.streamhubAdState?.postMessage(state);
+              }
+              setInterval(scan, 2000);
+              document.addEventListener('playing', scan, true);
+            })();
+            """
+            configuration.userContentController.addUserScript(
+                WKUserScript(source: adObservationScript, injectionTime: .atDocumentEnd, forMainFrameOnly: true)
+            )
+            configuration.userContentController.add(context.coordinator, name: "streamhubAdState")
+        }
+
 
         let webView = WKWebView(frame: .zero, configuration: configuration)
         webView.isOpaque = false
@@ -227,6 +256,10 @@ struct TwitchBrowserView: UIViewRepresentable {
 
         func userContentController(_ userContentController: WKUserContentController,
                                    didReceive message: WKScriptMessage) {
+            if message.name == "streamhubAdState", let state = message.body as? String {
+                NSLog("StreamHub Twitch web player: %@", state)
+                return
+            }
             guard message.name == "streamhubChannelTap",
                   UserDefaults.standard.bool(forKey: "streamhub.twitchProxyEnabled"),
                   let channel = message.body as? String,
