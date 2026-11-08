@@ -12,12 +12,13 @@ enum TwitchProxyPlaylistResolver {
     }
 
     enum ResolutionError: LocalizedError {
-        case invalidChannel, tokenUnavailable, invalidPlaylist, noProxySucceeded(String)
+        case invalidChannel, tokenUnavailable, invalidPlaylist, httpFailure(String, Int), noProxySucceeded(String)
         var errorDescription: String? {
             switch self {
             case .invalidChannel: return "Invalid Twitch channel"
             case .tokenUnavailable: return "Twitch did not issue a playback token"
             case .invalidPlaylist: return "Server did not return a valid HLS playlist"
+            case .httpFailure(let stage, let code): return "\(stage) returned HTTP \(code)"
             case .noProxySucceeded(let details): return "All forward proxies failed: \(details)"
             }
         }
@@ -119,14 +120,20 @@ enum TwitchProxyPlaylistResolver {
         let playlistURL = components.url!
         if directOnly {
             var request = URLRequest(url: playlistURL)
+            request.timeoutInterval = 12
             request.setValue("https://player.twitch.tv", forHTTPHeaderField: "Referer")
             let (data, response) = try await URLSession.shared.data(for: request)
-            guard let http = response as? HTTPURLResponse, (200...299).contains(http.statusCode),
-                  let playlist = String(data: data, encoding: .utf8),
+            guard let http = response as? HTTPURLResponse else {
+                throw ResolutionError.invalidPlaylist
+            }
+            guard (200...299).contains(http.statusCode) else {
+                throw ResolutionError.httpFailure("HLS playlist", http.statusCode)
+            }
+            guard let playlist = String(data: data, encoding: .utf8),
                   playlist.trimmingCharacters(in: .whitespacesAndNewlines).hasPrefix("#EXTM3U") else {
                 throw ResolutionError.invalidPlaylist
             }
-            return Result(endpoint: TwitchForwardProxyDiagnostics.firefox, url: playlistURL, playlist: playlist, playbackIdentity: directOnly ? "direct Twitch HLS" : "forward proxy HLS", proxyFailure: nil)
+            return Result(endpoint: TwitchForwardProxyDiagnostics.firefox, url: playlistURL, playlist: playlist, playbackIdentity: "direct Twitch HLS", proxyFailure: nil)
         }
         var failures: [String] = []
         for endpoint in TwitchForwardProxyDiagnostics.ordered(preference: preference, allowFallback: allowFallback) {
@@ -179,8 +186,13 @@ enum TwitchProxyPlaylistResolver {
         request.setValue("kimne78kx3ncx6brgo4mv6wki5h1ko", forHTTPHeaderField: "Client-ID")
         request.httpBody = try JSONSerialization.data(withJSONObject: payload)
         let (data, response) = try await URLSession.shared.data(for: request)
-        guard let http = response as? HTTPURLResponse, (200...299).contains(http.statusCode),
-              let token = try JSONDecoder().decode(TokenResponse.self, from: data).data?.streamPlaybackAccessToken else {
+        guard let http = response as? HTTPURLResponse else {
+            throw ResolutionError.tokenUnavailable
+        }
+        guard (200...299).contains(http.statusCode) else {
+            throw ResolutionError.httpFailure("Playback token", http.statusCode)
+        }
+        guard let token = try JSONDecoder().decode(TokenResponse.self, from: data).data?.streamPlaybackAccessToken else {
             throw ResolutionError.tokenUnavailable
         }
         return token
