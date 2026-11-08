@@ -5,6 +5,7 @@ import WebKit
 /// viewer information, and channel playback without shipping API credentials.
 struct TwitchBrowserView: UIViewRepresentable {
     let url: URL
+    var allowedWebChannel: String? = nil
     var onChannelSelected: ((String) -> Void)?
 
     func makeCoordinator() -> Coordinator { Coordinator() }
@@ -186,6 +187,7 @@ struct TwitchBrowserView: UIViewRepresentable {
         webView.scrollView.contentInsetAdjustmentBehavior = .automatic
         context.coordinator.webView = webView
         context.coordinator.onChannelSelected = onChannelSelected
+        context.coordinator.allowedWebChannel = allowedWebChannel
         context.coordinator.currentRootURL = url
         context.coordinator.proxyEnabled = UserDefaults.standard.bool(forKey: "streamhub.twitchProxyEnabled")
         Task { @MainActor in
@@ -197,6 +199,7 @@ struct TwitchBrowserView: UIViewRepresentable {
 
     func updateUIView(_ webView: WKWebView, context: Context) {
         context.coordinator.onChannelSelected = onChannelSelected
+        context.coordinator.allowedWebChannel = allowedWebChannel
         context.coordinator.proxyEnabled = UserDefaults.standard.bool(forKey: "streamhub.twitchProxyEnabled")
         context.coordinator.syncProxySetting()
         if context.coordinator.currentRootURL != url {
@@ -210,6 +213,7 @@ struct TwitchBrowserView: UIViewRepresentable {
         var currentRootURL: URL?
         var onChannelSelected: ((String) -> Void)?
         var proxyEnabled = false
+        var allowedWebChannel: String?
         private var lastReportedChannel: String?
 
         func syncProxySetting() {
@@ -227,7 +231,8 @@ struct TwitchBrowserView: UIViewRepresentable {
                   UserDefaults.standard.bool(forKey: "streamhub.twitchProxyEnabled"),
                   let channel = message.body as? String,
                   channel.range(of: "^[A-Za-z0-9_]{3,25}$", options: .regularExpression) != nil else { return }
-            guard lastReportedChannel != channel else { return }
+            guard allowedWebChannel?.lowercased() != channel.lowercased(),
+                  lastReportedChannel != channel else { return }
             lastReportedChannel = channel
             DispatchQueue.main.async { [weak self] in self?.onChannelSelected?(channel) }
         }
@@ -251,6 +256,7 @@ struct TwitchBrowserView: UIViewRepresentable {
                 let reserved: Set<String> = ["directory", "search", "settings", "videos", "downloads", "subscriptions", "inventory", "wallet", "drops", "p", "login", "signup", "moderator", "popout", "clip", "clips", "collections", "products"]
                 if parts.count == 1, let channel = parts.first,
                    !reserved.contains(channel.lowercased()),
+                   allowedWebChannel?.lowercased() != channel.lowercased(),
                    channel.range(of: "^[A-Za-z0-9_]{3,25}$", options: .regularExpression) != nil {
                     decisionHandler(.cancel)
                     DispatchQueue.main.async { callback(channel) }
