@@ -205,18 +205,26 @@ private struct KickDirectoryView: View {
                 .padding()
                 Spacer()
             } else {
-                List {
-                    ForEach(visibleStreams) { stream in
-                        NavigationLink(destination: KickStreamPlayerView(stream: stream)) {
-                            KickStreamRow(stream: stream)
-                        }
-                            .listRowSeparator(.hidden)
+                ScrollView {
+                    LazyVGrid(columns: [
+                        GridItem(.flexible(), spacing: 12),
+                        GridItem(.flexible(), spacing: 12)
+                    ], alignment: .leading, spacing: 18) {
+                        ForEach(visibleStreams) { stream in
+                            NavigationLink(destination: KickStreamPlayerView(stream: stream)) {
+                                KickStreamCard(stream: stream)
+                            }
+                            .buttonStyle(.plain)
                             .task {
                                 await directory.loadMoreIfNeeded(current: stream)
                             }
+                        }
                     }
+                    .padding(.horizontal, 12)
+                    .padding(.top, 8)
+
                     if directory.loadingMore {
-                        HStack { Spacer(); ProgressView(); Spacer() }
+                        ProgressView().padding()
                     }
                     if let error = directory.error, !directory.streams.isEmpty {
                         Button(error + " — Retry") {
@@ -226,13 +234,14 @@ private struct KickDirectoryView: View {
                                 }
                             }
                         }
+                        .padding()
                     }
                     if visibleStreams.isEmpty && !directory.loading {
                         Text("No matching streams in loaded results.")
                             .foregroundStyle(.secondary)
+                            .padding()
                     }
                 }
-                .listStyle(.plain)
                 .refreshable { await directory.refresh() }
             }
         }
@@ -467,6 +476,50 @@ private struct KickCategoryBrowserView: View {
         }
         .navigationTitle(game.name)
         .navigationBarTitleDisplayMode(.inline)
+    }
+}
+
+private struct KickStreamCard: View {
+    let stream: KickStream
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            ZStack(alignment: .bottomLeading) {
+                AsyncImage(url: stream.thumbnail) { image in
+                    image.resizable().scaledToFill()
+                } placeholder: {
+                    Rectangle().fill(Color(uiColor: .secondarySystemBackground))
+                        .overlay(Image(systemName: "video").foregroundStyle(.secondary))
+                }
+                .frame(maxWidth: .infinity)
+                .aspectRatio(16.0 / 9.0, contentMode: .fit)
+                .clipped()
+
+                Text("\(stream.viewers.formatted()) viewers")
+                    .font(.caption2.weight(.semibold))
+                    .padding(.horizontal, 6)
+                    .padding(.vertical, 4)
+                    .background(.black.opacity(0.8), in: RoundedRectangle(cornerRadius: 4))
+                    .foregroundStyle(.white)
+                    .padding(6)
+            }
+            .aspectRatio(16.0 / 9.0, contentMode: .fit)
+            .clipShape(RoundedRectangle(cornerRadius: 8))
+
+            Text(stream.channel)
+                .font(.subheadline.weight(.bold))
+                .lineLimit(1)
+            Text(stream.title)
+                .font(.caption)
+                .foregroundStyle(.primary)
+                .lineLimit(2)
+            Text(stream.category)
+                .font(.caption2)
+                .foregroundStyle(.secondary)
+                .lineLimit(1)
+        }
+        .frame(maxWidth: .infinity, alignment: .topLeading)
+        .accessibilityElement(children: .combine)
     }
 }
 
