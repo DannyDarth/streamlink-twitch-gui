@@ -6,6 +6,7 @@ import WebKit
 struct TwitchBrowserView: UIViewRepresentable {
     let url: URL
     var allowedWebChannel: String? = nil
+    var playbackSuspended: Bool = false
     var onChannelSelected: ((String) -> Void)?
 
     func makeCoordinator() -> Coordinator { Coordinator() }
@@ -218,10 +219,11 @@ struct TwitchBrowserView: UIViewRepresentable {
         context.coordinator.onChannelSelected = onChannelSelected
         context.coordinator.allowedWebChannel = allowedWebChannel
         context.coordinator.currentRootURL = url
+        context.coordinator.playbackSuspended = playbackSuspended
         context.coordinator.proxyEnabled = UserDefaults.standard.bool(forKey: "streamhub.twitchEmbeddedPlayerEnabled")
         Task { @MainActor in
             await AdBlockingSettings.shared.configure(configuration.userContentController, forTwitch: true)
-            webView.load(URLRequest(url: url))
+            webView.load(URLRequest(url: playbackSuspended ? URL(string: "about:blank")! : url))
         }
         return webView
     }
@@ -231,9 +233,20 @@ struct TwitchBrowserView: UIViewRepresentable {
         context.coordinator.allowedWebChannel = allowedWebChannel
         context.coordinator.proxyEnabled = UserDefaults.standard.bool(forKey: "streamhub.twitchEmbeddedPlayerEnabled")
         context.coordinator.syncProxySetting()
+        if context.coordinator.playbackSuspended != playbackSuspended {
+            context.coordinator.playbackSuspended = playbackSuspended
+            if playbackSuspended {
+                // A hidden WKWebView can continue playing Twitch audio and ads.
+                // Unload its page entirely before the native player opens.
+                webView.stopLoading()
+                webView.loadHTMLString("", baseURL: nil)
+            } else {
+                webView.load(URLRequest(url: url))
+            }
+        }
         if context.coordinator.currentRootURL != url {
             context.coordinator.currentRootURL = url
-            webView.load(URLRequest(url: url))
+            if !playbackSuspended { webView.load(URLRequest(url: url)) }
         }
     }
 
@@ -242,6 +255,7 @@ struct TwitchBrowserView: UIViewRepresentable {
         var currentRootURL: URL?
         var onChannelSelected: ((String) -> Void)?
         var proxyEnabled = false
+        var playbackSuspended = false
         var allowedWebChannel: String?
         private var lastReportedChannel: String?
 
