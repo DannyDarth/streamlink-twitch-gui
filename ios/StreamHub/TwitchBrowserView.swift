@@ -223,7 +223,9 @@ struct TwitchBrowserView: UIViewRepresentable {
         context.coordinator.proxyEnabled = UserDefaults.standard.bool(forKey: "streamhub.twitchEmbeddedPlayerEnabled")
         Task { @MainActor in
             await AdBlockingSettings.shared.configure(configuration.userContentController, forTwitch: true)
-            webView.load(URLRequest(url: playbackSuspended ? URL(string: "about:blank")! : url))
+            if !context.coordinator.playbackSuspended {
+                webView.load(URLRequest(url: url))
+            }
         }
         return webView
     }
