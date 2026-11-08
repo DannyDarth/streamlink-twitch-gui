@@ -17,21 +17,37 @@ final class AdBlockingSettings {
     ]
     """
 
+    // Experimental client-side ad-request filtering only. Twitch also stitches
+    // advertisements into HLS playlists; these rules cannot remove those ads.
+    private let twitchClientAdRules = """
+    [
+      {"trigger":{"url-filter":"^https://edge\\\\.ads\\\\.twitch\\\\.tv/ads([/?]|$)","resource-type":["raw","script"],"if-domain":["*twitch.tv"]},"action":{"type":"block"}}
+    ]
+    """
+
     func configure(_ controller: WKUserContentController, forTwitch: Bool = false) async {
         controller.removeAllContentRuleLists()
-        guard UserDefaults.standard.bool(forKey: "streamhub.braveStyleFilteringEnabled") else { return }
-        do {
-            let list = try await WKContentRuleListStore.default().compileContentRuleList(
-                forIdentifier: "streamhub.braveStyleFiltering.v1",
-                encodedContentRuleList: rules
-            )
-            if let list {
-                controller.add(list)
-            } else {
-                NSLog("StreamHub experimental WebKit filtering returned no rule list")
+        if UserDefaults.standard.bool(forKey: "streamhub.braveStyleFilteringEnabled") {
+            do {
+                let list = try await WKContentRuleListStore.default().compileContentRuleList(
+                    forIdentifier: "streamhub.braveStyleFiltering.v1",
+                    encodedContentRuleList: rules
+                )
+                if let list { controller.add(list) }
+            } catch {
+                NSLog("StreamHub tracker filtering unavailable: %@", error.localizedDescription)
             }
-        } catch {
-            NSLog("StreamHub experimental WebKit filtering unavailable: %@", error.localizedDescription)
+        }
+        if forTwitch && UserDefaults.standard.bool(forKey: "streamhub.twitchClientAdFiltering") {
+            do {
+                let list = try await WKContentRuleListStore.default().compileContentRuleList(
+                    forIdentifier: "streamhub.twitchClientAdFiltering.v1",
+                    encodedContentRuleList: twitchClientAdRules
+                )
+                if let list { controller.add(list) }
+            } catch {
+                NSLog("StreamHub Twitch client ad filtering unavailable: %@", error.localizedDescription)
+            }
         }
     }
 }
