@@ -5,6 +5,7 @@ import AVKit
 struct TwitchProxyPlayerView: View {
     let channel: String
     @AppStorage("streamhub.twitchProxyURL") private var proxyBase = ""
+    @State private var activeProxy: URL?
     @State private var player: AVPlayer?
     @State private var message: String?
     @State private var loading = true
@@ -17,21 +18,28 @@ struct TwitchProxyPlayerView: View {
         URL(string: "https://www.twitch.tv/" + channel)!
     }
 
-    private var playlistURL: URL? {
-        guard let base = URLComponents(string: proxyBase.trimmingCharacters(in: .whitespacesAndNewlines)),
-              base.scheme?.lowercased() == "https",
-              let host = base.host, !host.isEmpty,
-              base.user == nil, base.password == nil, base.query == nil, base.fragment == nil else { return nil }
-        var components = base
-        components.path = base.path.trimmingCharacters(in: CharacterSet(charactersIn: "/")) == ""
-            ? "/playlist/\(channel).m3u8"
-            : base.path.trimmingCharacters(in: CharacterSet(charactersIn: "/")).withLeadingSlash + "/playlist/\(channel).m3u8"
-        components.queryItems = [
-            URLQueryItem(name: "platform", value: "web"),
-            URLQueryItem(name: "allow_source", value: "true"),
-            URLQueryItem(name: "allow_audio_only", value: "true")
-        ]
-        return components.url
+    private var proxyCandidates: [URL] {
+        let configured = proxyBase.trimmingCharacters(in: .whitespacesAndNewlines)
+        // Use the repository author's published HTTPS playlist endpoint as a
+        // fallback when no custom endpoint is set. No opaque tweak binary is embedded.
+        let raw = configured.isEmpty ? "https://luminous.level3tjg.me" : configured
+        guard let base = URLComponents(string: raw),
+              base.scheme?.lowercased() == "https", base.host != nil,
+              base.user == nil, base.password == nil,
+              base.query == nil, base.fragment == nil else { return [] }
+        let prefix = base.path.trimmingCharacters(in: CharacterSet(charactersIn: "/"))
+        let root = prefix.isEmpty ? "" : "/" + prefix
+        return [root + "/playlist/" + channel + ".m3u8",
+                root + "/playlist/" + channel].compactMap { path -> URL? in
+            var components = base
+            components.path = path
+            components.queryItems = [
+                URLQueryItem(name: "platform", value: "web"),
+                URLQueryItem(name: "allow_source", value: "true"),
+                URLQueryItem(name: "allow_audio_only", value: "true")
+            ]
+            return components.url
+        }
     }
 
     var body: some View {
@@ -63,7 +71,7 @@ struct TwitchProxyPlayerView: View {
                 .buttonStyle(.bordered)
             Link("Open on Twitch (normal playback)", destination: twitchURL)
                 .buttonStyle(.borderedProminent)
-            Text("Experimental: playlist proxies can fail or still contain ads. This player does not provide Twitch chat.")
+            Text("Experimental: Based on the TwitchAdBlock HLS proxy approach. Playback may fail or contain ads. Twitch chat is not included.")
                 .font(.caption).foregroundStyle(.secondary)
                 .padding(.horizontal)
             Spacer()
@@ -98,29 +106,36 @@ struct TwitchProxyPlayerView: View {
         player = nil
         loading = true
         message = nil
-        guard let url = playlistURL else {
+        guard !proxyCandidates.isEmpty else {
             loading = false
-            message = "Enter a valid HTTPS playlist proxy in Settings, or open the stream on Twitch."
+            message = "Enter a valid HTTPS playlist proxy URL in Settings."
             return
         }
-        do {
-            var request = URLRequest(url: url)
-            request.timeoutInterval = 12
-            let (data, response) = try await URLSession.shared.data(for: request)
-            guard let http = response as? HTTPURLResponse, (200...299).contains(http.statusCode),
-                  let text = String(data: data, encoding: .utf8),
-                  text.hasPrefix("#EXTM3U") else {
-                throw URLError(.badServerResponse)
+        var failures: [String] = []
+        for url in proxyCandidates {
+            do {
+                var request = URLRequest(url: url)
+                request.timeoutInterval = 12
+                let (data, response) = try await URLSession.shared.data(for: request)
+                guard let http = response as? HTTPURLResponse, (200...299).contains(http.statusCode),
+                      let text = String(data: data, encoding: .utf8),
+                      text.trimmingCharacters(in: .whitespacesAndNewlines).hasPrefix("#EXTM3U") else {
+                    throw URLError(.badServerResponse)
+                }
+                let avPlayer = AVPlayer(url: url)
+                activeProxy = url
+                player = avPlayer
+                loading = false
+                avPlayer.play()
+                return
+            } catch {
+                failures.append(error.localizedDescription)
             }
-            // AVPlayer fetches the playlist itself; no credentials are forwarded.
-            let avPlayer = AVPlayer(url: url)
-            player = avPlayer
-            loading = false
-            avPlayer.play()
-        } catch {
-            loading = false
-            message = "Proxy playlist unavailable: \(error.localizedDescription). Try another server or normal Twitch playback."
         }
+        loading = false
+        message = "HTTPS playlist proxy unavailable: " + failures.joined(separator: "; ") +
+            ". Try another server or use normal Twitch playback."
+
     }
 }
 
