@@ -1,5 +1,5 @@
 import Component from "@ember/component";
-import { set, getWithDefault } from "@ember/object";
+import { set, getWithDefault, observer } from "@ember/object";
 import { sort } from "@ember/object/computed";
 import { on } from "@ember/object/evented";
 import { run } from "@ember/runloop";
@@ -36,6 +36,12 @@ export default Component.extend( HotkeyMixin, /** @class SearchBarComponent */  
 
 	query: "",
 	reQuery: /^\S+/,
+
+	// Restore Kick directory when the last search character is deleted.
+	resetEmptyKickSearch: observer( "query", function() {
+		if ( this.query || !this.router.currentRouteName.startsWith( "kick" ) ) { return; }
+		this.router.transitionTo( "kick", { queryParams: { query: "" } } );
+	}),
 
 	filters,
 	filter: "all",
@@ -104,6 +110,11 @@ export default Component.extend( HotkeyMixin, /** @class SearchBarComponent */  
 		set( this, "showDropdown", false );
 		this.addRecord( query, filter );
 
+		if ( this.router.currentRouteName.startsWith( "kick" ) ) {
+			this.router.transitionTo( "kick", { queryParams: { query } } );
+			return;
+		}
+
 		this.router.transitionTo( "search", { queryParams: { filter, query } } );
 	},
 
@@ -154,11 +165,19 @@ export default Component.extend( HotkeyMixin, /** @class SearchBarComponent */  
 
 		clear() {
 			set( this, "query", "" );
+			if ( this.router.currentRouteName.startsWith( "kick" ) ) {
+				this.router.transitionTo( "kick", { queryParams: { query: "" } } );
+			}
 		},
 
 		submit() {
 			let query = this.query.trim();
 			let filter = this.filter;
+
+			if ( this.router.currentRouteName.startsWith( "kick" ) ) {
+				query = query.replace( /^https?:\/\/(?:www\.)?kick\.com\//i, "" )
+					.split( "/" )[0];
+			}
 
 			const stream = getStreamFromUrl( query );
 			if ( stream ) {
@@ -168,6 +187,8 @@ export default Component.extend( HotkeyMixin, /** @class SearchBarComponent */  
 
 			if ( this.reQuery.test( query ) ) {
 				this.doSearch( query, filter );
+			} else if ( this.router.currentRouteName.startsWith( "kick" ) ) {
+				this.router.transitionTo( "kick", { queryParams: { query: "" } } );
 			}
 		},
 

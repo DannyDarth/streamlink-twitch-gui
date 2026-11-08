@@ -1,0 +1,84 @@
+name: Build Windows StreamHub portable
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - feature/kick-clean-rebuild
+    paths:
+      - .github/workflows/build-windows-kick-installer.yml
+      - .github/workflows/install-wine.sh
+      - src/app/ui/routes/kick/controller.js
+      - src/app/ui/routes/kick/route.js
+      - src/app/ui/routes/kick-games/**
+      - src/app/ui/routes/kick-game/**
+      - src/app/router.js
+      - src/app/ui/routes/kick/template.hbs
+      - src/app/router.js
+      - src/app/ui/routes/settings/**
+      - src/app/ui/routes/kick-account/**
+      - src/app/ui/routes/kick-followed-channels/**
+      - src/app/ui/components/search-bar/**
+      - src/app/ui/components/main-menu/**
+      - src/app/ui/components/title-bar/**
+      - src/config/main.json
+
+concurrency:
+  group: kick-windows-installer-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  windows-installer:
+    name: Package Windows x64 portable
+    runs-on: ubuntu-24.04
+    timeout-minutes: 90
+    steps:
+      - name: Check out feature branch
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install Windows packaging tools
+        timeout-minutes: 40
+        env:
+          DEBIAN_FRONTEND: noninteractive
+        run: |
+          # Rewrite Ubuntu mirrors before the first apt update, including
+          # source definitions used by GitHub-hosted runners.
+          sudo find /etc/apt -type f -name '*.sources' -exec \
+            sed -i 's|azure.archive.ubuntu.com|archive.ubuntu.com|g' {} +
+          sudo find /etc/apt -type f -name '*.list' -exec \
+            sed -i 's|azure.archive.ubuntu.com|archive.ubuntu.com|g' {} +
+          sudo rm -rf /var/lib/apt/lists/*
+          sudo apt-get update
+          sudo apt-get install -y nsis
+          timeout --signal=TERM --kill-after=30s 35m ./.github/workflows/install-wine.sh
+
+      - name: Install project dependencies
+        run: yarn install --pure-lockfile --no-progress --non-interactive
+
+      - name: Compile production app
+        run: yarn run grunt clean:tmp_prod webpack:prod
+
+      - name: Package portable Windows 64-bit ZIP
+        run: yarn run grunt clean:dist dist:archive_win64
+
+      - name: Extract portable application for single-ZIP download
+        run: |
+          mkdir -p portable-app
+          unzip -q dist/*win64.zip -d portable-app
+          test -n "$(find portable-app -type f -print -quit)"
+
+      - name: Upload portable Windows app
+        uses: actions/upload-artifact@v4
+        with:
+          name: streamhub-windows-x64-portable
+          path: portable-app/
+          if-no-files-found: error
+          retention-days: 14

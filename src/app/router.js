@@ -8,6 +8,12 @@ export default EmberRouter.extend().map(function() {
 		this.route( "game", { path: "/:game_id" } );
 	});
 	this.route( "streams" );
+	this.route( "kick" );
+	this.route( "kickAccount", { path: "/kick/account" } );
+	this.route( "kickGames", { path: "/kick/games" } );
+	this.route( "kickGame", { path: "/kick/games/:category_slug" } );
+	this.route( "kickFollowedStreams", { path: "/kick/followed-streams" } );
+	this.route( "kickFollowedChannels", { path: "/kick/followed-channels" } );
 	this.route( "channel", { path: "/channel/:user_id" }, function() {
 		this.route( "teams" );
 		this.route( "settings" );
@@ -33,6 +39,7 @@ export default EmberRouter.extend().map(function() {
 		this.route( "hotkeys" );
 		this.route( "notifications" );
 		this.route( "channels" );
+		this.route( "kickAccount" );
 	});
 	this.route( "about" );
 });

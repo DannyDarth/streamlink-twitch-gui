@@ -1,0 +1,20 @@
+<main class="content content-channels">
+	<header><h2>Kick Account</h2></header>
+	<p>Sign in with your personal Kick developer app. On Windows, your login is encrypted for your user account and restored when you reopen the app.</p>
+	<p>Enter your Client Secret only in this local app. It is encrypted using Windows user-account protection for token refresh. Never share it or commit it to GitHub.</p>
+	<p><label for="kick-client-id">Client ID</label></p>
+	<p>{{input id="kick-client-id" value=clientId class="form-control"}}</p>
+	<p><label for="kick-redirect-uri">Redirect URI</label></p>
+	<p>{{input id="kick-redirect-uri" value=redirectUri class="form-control"}}</p>
+	<p><label for="kick-client-secret">Client Secret (encrypted on Windows for saved login)</label></p>
+	<p>{{input id="kick-client-secret" type="password" value=clientSecret class="form-control" autocomplete="off"}}</p>
+	<p><button type="button" class="btn btn-primary" disabled={{busy}} {{action "signIn"}}>Sign in with Kick</button>
+	<button type="button" class="btn btn-default" {{action "clearSecret"}}>Clear Secret</button>
+	<button type="button" class="btn btn-default" {{action "disconnect"}}>Disconnect</button></p>
+	<p role="status"><strong>Status:</strong> {{status}}</p>
+	{{#if accountName}}
+		<p><strong>Signed in as:</strong> {{accountName}}</p>
+	{{/if}}
+	<p>Account follows are not synced yet. This step tests account authorization only.</p>
+	<p>{{#link-to "kickFollowedChannels"}}Back to Kick Followed Channels{{/link-to}}</p>
+</main>
