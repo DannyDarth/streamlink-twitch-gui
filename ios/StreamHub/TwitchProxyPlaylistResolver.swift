@@ -7,6 +7,7 @@ enum TwitchProxyPlaylistResolver {
         let endpoint: TwitchForwardProxyDiagnostics.Endpoint
         let url: URL
         let playlist: String
+        let playbackIdentity: String
     }
 
     enum ResolutionError: LocalizedError {
@@ -27,6 +28,57 @@ enum TwitchProxyPlaylistResolver {
             let streamPlaybackAccessToken: Token?
         }
         let data: DataValue?
+    }
+
+    /// MIT-licensed level3tjg/TwitchAdBlock-inspired strategy: use a new random
+    /// platform identifier for the Twitch access-token request. Unlike its
+    /// Logos tweak, this runs entirely inside StreamHub's own URLSession.
+    static func resolveTwitchAdBlock(channel: String, proxyBase: URL) async throws -> Result {
+        guard channel.range(of: "^[A-Za-z0-9_]{3,25}$", options: .regularExpression) != nil else {
+            throw ResolutionError.invalidChannel
+        }
+        let token = try await playbackToken(
+            channel: channel, playerType: "site", platform: UUID().uuidString
+        )
+        var components = URLComponents(string: "https://usher.ttvnw.net/api/v2/channel/hls/\(channel.lowercased()).m3u8")!
+        components.queryItems = [
+            URLQueryItem(name: "sig", value: token.signature),
+            URLQueryItem(name: "token", value: token.value),
+            URLQueryItem(name: "allow_source", value: "true"),
+            URLQueryItem(name: "allow_audio_only", value: "true"),
+            URLQueryItem(name: "supported_codecs", value: "h264"),
+            URLQueryItem(name: "p", value: String(Int.random(in: 1...999999)))
+        ]
+        guard let url = components.url else { throw ResolutionError.invalidPlaylist }
+        // The upstream project supports its own Luminous URL form. Test it first
+        // and fall back to the direct randomized-platform manifest if unavailable.
+        var proxyComponents = URLComponents(url: proxyBase, resolvingAgainstBaseURL: false)
+        let prefix = proxyComponents?.path.trimmingCharacters(in: CharacterSet(charactersIn: "/")) ?? ""
+        proxyComponents?.path = (prefix.isEmpty ? "" : "/" + prefix) + "/playlist/" + channel.lowercased() + ".m3u8"
+        proxyComponents?.queryItems = nil
+        let candidates: [(String, URL)] = [
+            ("TwitchAdBlock HTTPS proxy", proxyComponents?.url),
+            ("randomized Twitch token", url)
+        ].compactMap { title, target in target.map { (title, $0) } }
+        var errors: [String] = []
+        for (identity, candidate) in candidates {
+            do {
+                var request = URLRequest(url: candidate)
+                request.timeoutInterval = 12
+                request.setValue("https://player.twitch.tv", forHTTPHeaderField: "Referer")
+                let (data, response) = try await URLSession.shared.data(for: request)
+                guard let http = response as? HTTPURLResponse, (200...299).contains(http.statusCode),
+                      let playlist = String(data: data, encoding: .utf8),
+                      playlist.trimmingCharacters(in: .whitespacesAndNewlines).hasPrefix("#EXTM3U") else {
+                    throw ResolutionError.invalidPlaylist
+                }
+                return Result(endpoint: TwitchForwardProxyDiagnostics.firefox,
+                              url: candidate, playlist: playlist, playbackIdentity: identity)
+            } catch {
+                errors.append("\(identity): \(error.localizedDescription)")
+            }
+        }
+        throw ResolutionError.noProxySucceeded(errors.joined(separator: "; "))
     }
 
     static func resolve(channel: String, preference: String, allowFallback: Bool, directOnly: Bool = false, playerType: String = "site", platform: String = "web") async throws -> Result {
@@ -55,7 +107,7 @@ enum TwitchProxyPlaylistResolver {
                   playlist.trimmingCharacters(in: .whitespacesAndNewlines).hasPrefix("#EXTM3U") else {
                 throw ResolutionError.invalidPlaylist
             }
-            return Result(endpoint: TwitchForwardProxyDiagnostics.firefox, url: playlistURL, playlist: playlist)
+            return Result(endpoint: TwitchForwardProxyDiagnostics.firefox, url: playlistURL, playlist: playlist, playbackIdentity: directOnly ? "direct Twitch HLS" : "forward proxy HLS")
         }
         var failures: [String] = []
         for endpoint in TwitchForwardProxyDiagnostics.ordered(preference: preference, allowFallback: allowFallback) {
