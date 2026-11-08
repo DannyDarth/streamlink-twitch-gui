@@ -25,7 +25,11 @@ final class AdBlockingSettings {
                 forIdentifier: "streamhub.braveStyleFiltering.v1",
                 encodedContentRuleList: rules
             )
-            controller.add(list)
+            if let list {
+                controller.add(list)
+            } else {
+                NSLog("StreamHub experimental WebKit filtering returned no rule list")
+            }
         } catch {
             NSLog("StreamHub experimental WebKit filtering unavailable: %@", error.localizedDescription)
         }
