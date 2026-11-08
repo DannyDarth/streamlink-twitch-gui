@@ -4,6 +4,7 @@ struct SettingsView: View {
     @State private var proxyProbeResults: [String] = []
     @State private var probing = false
 
+    @AppStorage("streamhub.braveStyleFilteringEnabled") private var braveStyleFilteringEnabled = false
     @AppStorage("streamhub.twitchProxyEnabled") private var twitchProxyEnabled = false
     @AppStorage("streamhub.twitchProxyURL") private var twitchProxyURL = ""
     @AppStorage("streamhub.twitchForwardProxyPreference") private var forwardProxyPreference = "firefox"
@@ -25,6 +26,12 @@ struct SettingsView: View {
                         .font(.footnote)
                         .foregroundStyle(.orange)
                 }
+            }
+            Section("Experimental Twitch WebKit filtering") {
+                Toggle("Brave-inspired tracker filtering", isOn: $braveStyleFilteringEnabled)
+                Text("Applies limited third-party tracker rules to the Twitch website. This is not Brave Shields and does not block Twitch HLS commercial breaks. Restart StreamHub after changing this setting. To test website playback, turn off Use proxy player for Twitch streams above.")
+                    .font(.footnote)
+                    .foregroundStyle(.secondary)
             }
             Section("HTTP forward proxy diagnostics") {
                 Picker("Preferred proxy", selection: $forwardProxyPreference) {
