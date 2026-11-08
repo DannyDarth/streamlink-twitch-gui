@@ -16,6 +16,7 @@ struct TwitchProxyPlayerView: View {
     @State private var resolvingForwardProxy = false
     @State private var playbackDiagnostics: String?
     @State private var relayDiagnostics: [String] = []
+    @State private var lastDirectOnly = false
     @State private var playbackObserver: NSKeyValueObservation?
 
     private var twitchURL: URL {
@@ -70,6 +71,11 @@ struct TwitchProxyPlayerView: View {
             }
             .buttonStyle(.bordered)
             .disabled(resolvingForwardProxy)
+            Button("Reconnect current HLS stream") {
+                Task { await playForwardProxy(directOnly: lastDirectOnly) }
+            }
+            .buttonStyle(.bordered)
+            .disabled(resolvingForwardProxy)
             Button("Test Firefox / Chromium HLS playlist") {
                 Task { await testForwardProxyPlaylist() }
             }
@@ -115,6 +121,7 @@ struct TwitchProxyPlayerView: View {
     @MainActor
     private func playForwardProxy(directOnly: Bool = false) async {
         resolvingForwardProxy = true
+        lastDirectOnly = directOnly
         forwardProxyStatus = directOnly ? "Testing direct-only HLS relay (no proxy)…" : "Connecting to Firefox / Chromium HLS proxy…"
         defer { resolvingForwardProxy = false }
         do {
