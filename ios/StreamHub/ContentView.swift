@@ -28,17 +28,20 @@ struct ContentView: View {
                 }
             }
             .navigationTitle("StreamHub")
-            .navigationBarTitleDisplayMode(.inline)
+            .navigationBarTitleDisplayMode(.large)
             .sheet(isPresented: $showingFollowed) {
                 NavigationStack { FollowedView() }
             }
             .toolbar {
-                ToolbarItem(placement: .principal) {
-                    HStack(spacing: 12) {
-                        Text("StreamHub").font(.headline)
-                        Button("Followed") { showingFollowed = true }
+                ToolbarItem(placement: .navigationBarTrailing) {
+                    Button { showingFollowed = true } label: {
+                        Text("Followed")
                             .font(.subheadline.weight(.semibold))
+                            .padding(.horizontal, 12)
+                            .padding(.vertical, 7)
+                            .background(Color(uiColor: .secondarySystemFill), in: Capsule())
                     }
+                    .accessibilityLabel("Followed channels")
                 }
                 ToolbarItem(placement: .navigationBarTrailing) {
                     NavigationLink(destination: SettingsView()) {
