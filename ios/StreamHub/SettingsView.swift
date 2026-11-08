@@ -5,6 +5,8 @@ struct SettingsView: View {
 
     @AppStorage("streamhub.twitchProxyEnabled") private var twitchProxyEnabled = false
     @AppStorage("streamhub.twitchProxyURL") private var twitchProxyURL = ""
+    @AppStorage("streamhub.twitchForwardProxyPreference") private var forwardProxyPreference = "firefox"
+    @AppStorage("streamhub.twitchForwardProxyFallback") private var forwardProxyFallback = true
 
     var body: some View {
         Form {
@@ -22,6 +24,20 @@ struct SettingsView: View {
                         .font(.footnote)
                         .foregroundStyle(.orange)
                 }
+            }
+            Section("PerfProd forward proxies (preparation)") {
+                Picker("Preferred proxy", selection: $forwardProxyPreference) {
+                    Text("Firefox first").tag("firefox")
+                    Text("Chromium first").tag("chromium")
+                }
+                Toggle("Try second proxy if first fails", isOn: $forwardProxyFallback)
+                Text("Firefox: firefox.api.cdn-perfprod.com:2023")
+                    .font(.caption).textSelection(.enabled)
+                Text("Chromium: chromium.api.cdn-perfprod.com:2023")
+                    .font(.caption).textSelection(.enabled)
+                Text("These are HTTP forward proxies, not HTTPS playlist endpoints. This saves the preferred order for a future native proxy transport; it does not yet route video traffic through them. The HTTPS playlist proxy player above remains the only active proxy playback mode.")
+                    .font(.footnote)
+                    .foregroundStyle(.secondary)
             }
             Section("Playback") {
                 Toggle("Block web advertisements", isOn: $adBlocking.enabled)
