@@ -850,25 +850,6 @@ private struct TwitchPlaybackLabView: View {
     }
 }
 
-// AVPlayerViewController exposes the native iOS Picture-in-Picture control.
-// Keep the existing HLS resolver and AVPlayer lifecycle unchanged.
-private struct TwitchPictureInPicturePlayer: UIViewControllerRepresentable {
-    let player: AVPlayer
-
-    func makeUIViewController(context: Context) -> AVPlayerViewController {
-        let controller = AVPlayerViewController()
-        controller.player = player
-        controller.showsPlaybackControls = true
-        controller.allowsPictureInPicturePlayback = true
-        controller.canStartPictureInPictureAutomaticallyFromInline = true
-        return controller
-    }
-
-    func updateUIViewController(_ controller: AVPlayerViewController, context: Context) {
-        if controller.player !== player { controller.player = player }
-    }
-}
-
 private struct TwitchEmbeddedPlayerView: View {
     let channel: String
     var onReturnToWebPlayer: (() -> Void)?
@@ -917,7 +898,7 @@ private struct TwitchEmbeddedPlayerView: View {
 
                 Spacer(minLength: 0)
                 if let player {
-                    TwitchPictureInPicturePlayer(player: player)
+                    VideoPlayer(player: player)
                         .aspectRatio(16.0 / 9.0, contentMode: .fit)
                 } else if loading {
                     ProgressView("Connecting to stream…")
@@ -972,8 +953,6 @@ private struct TwitchEmbeddedPlayerView: View {
                 directOnly: true, playerType: "embed", platform: "web"
             )
             guard !Task.isCancelled, connectionID == attemptID else { return }
-            try? AVAudioSession.sharedInstance().setCategory(.playback, mode: .moviePlayback)
-            try? AVAudioSession.sharedInstance().setActive(true)
             let item = AVPlayerItem(url: result.url)
             let newPlayer = AVPlayer(playerItem: item)
             player = newPlayer
