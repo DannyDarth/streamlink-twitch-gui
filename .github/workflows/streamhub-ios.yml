@@ -5,6 +5,7 @@ on:
   push:
     branches:
       - feature/kick-clean-rebuild
+      - feature/ios-twitchadblock-rebuild
     paths:
       - 'ios/**'
       - '.github/workflows/streamhub-ios.yml'
