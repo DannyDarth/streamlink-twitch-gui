@@ -179,18 +179,11 @@ private struct TwitchDirectoryView: View {
                 proxyChannel = TwitchChannelSelection(value: channel)
             })
                 .id(browserResetID)
-                .sheet(item: $proxyChannel) { channel in
-                    NavigationStack {
-                        TwitchEmbeddedPlayerView(channel: channel.value, onReturnToWebPlayer: {
-                            proxyChannel = nil
-                            webChannel = channel.value
-                        })
-                            .toolbar {
-                                ToolbarItem(placement: .navigationBarTrailing) {
-                                    Button("Done") { proxyChannel = nil }
-                                }
-                            }
-                    }
+                .fullScreenCover(item: $proxyChannel) { channel in
+                    TwitchEmbeddedPlayerView(channel: channel.value, onReturnToWebPlayer: {
+                        proxyChannel = nil
+                        webChannel = channel.value
+                    })
                 }
         }
     }
@@ -867,37 +860,70 @@ private struct TwitchEmbeddedPlayerView: View {
     @State private var connectionID = UUID()
 
     var body: some View {
-        VStack(spacing: 16) {
-            if let player {
-                VideoPlayer(player: player)
-                    .aspectRatio(16.0 / 9.0, contentMode: .fit)
-            } else if loading {
-                ProgressView("Connecting…")
-                    .frame(maxWidth: .infinity, minHeight: 210)
-            }
-            Text(status)
-                .font(.caption)
-                .foregroundStyle(.secondary)
-                .multilineTextAlignment(.center)
+        ZStack {
+            Color.black.ignoresSafeArea()
+            VStack(spacing: 0) {
+                HStack {
+                    Button {
+                        stop()
+                        dismiss()
+                    } label: {
+                        Label("Back", systemImage: "chevron.left")
+                    }
+                    .accessibilityLabel("Back to Twitch streams")
+                    Spacer()
+                    Text(channel)
+                        .font(.headline)
+                        .lineLimit(1)
+                    Spacer()
+                    Menu {
+                        Button("Retry playback", systemImage: "arrow.clockwise") {
+                            Task { await connect() }
+                        }
+                        Button("Use regular Twitch player", systemImage: "globe") {
+                            stop()
+                            onReturnToWebPlayer?()
+                            dismiss()
+                        }
+                    } label: {
+                        Image(systemName: "ellipsis.circle")
+                            .font(.title3)
+                            .frame(minWidth: 44, minHeight: 44)
+                    }
+                    .accessibilityLabel("Playback options")
+                }
+                .foregroundStyle(.white)
                 .padding(.horizontal)
-            Button("Use regular Twitch player") {
-                stop()
-                onReturnToWebPlayer?()
-                dismiss()
+                .padding(.top, 8)
+
+                Spacer(minLength: 0)
+                if let player {
+                    VideoPlayer(player: player)
+                        .aspectRatio(16.0 / 9.0, contentMode: .fit)
+                } else if loading {
+                    ProgressView("Connecting to stream…")
+                        .tint(.white)
+                        .foregroundStyle(.white)
+                        .frame(maxWidth: .infinity, minHeight: 210)
+                } else {
+                    VStack(spacing: 12) {
+                        Text(status)
+                            .foregroundStyle(.white)
+                            .multilineTextAlignment(.center)
+                        Button("Retry playback") { Task { await connect() } }
+                            .buttonStyle(.borderedProminent)
+                        Button("Use regular Twitch player") {
+                            stop()
+                            onReturnToWebPlayer?()
+                            dismiss()
+                        }
+                            .buttonStyle(.bordered)
+                    }
+                    .padding()
+                }
+                Spacer(minLength: 0)
             }
-            .buttonStyle(.borderedProminent)
-            Button("Retry Embedded playback") { Task { await connect() } }
-                .buttonStyle(.bordered)
-            Text("Experimental direct iPhone playback. Ad-free viewing is not guaranteed; no external proxy or PC is used.")
-                .font(.footnote)
-                .foregroundStyle(.secondary)
-                .multilineTextAlignment(.center)
-                .padding(.horizontal)
-            Spacer()
         }
-        .padding(.top)
-        .navigationTitle(channel)
-        .navigationBarTitleDisplayMode(.inline)
         .task { await connect() }
         .onDisappear { stop() }
     }
