@@ -151,6 +151,16 @@ struct TwitchProxyPlayerView: View {
             bridge.onDiagnostic = { entry in
                 relayDiagnostics.append(entry)
                 if relayDiagnostics.count > 20 { relayDiagnostics.removeFirst(relayDiagnostics.count - 20) }
+                // Use the same delivered diagnostic event visible on screen as a
+                // secondary trigger. This avoids relying solely on the one-shot
+                // marker callback when playlist requests race player setup.
+                if entry.hasPrefix("HLS metadata: markers="),
+                   !entry.hasPrefix("HLS metadata: markers=none"),
+                   autoReturnOnAdMarker, !returnedToWeb {
+                    returnedToWeb = true
+                    forwardProxyStatus = "Ad metadata detected; returning to regular Twitch playback…"
+                    avReturnToWebPlayer()
+                }
             }
             let localURL = try await bridge.start(masterURL: result.url, masterPlaylist: result.playlist)
             player?.pause()
@@ -179,7 +189,7 @@ struct TwitchProxyPlayerView: View {
             forwardProxyStatus = directOnly
                 ? "DIRECT-ONLY DIAGNOSTIC: playlists and media bypass both proxies. Ads are not blocked."
                 : "Playing through local HLS relay (\(result.endpoint.label) first). Ads are not guaranteed to be removed."
-            avPlayer.play()
+            if !returnedToWeb { avPlayer.play() }
         } catch {
             forwardProxyStatus = "Forward proxy playback failed: \(error.localizedDescription)"
         }
