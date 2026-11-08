@@ -1,6 +1,9 @@
 *THIS IS A MODIFIED VERSION FO STREAMLINK TWITCH GUI*
 Mainly for personal use, but if anyone wants to improve or add features, you're more than welcome.
 
+<img width="903" height="599" alt="image" src="https://github.com/user-attachments/assets/5561e81b-d98c-423c-942b-fac619c7ecdc" />
+
+
 [Streamlink Twitch GUI][Website]
 ===
 [![Supported platforms][badge-platforms]][Releases] [![Latest release][badge-release]][Releases] [![Open issues][badge-issues]][Issues] [![Gitter IRC][badge-gitter]][Gitter] [![Build status][badge-actions]][Github-actions] [![Code coverage][badge-codecov]][Codecov]
