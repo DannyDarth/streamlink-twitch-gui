@@ -14,6 +14,8 @@ struct TwitchProxyPlayerView: View {
     @AppStorage("streamhub.twitchForwardProxyFallback") private var forwardProxyFallback = true
     @State private var forwardProxyStatus: String?
     @State private var resolvingForwardProxy = false
+    @State private var playbackDiagnostics: String?
+    @State private var playbackObserver: NSKeyValueObservation?
 
     private var twitchURL: URL {
         URL(string: "https://www.twitch.tv/" + channel)!
@@ -73,6 +75,14 @@ struct TwitchProxyPlayerView: View {
                     .multilineTextAlignment(.center)
                     .padding(.horizontal)
             }
+            if let playbackDiagnostics {
+                Text(playbackDiagnostics)
+                    .font(.caption.monospaced())
+                    .foregroundStyle(.orange)
+                    .multilineTextAlignment(.leading)
+                    .textSelection(.enabled)
+                    .padding(.horizontal)
+            }
             Button("Retry HTTPS playlist proxy") { Task { await start() } }
                 .buttonStyle(.bordered)
             Link("Open on Twitch (normal playback)", destination: twitchURL)
@@ -86,7 +96,7 @@ struct TwitchProxyPlayerView: View {
         .navigationTitle(channel)
         .navigationBarTitleDisplayMode(.inline)
         .task(id: proxyBase) { await start() }
-        .onDisappear { player?.pause(); player = nil; hlsBridge?.stop(); hlsBridge = nil }
+        .onDisappear { playbackObserver?.invalidate(); playbackObserver = nil; player?.pause(); player = nil; hlsBridge?.stop(); hlsBridge = nil }
     }
 
     @MainActor
@@ -108,7 +118,23 @@ struct TwitchProxyPlayerView: View {
             player?.pause()
             hlsBridge?.stop()
             hlsBridge = bridge
-            let avPlayer = AVPlayer(url: localURL)
+            let item = AVPlayerItem(url: localURL)
+            playbackObserver?.invalidate()
+            playbackDiagnostics = "Waiting for AVPlayer to load HLS media…"
+            playbackObserver = item.observe(\.status, options: [.initial, .new]) { observed, _ in
+                DispatchQueue.main.async {
+                    switch observed.status {
+                    case .readyToPlay:
+                        playbackDiagnostics = "AVPlayer media ready. Waiting for first video frame…"
+                    case .failed:
+                        let details = observed.error?.localizedDescription ?? "Unknown AVPlayer error"
+                        let underlying = (observed.error as NSError?)?.userInfo[NSUnderlyingErrorKey]
+                        playbackDiagnostics = "AVPlayer failed: \(details)" + (underlying.map { " | \($0)" } ?? "")
+                    default: break
+                    }
+                }
+            }
+            let avPlayer = AVPlayer(playerItem: item)
             player = avPlayer
             loading = false
             message = nil
@@ -130,7 +156,7 @@ struct TwitchProxyPlayerView: View {
                 preference: forwardProxyPreference,
                 allowFallback: forwardProxyFallback
             )
-            forwardProxyStatus = "\(result.endpoint.label) returned a valid HLS playlist. Media playback via HTTP forward proxy is not implemented yet."
+            forwardProxyStatus = "\(result.endpoint.label) returned a valid HLS playlist. Use Play via Firefox / Chromium proxy to test playback."
         } catch {
             forwardProxyStatus = error.localizedDescription
         }
