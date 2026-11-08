@@ -149,6 +149,27 @@ struct TwitchBrowserView: UIViewRepresentable {
               window.webkit.messageHandlers.streamhubChannelTap.postMessage(parts[0]);
             }
           }, true);
+          let lastRoute = location.pathname;
+          function notifyRoute() {
+            const path = location.pathname;
+            if (path === lastRoute) return;
+            lastRoute = path;
+            if (!window.__streamhubProxyEnabled) return;
+            const parts = path.split('/').filter(Boolean);
+            if (parts.length !== 1 || !/^[a-zA-Z0-9_]{3,25}$/.test(parts[0]) ||
+                reserved.has(parts[0].toLowerCase())) return;
+            window.webkit?.messageHandlers?.streamhubChannelTap?.postMessage(parts[0]);
+          }
+          for (const method of ['pushState', 'replaceState']) {
+            const original = history[method];
+            history[method] = function() {
+              const result = original.apply(this, arguments);
+              notifyRoute();
+              return result;
+            };
+          }
+          window.addEventListener('popstate', notifyRoute);
+          setInterval(notifyRoute, 400);
         })();
         """
         configuration.userContentController.addUserScript(
@@ -163,10 +184,10 @@ struct TwitchBrowserView: UIViewRepresentable {
         webView.navigationDelegate = context.coordinator
         webView.allowsBackForwardNavigationGestures = true
         webView.scrollView.contentInsetAdjustmentBehavior = .automatic
-        webView.evaluateJavaScript("window.__streamhubProxyEnabled = " + (UserDefaults.standard.bool(forKey: "streamhub.twitchProxyEnabled") ? "true" : "false") + ";", completionHandler: nil)
         context.coordinator.webView = webView
         context.coordinator.onChannelSelected = onChannelSelected
         context.coordinator.currentRootURL = url
+        context.coordinator.proxyEnabled = UserDefaults.standard.bool(forKey: "streamhub.twitchProxyEnabled")
         Task { @MainActor in
             await AdBlockingSettings.shared.configure(configuration.userContentController)
             webView.load(URLRequest(url: url))
@@ -176,8 +197,8 @@ struct TwitchBrowserView: UIViewRepresentable {
 
     func updateUIView(_ webView: WKWebView, context: Context) {
         context.coordinator.onChannelSelected = onChannelSelected
-        let enabled = UserDefaults.standard.bool(forKey: "streamhub.twitchProxyEnabled")
-        webView.evaluateJavaScript("window.__streamhubProxyEnabled = " + (enabled ? "true" : "false") + ";", completionHandler: nil)
+        context.coordinator.proxyEnabled = UserDefaults.standard.bool(forKey: "streamhub.twitchProxyEnabled")
+        context.coordinator.syncProxySetting()
         if context.coordinator.currentRootURL != url {
             context.coordinator.currentRootURL = url
             webView.load(URLRequest(url: url))
@@ -188,6 +209,17 @@ struct TwitchBrowserView: UIViewRepresentable {
         weak var webView: WKWebView?
         var currentRootURL: URL?
         var onChannelSelected: ((String) -> Void)?
+        var proxyEnabled = false
+        private var lastReportedChannel: String?
+
+        func syncProxySetting() {
+            guard let webView else { return }
+            webView.evaluateJavaScript("window.__streamhubProxyEnabled = " + (proxyEnabled ? "true" : "false") + ";", completionHandler: nil)
+        }
+
+        func webView(_ webView: WKWebView, didFinish navigation: WKNavigation!) {
+            syncProxySetting()
+        }
 
         func userContentController(_ userContentController: WKUserContentController,
                                    didReceive message: WKScriptMessage) {
@@ -195,7 +227,13 @@ struct TwitchBrowserView: UIViewRepresentable {
                   UserDefaults.standard.bool(forKey: "streamhub.twitchProxyEnabled"),
                   let channel = message.body as? String,
                   channel.range(of: "^[A-Za-z0-9_]{3,25}$", options: .regularExpression) != nil else { return }
+            guard lastReportedChannel != channel else { return }
+            lastReportedChannel = channel
             DispatchQueue.main.async { [weak self] in self?.onChannelSelected?(channel) }
+        }
+
+        func webView(_ webView: WKWebView, didStartProvisionalNavigation navigation: WKNavigation!) {
+            lastReportedChannel = nil
         }
 
         func webView(_ webView: WKWebView, decidePolicyFor navigationAction: WKNavigationAction,
@@ -207,7 +245,7 @@ struct TwitchBrowserView: UIViewRepresentable {
             let host = destination.host?.lowercased() ?? ""
             if UserDefaults.standard.bool(forKey: "streamhub.twitchProxyEnabled"),
                let callback = onChannelSelected,
-               navigationAction.navigationType == .linkActivated,
+               navigationAction.targetFrame?.isMainFrame == true,
                host == "www.twitch.tv" || host == "m.twitch.tv" || host == "twitch.tv" {
                 let parts = destination.pathComponents.filter { $0 != "/" }
                 let reserved: Set<String> = ["directory", "search", "settings", "videos", "downloads", "subscriptions", "inventory", "wallet", "drops", "p", "login", "signup", "moderator", "popout", "clip", "clips", "collections", "products"]
