@@ -20,7 +20,9 @@ SetCompressor /SOLID lzma
 
 Section "Install"
   SetOutPath "$INSTDIR"
-  File /r "${APP_SOURCE}\\*"\n  ; Keep a dedicated icon installed for shortcuts and Windows Installed Apps.\n  File /oname=StreamHub.ico "icons\\icon-16-32-48-256.ico"
+  File /r "${APP_SOURCE}\\*" 
+  ; Keep a dedicated icon installed for shortcuts and Windows Installed Apps.
+  File /oname=StreamHub.ico "icons\\icon-16-32-48-256.ico"
   WriteUninstaller "$INSTDIR\\Uninstall.exe"
   CreateDirectory "$SMPROGRAMS\\StreamHub"
   CreateShortcut "$SMPROGRAMS\\StreamHub\\StreamHub.lnk" "$INSTDIR\\streamlink-twitch-gui.exe" "" "$INSTDIR\\StreamHub.ico" 0
