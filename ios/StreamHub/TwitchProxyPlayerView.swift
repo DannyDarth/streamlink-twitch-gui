@@ -20,6 +20,8 @@ struct TwitchProxyPlayerView: View {
     @State private var lastDirectOnly = false
     @AppStorage("streamhub.autoReturnOnTwitchAdMarker") private var autoReturnOnAdMarker = false
     @State private var returnedToWeb = false
+    @State private var adEventReceived = false
+    @State private var transitionDiagnostic = "No ad event received by player view"
     @State private var playbackObserver: NSKeyValueObservation?
 
     private var twitchURL: URL {
@@ -78,6 +80,15 @@ struct TwitchProxyPlayerView: View {
                 Text("Experimental auto-return enabled: when HLS ad metadata is detected, StreamHub opens this channel in the regular Twitch web player. This does not guarantee ad-free playback.")
                     .font(.caption).foregroundStyle(.secondary).padding(.horizontal)
             }
+            Button("Return to regular Twitch player (manual test)") {
+                transitionDiagnostic = "Manual return requested"
+                avReturnToWebPlayer()
+            }
+            .buttonStyle(.borderedProminent)
+            Text(transitionDiagnostic)
+                .font(.caption2.monospaced())
+                .foregroundStyle(.secondary)
+                .textSelection(.enabled)
             Button("Reconnect current HLS stream") {
                 Task { await playForwardProxy(directOnly: lastDirectOnly) }
             }
@@ -144,6 +155,8 @@ struct TwitchProxyPlayerView: View {
             relayDiagnostics = []
             let bridge = TwitchHLSBridge(preferred: result.endpoint, endpoints: endpoints)
             bridge.onAdMarkerDetected = {
+                adEventReceived = true
+                transitionDiagnostic = "HLS ad callback received; enabled=\(autoReturnOnAdMarker)"
                 guard autoReturnOnAdMarker, !returnedToWeb else { return }
                 returnedToWeb = true
                 avReturnToWebPlayer()
@@ -157,6 +170,7 @@ struct TwitchProxyPlayerView: View {
                 if entry.hasPrefix("HLS metadata: markers="),
                    !entry.hasPrefix("HLS metadata: markers=none"),
                    autoReturnOnAdMarker, !returnedToWeb {
+                    transitionDiagnostic = "Diagnostic trigger received; requesting return"
                     returnedToWeb = true
                     forwardProxyStatus = "Ad metadata detected; returning to regular Twitch playback…"
                     avReturnToWebPlayer()
@@ -197,6 +211,7 @@ struct TwitchProxyPlayerView: View {
 
     @MainActor
     private func avReturnToWebPlayer() {
+        transitionDiagnostic = "Return callback invoked; requesting sheet dismissal"
         player?.pause()
         playbackObserver?.invalidate()
         playbackObserver = nil
