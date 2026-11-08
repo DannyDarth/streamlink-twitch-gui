@@ -78,10 +78,17 @@ enum TwitchProxyPlaylistResolver {
                 request.timeoutInterval = 12
                 request.setValue("https://player.twitch.tv", forHTTPHeaderField: "Referer")
                 let (data, response) = try await URLSession.shared.data(for: request)
-                guard let http = response as? HTTPURLResponse, (200...299).contains(http.statusCode),
-                      let playlist = String(data: data, encoding: .utf8),
-                      playlist.trimmingCharacters(in: .whitespacesAndNewlines).hasPrefix("#EXTM3U") else {
+                guard let http = response as? HTTPURLResponse else {
                     throw ResolutionError.invalidPlaylist
+                }
+                let contentType = http.value(forHTTPHeaderField: "Content-Type") ?? "unknown"
+                guard (200...299).contains(http.statusCode) else {
+                    throw ResolutionError.noProxySucceeded("HTTP \(http.statusCode), content-type \(contentType)")
+                }
+                guard let playlist = String(data: data, encoding: .utf8),
+                      playlist.trimmingCharacters(in: .whitespacesAndNewlines).hasPrefix("#EXTM3U") else {
+                    // Never display response bodies: they can include stream credentials.
+                    throw ResolutionError.noProxySucceeded("HTTP \(http.statusCode), content-type \(contentType), \(data.count) bytes, not HLS")
                 }
                 return Result(endpoint: TwitchForwardProxyDiagnostics.firefox,
                               url: candidate, playlist: playlist, playbackIdentity: identity,
