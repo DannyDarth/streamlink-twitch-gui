@@ -13,6 +13,7 @@ final class TwitchHLSBridge {
     private let lock = NSLock()
     private var resources: [String: URL] = [:]
     private var nextID = 0
+    private var lastAdState: Bool?
     private let endpoints: [TwitchForwardProxyDiagnostics.Endpoint]
     private let preferred: TwitchForwardProxyDiagnostics.Endpoint
     private let sessionByHost: [String: URLSession]
@@ -193,6 +194,23 @@ final class TwitchHLSBridge {
     }
 
     private func rewrite(_ playlist: String, base: URL) -> String {
+        // Twitch ad-break metadata is informational. Never drop segments blindly:
+        // removing them can break timestamps, audio synchronization, or live playback.
+        let adMarkers = ["stitched-ad", "twitch-stitched-ad", "EXT-X-DATERANGE", "SCTE35"]
+        let markedLines = playlist.components(separatedBy: "\n").filter { line in
+            let lower = line.lowercased()
+            return adMarkers.contains { lower.contains($0.lowercased()) }
+        }
+        let adActive = !markedLines.isEmpty
+        lock.lock()
+        let changed = lastAdState != adActive
+        lastAdState = adActive
+        lock.unlock()
+        if changed {
+            log(adActive
+                ? "Possible ad marker detected in HLS playlist (\(markedLines.count) lines); preserving playback"
+                : "No ad marker in current HLS playlist; normal segment delivery")
+        }
         playlist.components(separatedBy: "\n").map { line in
             if line.hasPrefix("#") {
                 // HLS keys, maps, and media URI attributes also need local URLs.
