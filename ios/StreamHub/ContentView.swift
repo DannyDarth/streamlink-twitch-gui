@@ -685,24 +685,76 @@ private struct TwitchPlaybackLabView: View {
                 TextField("Twitch channel", text: $channel)
                     .textInputAutocapitalization(.never)
                     .autocorrectionDisabled()
-                Text("Tests Twitch playback identities directly from the iPhone. No public proxies, PC, stream interruption, or automatic player switching.")
+                Text("Compares actual HLS media playlists and segment identities directly on this iPhone. No proxies, PC, playback switching, or video interruption.")
                     .font(.footnote).foregroundStyle(.secondary)
-                Button(running ? "Checking…" : "Compare playback sessions") {
+                Button(running ? "Checking media playlists…" : "Compare playback sessions") {
                     Task { await compare() }
                 }
                 .disabled(running || channel.range(of: "^[A-Za-z0-9_]{3,25}$", options: .regularExpression) == nil)
             }
             Section("Results") {
                 if results.isEmpty {
-                    Text("No tests run yet. A clean playlist snapshot does not prove ads will stay absent.")
+                    Text("Run a comparison while the channel is live. A clean snapshot cannot guarantee ad-free playback.")
                         .foregroundStyle(.secondary)
                 }
-                ForEach(results, id: \.self) { line in
+                ForEach(Array(results.enumerated()), id: \.offset) { _, line in
                     Text(line).font(.caption.monospaced()).textSelection(.enabled)
                 }
             }
         }
         .navigationTitle("Playback lab")
+    }
+
+    private struct MediaSnapshot {
+        let label: String
+        let segmentIDs: Set<String>
+        let hasAdMarkers: Bool
+        let segmentCount: Int
+    }
+
+    /// Fetch the first video variant, not just the master playlist.
+    /// Never log raw playlist URLs, query parameters, access tokens or signatures.
+    private func inspect(_ result: TwitchProxyPlaylistResolver.Result, label: String) async throws -> MediaSnapshot {
+        let lines = result.playlist.components(separatedBy: .newlines)
+        var variants: [(bandwidth: Int, url: URL)] = []
+        for index in lines.indices where lines[index].hasPrefix("#EXT-X-STREAM-INF:") {
+            let attributes = lines[index]
+            let bandwidth = Int(attributes.components(separatedBy: "BANDWIDTH=").dropFirst().first?
+                .components(separatedBy: ",").first ?? "") ?? 0
+            guard index + 1 < lines.count else { continue }
+            let relative = lines[index + 1].trimmingCharacters(in: .whitespacesAndNewlines)
+            guard !relative.hasPrefix("#"),
+                  let url = URL(string: relative, relativeTo: result.url)?.absoluteURL,
+                  url.scheme == "https" else { continue }
+            variants.append((bandwidth, url))
+        }
+        guard let chosen = variants.sorted(by: { $0.bandwidth > $1.bandwidth }).first else {
+            throw NSError(domain: "StreamHubPlaybackLab", code: 1,
+                          userInfo: [NSLocalizedDescriptionKey: "No usable video variant"])
+        }
+        var request = URLRequest(url: chosen.url)
+        request.timeoutInterval = 12
+        request.setValue("https://player.twitch.tv", forHTTPHeaderField: "Referer")
+        let (data, response) = try await URLSession.shared.data(for: request)
+        guard let http = response as? HTTPURLResponse, (200...299).contains(http.statusCode),
+              data.count < 2_000_000,
+              let playlist = String(data: data, encoding: .utf8),
+              playlist.hasPrefix("#EXTM3U") else {
+            throw NSError(domain: "StreamHubPlaybackLab", code: 2,
+                          userInfo: [NSLocalizedDescriptionKey: "Media playlist unavailable"])
+        }
+        let lower = playlist.lowercased()
+        let adMarkers = ["stitched-ad", "scte35", "scte-35", "#ext-x-cue-out", "twitch-stitched-ad"]
+        let segments = playlist.components(separatedBy: .newlines).compactMap { line -> String? in
+            let trimmed = line.trimmingCharacters(in: .whitespacesAndNewlines)
+            guard !trimmed.isEmpty, !trimmed.hasPrefix("#"),
+                  let url = URL(string: trimmed, relativeTo: chosen.url)?.absoluteURL else { return nil }
+            // Compare only path-level media identifiers; never retain or display signed URLs.
+            return url.path
+        }
+        return MediaSnapshot(label: label, segmentIDs: Set(segments),
+                             hasAdMarkers: adMarkers.contains(where: { lower.contains($0) }),
+                             segmentCount: segments.count)
     }
 
     @MainActor
@@ -712,6 +764,7 @@ private struct TwitchPlaybackLabView: View {
         defer { running = false }
         let testedChannel = channel.trimmingCharacters(in: .whitespacesAndNewlines)
         guard testedChannel.range(of: "^[A-Za-z0-9_]{3,25}$", options: .regularExpression) != nil else { return }
+        var snapshots: [MediaSnapshot] = []
         for (label, playerType, platform) in identities {
             do {
                 let result = try await TwitchProxyPlaylistResolver.resolve(
@@ -719,14 +772,21 @@ private struct TwitchPlaybackLabView: View {
                     allowFallback: false, directOnly: true,
                     playerType: playerType, platform: platform
                 )
-                let variants = result.playlist.split(separator: "\n").filter { $0.hasPrefix("#EXT-X-STREAM-INF") }.count
-                let adMarker = result.playlist.localizedCaseInsensitiveContains("stitched-ad")
-                    || result.playlist.localizedCaseInsensitiveContains("scte35")
-                results.append("\(label): master HLS available, \(variants) variants; ad metadata \(adMarker ? "present" : "not present in master")")
+                let snapshot = try await inspect(result, label: label)
+                snapshots.append(snapshot)
+                results.append("\(label): \(snapshot.segmentCount) media segments; ad markers \(snapshot.hasAdMarkers ? "detected" : "not detected")")
             } catch {
-                results.append("\(label): unavailable (\(error.localizedDescription))")
+                // Errors may contain signed URLs. Report a sanitized failure instead.
+                results.append("\(label): media playlist unavailable")
             }
         }
-        results.append("This is a connection test, not proof of uninterrupted ad-free playback. The regular Twitch player was not changed.")
+        if let baseline = snapshots.first {
+            for snapshot in snapshots.dropFirst() {
+                let overlap = baseline.segmentIDs.intersection(snapshot.segmentIDs).count
+                results.append("Standard web vs \(snapshot.label): \(overlap) matching segment paths in current snapshots")
+            }
+        }
+        results.append("Snapshots are fetched sequentially, so live segments can change between checks. Matching paths do not prove identical video; absent markers do not prove ad-free playback.")
+        results.append("No video was downloaded or played by this test. The regular Twitch player was not changed.")
     }
 }
