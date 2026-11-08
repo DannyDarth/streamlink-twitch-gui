@@ -50,3 +50,16 @@ im.resize((256, 256), Image.Resampling.LANCZOS).save(ICONS / "streamhub-256.png"
 RUNTIME = ROOT / "src" / "app" / "assets" / "icons"
 RUNTIME.mkdir(parents=True, exist_ok=True)
 im.resize((256, 256), Image.Resampling.LANCZOS).save(RUNTIME / "icon-256.png")
+
+# NSIS Modern UI welcome/finish sidebar: branded artwork based on the icon.
+# NSIS expects a 24-bit BMP, 164 x 314 pixels.
+sidebar = Image.new("RGB", (164, 314), "#151321")
+side = ImageDraw.Draw(sidebar)
+side.polygon([(0, 0), (164, 0), (0, 260)], fill="#7829ce")
+side.polygon([(164, 45), (164, 314), (0, 314)], fill="#38c914")
+side.polygon([(0, 220), (164, 0), (164, 45), (0, 265)], fill="#24142e")
+logo = im.copy()
+logo.thumbnail((140, 140), Image.Resampling.LANCZOS)
+sidebar.paste(logo, ((164 - logo.width) // 2, 75), logo)
+side.text((82, 248), "StreamHub", anchor="mm", fill="white", font=ImageFont.truetype(str(font_path), 20) if font_path else ImageFont.load_default())
+sidebar.save(ICONS / "streamhub-installer-sidebar.bmp", format="BMP")
