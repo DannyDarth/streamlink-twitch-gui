@@ -176,7 +176,7 @@ private struct TwitchDirectoryView: View {
                 .padding(.bottom, 8)
             }
 
-            TwitchBrowserView(url: browseURL, allowedWebChannel: webChannel, onChannelSelected: { channel in
+            TwitchBrowserView(url: browseURL, allowedWebChannel: webChannel, playbackSuspended: proxyChannel != nil, onChannelSelected: { channel in
                 // Returning to web playback navigates to the same channel. Do not
                 // interpret that navigation as a request to reopen the HLS sheet.
                 guard webChannel?.lowercased() != channel.lowercased() else { return }
