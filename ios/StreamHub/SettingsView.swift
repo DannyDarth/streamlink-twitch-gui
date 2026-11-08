@@ -5,6 +5,7 @@ struct SettingsView: View {
     @State private var probing = false
 
     @AppStorage("streamhub.braveStyleFilteringEnabled") private var braveStyleFilteringEnabled = false
+    @AppStorage("streamhub.autoReturnOnTwitchAdMarker") private var autoReturnOnAdMarker = false
     @AppStorage("streamhub.twitchProxyEnabled") private var twitchProxyEnabled = false
     @AppStorage("streamhub.twitchProxyURL") private var twitchProxyURL = ""
     @AppStorage("streamhub.twitchForwardProxyPreference") private var forwardProxyPreference = "firefox"
@@ -14,6 +15,9 @@ struct SettingsView: View {
         Form {
             Section("Twitch stream playback") {
                 Toggle("Use proxy player for Twitch streams", isOn: $twitchProxyEnabled)
+                Toggle("Auto-return to web player on HLS ad marker (experimental)", isOn: $autoReturnOnAdMarker)
+                Text("When native HLS detects ad-related playlist metadata, return to the same channel in Twitch web playback. This does not verify that the web player is ad-free and may still show commercials.")
+                    .font(.footnote).foregroundStyle(.secondary)
                 TextField("HTTPS playlist proxy URL", text: $twitchProxyURL)
                     .textInputAutocapitalization(.never)
                     .autocorrectionDisabled()
