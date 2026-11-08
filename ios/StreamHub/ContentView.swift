@@ -377,7 +377,12 @@ private struct KickCategoryBrowserView: View {
                 if !showWebsite {
                     if discovery.channels.isEmpty {
                         VStack(spacing: 12) {
-                            ProgressView(discovery.status)
+                            ProgressView()
+                                .tint(.green)
+                                .controlSize(.large)
+                            Text("Finding live channels…")
+                                .font(.subheadline)
+                                .foregroundStyle(.secondary)
                             Text("If streams do not appear, choose View on Kick.")
                                 .font(.caption)
                                 .foregroundStyle(.secondary)
