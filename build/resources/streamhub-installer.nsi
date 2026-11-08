@@ -20,14 +20,14 @@ SetCompressor /SOLID lzma
 
 Section "Install"
   SetOutPath "$INSTDIR"
-  File /r "${APP_SOURCE}\\*"
+  File /r "${APP_SOURCE}\\*"\n  ; Keep a dedicated icon installed for shortcuts and Windows Installed Apps.\n  File /oname=StreamHub.ico "icons\\icon-16-32-48-256.ico"
   WriteUninstaller "$INSTDIR\\Uninstall.exe"
   CreateDirectory "$SMPROGRAMS\\StreamHub"
-  CreateShortcut "$SMPROGRAMS\\StreamHub\\StreamHub.lnk" "$INSTDIR\\streamlink-twitch-gui.exe" "" "$INSTDIR\\streamlink-twitch-gui.exe" 0
-  CreateShortcut "$DESKTOP\\StreamHub.lnk" "$INSTDIR\\streamlink-twitch-gui.exe" "" "$INSTDIR\\streamlink-twitch-gui.exe" 0
+  CreateShortcut "$SMPROGRAMS\\StreamHub\\StreamHub.lnk" "$INSTDIR\\streamlink-twitch-gui.exe" "" "$INSTDIR\\StreamHub.ico" 0
+  CreateShortcut "$DESKTOP\\StreamHub.lnk" "$INSTDIR\\streamlink-twitch-gui.exe" "" "$INSTDIR\\StreamHub.ico" 0
   CreateShortcut "$SMPROGRAMS\\StreamHub\\Uninstall.lnk" "$INSTDIR\\Uninstall.exe"
   WriteRegStr HKCU "Software\\Microsoft\\Windows\\CurrentVersion\\Uninstall\\StreamHub" "DisplayName" "StreamHub"
-  WriteRegStr HKCU "Software\\Microsoft\\Windows\\CurrentVersion\\Uninstall\\StreamHub" "DisplayIcon" "$INSTDIR\\streamlink-twitch-gui.exe,0"
+  WriteRegStr HKCU "Software\\Microsoft\\Windows\\CurrentVersion\\Uninstall\\StreamHub" "DisplayIcon" "$INSTDIR\\StreamHub.ico,0"
   WriteRegStr HKCU "Software\\Microsoft\\Windows\\CurrentVersion\\Uninstall\\StreamHub" "Publisher" "StreamHub"
   WriteRegStr HKCU "Software\\Microsoft\\Windows\\CurrentVersion\\Uninstall\\StreamHub" "UninstallString" '"$INSTDIR\\Uninstall.exe"'
   WriteRegStr HKCU "Software\\Microsoft\\Windows\\CurrentVersion\\Uninstall\\StreamHub" "InstallLocation" "$INSTDIR"
