@@ -9,7 +9,7 @@ struct FollowedView: View {
 
     private var followingURL: URL {
         URL(string: selectedPlatform == 0
-            ? "https://www.twitch.tv/directory/following/live"
+            ? "https://www.twitch.tv/directory/following"
             : "https://kick.com/following")!
     }
 
