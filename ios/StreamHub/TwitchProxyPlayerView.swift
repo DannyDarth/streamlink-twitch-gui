@@ -19,6 +19,7 @@ struct TwitchProxyPlayerView: View {
     @State private var playbackDiagnostics: String?
     @State private var relayDiagnostics: [String] = []
     @State private var lastDirectOnly = false
+    @State private var testingAlternate = false
     @AppStorage("streamhub.autoReturnOnTwitchAdMarker") private var autoReturnOnAdMarker = false
     @State private var returnedToWeb = false
     @State private var adEventReceived = false
@@ -72,6 +73,13 @@ struct TwitchProxyPlayerView: View {
             }
             .buttonStyle(.borderedProminent)
             .disabled(resolvingForwardProxy)
+            Button(testingAlternate ? "Checking alternate sessions…" : "Try alternate HLS session (experimental)") {
+                Task { await tryAlternateSession() }
+            }
+            .buttonStyle(.borderedProminent)
+            .disabled(testingAlternate || resolvingForwardProxy)
+            Text("Checks an alternate Twitch playback identity and verifies a media playlist has no stitched-ad markers before switching. A clean snapshot does not guarantee future ad-free playback.")
+                .font(.caption).foregroundStyle(.secondary).padding(.horizontal)
             Button("Test direct-only HLS relay (no proxy)") {
                 Task { await playForwardProxy(directOnly: true) }
             }
@@ -135,6 +143,65 @@ struct TwitchProxyPlayerView: View {
         .navigationBarTitleDisplayMode(.inline)
         .task(id: proxyBase) { await start() }
         .onDisappear { playbackObserver?.invalidate(); playbackObserver = nil; player?.pause(); player = nil; hlsBridge?.stop(); hlsBridge = nil }
+    }
+
+    @MainActor
+    private func tryAlternateSession() async {
+        testingAlternate = true
+        defer { testingAlternate = false }
+        forwardProxyStatus = "Checking alternate Twitch HLS sessions…"
+        let candidates = [("mobile_feed", "android"), ("popout", "web"), ("autoplay", "web")]
+        for (playerType, platform) in candidates {
+            do {
+                let result = try await TwitchProxyPlaylistResolver.resolve(
+                    channel: channel, preference: forwardProxyPreference,
+                    allowFallback: false, directOnly: true,
+                    playerType: playerType, platform: platform
+                )
+                // Inspect a rendition's actual media playlist, not just the master.
+                let rendition = result.playlist.split(separator: "\n").map(String.init)
+                    .first { $0.hasPrefix("https://") && $0.contains(".m3u8") }
+                    ?? result.playlist.split(separator: "\n").map(String.init)
+                        .first { !$0.isEmpty && !$0.hasPrefix("#") }
+                guard let rendition, let mediaURL = URL(string: rendition, relativeTo: result.url)?.absoluteURL else {
+                    forwardProxyStatus = "\(playerType): no playable rendition found"
+                    continue
+                }
+                var request = URLRequest(url: mediaURL)
+                request.timeoutInterval = 12
+                request.setValue("https://player.twitch.tv", forHTTPHeaderField: "Referer")
+                let (data, response) = try await URLSession.shared.data(for: request)
+                guard let http = response as? HTTPURLResponse, (200...299).contains(http.statusCode),
+                      let playlist = String(data: data, encoding: .utf8),
+                      playlist.hasPrefix("#EXTM3U") else { continue }
+                let lower = playlist.lowercased()
+                guard !lower.contains("stitched-ad"),
+                      !lower.contains("twitch-stitched-ad"),
+                      !lower.contains("scte35"),
+                      !lower.contains("#ext-x-cue-out") else {
+                    forwardProxyStatus = "\(playerType): ad markers present; trying next session"
+                    continue
+                }
+                let bridge = TwitchHLSBridge(preferred: result.endpoint, endpoints: [])
+                let localURL = try await bridge.start(masterURL: result.url, masterPlaylist: result.playlist)
+                player?.pause()
+                playbackObserver?.invalidate()
+                playbackObserver = nil
+                hlsBridge?.stop()
+                hlsBridge = bridge
+                let avPlayer = AVPlayer(url: localURL)
+                player = avPlayer
+                loading = false
+                message = nil
+                lastDirectOnly = true
+                forwardProxyStatus = "Alternate \(playerType)/\(platform) session: initial media playlist clean. Monitoring playback; ads may still appear."
+                avPlayer.play()
+                return
+            } catch {
+                forwardProxyStatus = "\(playerType): \(error.localizedDescription)"
+            }
+        }
+        forwardProxyStatus = "No clean alternate HLS session confirmed. Existing player left unchanged."
     }
 
     @MainActor
