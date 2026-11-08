@@ -150,6 +150,12 @@ private struct TwitchDirectoryView: View {
                 proxyChannel = TwitchChannelSelection(value: channel)
             })
                 .id(browseURL.absoluteString + browserResetID.uuidString)
+                .onReceive(NotificationCenter.default.publisher(for: Notification.Name("StreamHubTwitchAdMarkerDetected"))) { _ in
+                    guard UserDefaults.standard.bool(forKey: "streamhub.autoReturnOnTwitchAdMarker"),
+                          let selected = proxyChannel else { return }
+                    webChannel = selected.value
+                    proxyChannel = nil
+                }
                 .sheet(item: $proxyChannel) { channel in
                     NavigationStack {
                         TwitchProxyPlayerView(channel: channel.value, onReturnToWebPlayer: {
