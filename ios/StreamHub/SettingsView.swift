@@ -1,82 +1,35 @@
 import SwiftUI
 
+/// Clean slate for Twitch playback experiments. The previous adblocking and
+/// proxy controls are intentionally removed from Settings.
 struct SettingsView: View {
-    @State private var proxyProbeResults: [String] = []
-    @State private var probing = false
-
-    @AppStorage("streamhub.twitchClientAdFiltering") private var twitchClientAdFiltering = false
-    @AppStorage("streamhub.twitchWebAdDiagnostics") private var twitchWebAdDiagnostics = false
-    @AppStorage("streamhub.braveStyleFilteringEnabled") private var braveStyleFilteringEnabled = false
-    @AppStorage("streamhub.autoReturnOnTwitchAdMarker") private var autoReturnOnAdMarker = false
-    @AppStorage("streamhub.twitchProxyEnabled") private var twitchProxyEnabled = false
-    @AppStorage("streamhub.twitchProxyURL") private var twitchProxyURL = ""
-    @AppStorage("streamhub.twitchForwardProxyPreference") private var forwardProxyPreference = "firefox"
-    @AppStorage("streamhub.twitchForwardProxyFallback") private var forwardProxyFallback = true
+    private let retiredKeys = [
+        "streamhub.twitchClientAdFiltering",
+        "streamhub.twitchWebAdDiagnostics",
+        "streamhub.braveStyleFilteringEnabled",
+        "streamhub.autoReturnOnTwitchAdMarker",
+        "streamhub.twitchProxyEnabled",
+        "streamhub.twitchProxyURL",
+        "streamhub.twitchForwardProxyPreference",
+        "streamhub.twitchForwardProxyFallback"
+    ]
 
     var body: some View {
         Form {
-            Section("Twitch stream playback") {
-                Toggle("Use proxy player for Twitch streams", isOn: $twitchProxyEnabled)
-                Toggle("Auto-return to web player on HLS ad marker (experimental)", isOn: $autoReturnOnAdMarker)
-                Text("When native HLS detects ad-related playlist metadata, return to the same channel in Twitch web playback. This does not verify that the web player is ad-free and may still show commercials.")
-                    .font(.footnote).foregroundStyle(.secondary)
-                TextField("HTTPS playlist proxy URL", text: $twitchProxyURL)
-                    .textInputAutocapitalization(.never)
-                    .autocorrectionDisabled()
-                    .keyboardType(.URL)
-                Text("An HTTPS playlist proxy can use the /playlist/CHANNEL.m3u8 format. If left blank, StreamHub tries https://luminous.level3tjg.me, published by the TwitchAdBlock developer. Third-party proxies can see your IP and channel requests. Video ads may still appear.")
-                    .font(.footnote)
-                    .foregroundStyle(.secondary)
-                if twitchProxyEnabled && !twitchProxyURL.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty && !twitchProxyURL.trimmingCharacters(in: .whitespacesAndNewlines).hasPrefix("https://") {
-                    Text("Enter an HTTPS proxy URL to enable native playback.")
-                        .font(.footnote)
-                        .foregroundStyle(.orange)
-                }
-            }
-            Section("Experimental Twitch WebKit filtering") {
-                Toggle("Block Twitch client-side ad requests (experimental)", isOn: $twitchClientAdFiltering)
-                Text("Blocks a known Twitch client-side ad endpoint in WebKit. This cannot remove ads stitched into video playlists. Restart StreamHub after changing. Turn off if playback fails.")
-                    .font(.footnote).foregroundStyle(.secondary)
-                Toggle("Twitch web ad-state diagnostics", isOn: $twitchWebAdDiagnostics)
-                Text("Observes possible commercial-break text and video state in the regular Twitch website. Writes diagnostic events to device logs; does not block ads. Restart StreamHub after changing.")
-                    .font(.footnote).foregroundStyle(.secondary)
-                Toggle("Brave-inspired tracker filtering", isOn: $braveStyleFilteringEnabled)
-                Text("Applies limited third-party tracker rules to the Twitch website. This is not Brave Shields and does not block Twitch HLS commercial breaks. Restart StreamHub after changing this setting. To test website playback, turn off Use proxy player for Twitch streams above.")
-                    .font(.footnote)
-                    .foregroundStyle(.secondary)
-            }
-            Section("HTTP forward proxy diagnostics") {
-                Picker("Preferred proxy", selection: $forwardProxyPreference) {
-                    Text("Firefox first").tag("firefox")
-                    Text("Chromium first").tag("chromium")
-                }
-                Toggle("Try second proxy if first fails", isOn: $forwardProxyFallback)
-                Text("Firefox: firefox.api.cdn-perfprod.com:2023")
-                    .font(.caption).textSelection(.enabled)
-                Text("Chromium: chromium.api.cdn-perfprod.com:2023")
-                    .font(.caption).textSelection(.enabled)
-                Button(probing ? "Checking proxies…" : "Test proxy connectivity") {
-                    probing = true
-                    proxyProbeResults = []
-                    Task {
-                        let endpoints = TwitchForwardProxyDiagnostics.ordered(
-                            preference: forwardProxyPreference, allowFallback: forwardProxyFallback)
-                        for endpoint in endpoints {
-                            let result = await TwitchForwardProxyDiagnostics.probe(endpoint)
-                            await MainActor.run { proxyProbeResults.append(result) }
-                        }
-                        await MainActor.run { probing = false }
-                    }
-                }
-                .disabled(probing)
-                ForEach(proxyProbeResults, id: \.self) { result in
-                    Text(result).font(.caption).textSelection(.enabled)
-                }
-                Text("These are HTTP forward proxies, not HTTPS playlist endpoints. This saves the preferred order for a future native proxy transport; it does not yet route video traffic through them. The HTTPS playlist proxy player above remains the only active proxy playback mode.")
+            Section("Playback") {
+                Text("Twitch and Kick use their regular players.")
+                Text("Previous experimental adblocking, playlist proxy, and forward-proxy settings have been retired while we prepare a fresh implementation.")
                     .font(.footnote)
                     .foregroundStyle(.secondary)
             }
         }
         .navigationTitle("Settings")
+        .onAppear {
+            // Remove persisted opt-ins, including those left enabled by older
+            // sideloaded builds. Default behavior is ordinary web playback.
+            for key in retiredKeys {
+                UserDefaults.standard.removeObject(forKey: key)
+            }
+        }
     }
 }
