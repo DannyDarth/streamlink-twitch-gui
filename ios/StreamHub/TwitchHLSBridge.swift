@@ -162,7 +162,7 @@ final class TwitchHLSBridge {
         }
         // Twitch media CDN URLs can reject CONNECT proxying even when playlists succeed.
         // Direct media fallback is explicitly reported: it does not provide proxy ad mitigation.
-        if url.pathExtension.lowercased() != "m3u8" {
+        if endpoints.isEmpty || url.pathExtension.lowercased() != "m3u8" {
             do {
                 var request = URLRequest(url: url)
                 request.setValue("https://player.twitch.tv", forHTTPHeaderField: "Referer")
@@ -171,7 +171,7 @@ final class TwitchHLSBridge {
                 guard let http = response as? HTTPURLResponse, (200...299).contains(http.statusCode) else {
                     throw URLError(.badServerResponse)
                 }
-                log("Direct CDN fallback for \(url.pathExtension) (NOT proxied)")
+                log(endpoints.isEmpty ? "Direct-only fetched \(url.pathExtension) (NOT proxied)" : "Direct CDN fallback for \(url.pathExtension) (NOT proxied)")
                 return (data, response)
             } catch {
                 log("Direct CDN fallback failed: \((error as NSError).domain) \((error as NSError).code)")
