@@ -218,7 +218,7 @@ struct TwitchBrowserView: UIViewRepresentable {
         context.coordinator.onChannelSelected = onChannelSelected
         context.coordinator.allowedWebChannel = allowedWebChannel
         context.coordinator.currentRootURL = url
-        context.coordinator.proxyEnabled = UserDefaults.standard.bool(forKey: "streamhub.twitchProxyEnabled")
+        context.coordinator.proxyEnabled = UserDefaults.standard.bool(forKey: "streamhub.twitchEmbeddedPlayerEnabled")
         Task { @MainActor in
             await AdBlockingSettings.shared.configure(configuration.userContentController, forTwitch: true)
             webView.load(URLRequest(url: url))
@@ -229,7 +229,7 @@ struct TwitchBrowserView: UIViewRepresentable {
     func updateUIView(_ webView: WKWebView, context: Context) {
         context.coordinator.onChannelSelected = onChannelSelected
         context.coordinator.allowedWebChannel = allowedWebChannel
-        context.coordinator.proxyEnabled = UserDefaults.standard.bool(forKey: "streamhub.twitchProxyEnabled")
+        context.coordinator.proxyEnabled = UserDefaults.standard.bool(forKey: "streamhub.twitchEmbeddedPlayerEnabled")
         context.coordinator.syncProxySetting()
         if context.coordinator.currentRootURL != url {
             context.coordinator.currentRootURL = url
@@ -261,7 +261,7 @@ struct TwitchBrowserView: UIViewRepresentable {
                 return
             }
             guard message.name == "streamhubChannelTap",
-                  UserDefaults.standard.bool(forKey: "streamhub.twitchProxyEnabled"),
+                  UserDefaults.standard.bool(forKey: "streamhub.twitchEmbeddedPlayerEnabled"),
                   let channel = message.body as? String,
                   channel.range(of: "^[A-Za-z0-9_]{3,25}$", options: .regularExpression) != nil else { return }
             guard allowedWebChannel?.lowercased() != channel.lowercased(),
@@ -281,7 +281,7 @@ struct TwitchBrowserView: UIViewRepresentable {
                 return
             }
             let host = destination.host?.lowercased() ?? ""
-            if UserDefaults.standard.bool(forKey: "streamhub.twitchProxyEnabled"),
+            if UserDefaults.standard.bool(forKey: "streamhub.twitchEmbeddedPlayerEnabled"),
                let callback = onChannelSelected,
                navigationAction.targetFrame?.isMainFrame == true,
                host == "www.twitch.tv" || host == "m.twitch.tv" || host == "twitch.tv" {
