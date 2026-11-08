@@ -5,6 +5,7 @@ import WebKit
 /// viewer information, and channel playback without shipping API credentials.
 struct TwitchBrowserView: UIViewRepresentable {
     let url: URL
+    var onChannelSelected: ((String) -> Void)?
 
     func makeCoordinator() -> Coordinator { Coordinator() }
 
@@ -127,6 +128,7 @@ struct TwitchBrowserView: UIViewRepresentable {
         webView.allowsBackForwardNavigationGestures = true
         webView.scrollView.contentInsetAdjustmentBehavior = .automatic
         context.coordinator.webView = webView
+        context.coordinator.onChannelSelected = onChannelSelected
         context.coordinator.currentRootURL = url
         Task { @MainActor in
             await AdBlockingSettings.shared.configure(configuration.userContentController)
@@ -136,6 +138,7 @@ struct TwitchBrowserView: UIViewRepresentable {
     }
 
     func updateUIView(_ webView: WKWebView, context: Context) {
+        context.coordinator.onChannelSelected = onChannelSelected
         if context.coordinator.currentRootURL != url {
             context.coordinator.currentRootURL = url
             webView.load(URLRequest(url: url))
@@ -145,6 +148,7 @@ struct TwitchBrowserView: UIViewRepresentable {
     final class Coordinator: NSObject, WKNavigationDelegate {
         weak var webView: WKWebView?
         var currentRootURL: URL?
+        var onChannelSelected: ((String) -> Void)?
 
         func webView(_ webView: WKWebView, decidePolicyFor navigationAction: WKNavigationAction,
                      decisionHandler: @escaping (WKNavigationActionPolicy) -> Void) {
@@ -153,6 +157,21 @@ struct TwitchBrowserView: UIViewRepresentable {
                 return
             }
             let host = destination.host?.lowercased() ?? ""
+            if UserDefaults.standard.bool(forKey: "streamhub.twitchProxyEnabled"),
+               let callback = onChannelSelected,
+               navigationAction.navigationType == .linkActivated,
+               host == "www.twitch.tv" || host == "m.twitch.tv" || host == "twitch.tv" {
+                let parts = destination.pathComponents.filter { $0 != "/" }
+                let reserved: Set<String> = ["directory", "search", "settings", "videos", "downloads", "subscriptions", "inventory", "wallet", "drops", "p", "login", "signup", "moderator", "popout", "clip", "clips", "collections", "products"]
+                if parts.count == 1, let channel = parts.first,
+                   !reserved.contains(channel.lowercased()),
+                   channel.range(of: "^[A-Za-z0-9_]{3,25}$", options: .regularExpression) != nil {
+                    decisionHandler(.cancel)
+                    DispatchQueue.main.async { callback(channel) }
+                    return
+                }
+            }
+
             if destination.scheme == "https" &&
                 (host == "twitch.tv" || host.hasSuffix(".twitch.tv") ||
                  host == "twitchcdn.net" || host.hasSuffix(".twitchcdn.net")) {
