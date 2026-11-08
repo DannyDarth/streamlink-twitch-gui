@@ -15,6 +15,7 @@ struct TwitchProxyPlayerView: View {
     @State private var forwardProxyStatus: String?
     @State private var resolvingForwardProxy = false
     @State private var playbackDiagnostics: String?
+    @State private var relayDiagnostics: [String] = []
     @State private var playbackObserver: NSKeyValueObservation?
 
     private var twitchURL: URL {
@@ -83,6 +84,13 @@ struct TwitchProxyPlayerView: View {
                     .textSelection(.enabled)
                     .padding(.horizontal)
             }
+            if !relayDiagnostics.isEmpty {
+                Text(relayDiagnostics.suffix(8).joined(separator: "\\n"))
+                    .font(.caption2.monospaced())
+                    .foregroundStyle(.secondary)
+                    .textSelection(.enabled)
+                    .padding(.horizontal)
+            }
             Button("Retry HTTPS playlist proxy") { Task { await start() } }
                 .buttonStyle(.bordered)
             Link("Open on Twitch (normal playback)", destination: twitchURL)
@@ -113,7 +121,12 @@ struct TwitchProxyPlayerView: View {
                 TwitchForwardProxyDiagnostics.ordered(
                     preference: forwardProxyPreference, allowFallback: forwardProxyFallback
                 ).filter { $0.host != result.endpoint.host }
+            relayDiagnostics = []
             let bridge = TwitchHLSBridge(preferred: result.endpoint, endpoints: endpoints)
+            bridge.onDiagnostic = { entry in
+                relayDiagnostics.append(entry)
+                if relayDiagnostics.count > 20 { relayDiagnostics.removeFirst(relayDiagnostics.count - 20) }
+            }
             let localURL = try await bridge.start(masterURL: result.url, masterPlaylist: result.playlist)
             player?.pause()
             hlsBridge?.stop()
