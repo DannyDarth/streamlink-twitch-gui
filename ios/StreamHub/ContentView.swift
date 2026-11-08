@@ -115,6 +115,7 @@ private struct TwitchDirectoryView: View {
                     .submitLabel(.search)
                     .onSubmit { submittedSearch = search.trimmingCharacters(in: .whitespacesAndNewlines) }
                 Button {
+                    webChannel = nil
                     submittedSearch = search.trimmingCharacters(in: .whitespacesAndNewlines)
                 } label: {
                     Image(systemName: "magnifyingglass")
@@ -147,20 +148,23 @@ private struct TwitchDirectoryView: View {
             }
 
             TwitchBrowserView(url: browseURL, onChannelSelected: { channel in
+                // Returning to web playback navigates to the same channel. Do not
+                // interpret that navigation as a request to reopen the HLS sheet.
+                guard webChannel?.lowercased() != channel.lowercased() else { return }
                 proxyChannel = TwitchChannelSelection(value: channel)
             })
                 .id(browseURL.absoluteString + browserResetID.uuidString)
                 .onReceive(NotificationCenter.default.publisher(for: Notification.Name("StreamHubTwitchAdMarkerDetected"))) { _ in
                     guard UserDefaults.standard.bool(forKey: "streamhub.autoReturnOnTwitchAdMarker"),
                           let selected = proxyChannel else { return }
-                    webChannel = selected.value
                     proxyChannel = nil
+                    webChannel = selected.value
                 }
                 .sheet(item: $proxyChannel) { channel in
                     NavigationStack {
                         TwitchProxyPlayerView(channel: channel.value, onReturnToWebPlayer: {
-                            webChannel = channel.value
                             proxyChannel = nil
+                            webChannel = channel.value
                         })
                             .toolbar {
                                 ToolbarItem(placement: .navigationBarTrailing) {
