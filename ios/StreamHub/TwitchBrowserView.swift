@@ -220,7 +220,7 @@ struct TwitchBrowserView: UIViewRepresentable {
         context.coordinator.allowedWebChannel = allowedWebChannel
         context.coordinator.currentRootURL = url
         context.coordinator.playbackSuspended = playbackSuspended
-        context.coordinator.proxyEnabled = UserDefaults.standard.bool(forKey: "streamhub.twitchEmbeddedPlayerEnabled")
+        context.coordinator.proxyEnabled = true
         Task { @MainActor in
             await AdBlockingSettings.shared.configure(configuration.userContentController, forTwitch: true)
             if !context.coordinator.playbackSuspended {
@@ -233,7 +233,7 @@ struct TwitchBrowserView: UIViewRepresentable {
     func updateUIView(_ webView: WKWebView, context: Context) {
         context.coordinator.onChannelSelected = onChannelSelected
         context.coordinator.allowedWebChannel = allowedWebChannel
-        context.coordinator.proxyEnabled = UserDefaults.standard.bool(forKey: "streamhub.twitchEmbeddedPlayerEnabled")
+        context.coordinator.proxyEnabled = true
         context.coordinator.syncProxySetting()
         if context.coordinator.playbackSuspended != playbackSuspended {
             context.coordinator.playbackSuspended = playbackSuspended
@@ -277,7 +277,7 @@ struct TwitchBrowserView: UIViewRepresentable {
                 return
             }
             guard message.name == "streamhubChannelTap",
-                  UserDefaults.standard.bool(forKey: "streamhub.twitchEmbeddedPlayerEnabled"),
+                  true,
                   let channel = message.body as? String,
                   channel.range(of: "^[A-Za-z0-9_]{3,25}$", options: .regularExpression) != nil else { return }
             guard allowedWebChannel?.lowercased() != channel.lowercased(),
@@ -297,7 +297,7 @@ struct TwitchBrowserView: UIViewRepresentable {
                 return
             }
             let host = destination.host?.lowercased() ?? ""
-            if UserDefaults.standard.bool(forKey: "streamhub.twitchEmbeddedPlayerEnabled"),
+            if true,
                let callback = onChannelSelected,
                navigationAction.targetFrame?.isMainFrame == true,
                host == "www.twitch.tv" || host == "m.twitch.tv" || host == "twitch.tv" {
