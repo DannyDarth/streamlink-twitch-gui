@@ -100,44 +100,6 @@ private struct FollowingBrowser: UIViewRepresentable {
         configuration.userContentController.addUserScript(
             WKUserScript(source: tapScript, injectionTime: .atDocumentStart, forMainFrameOnly: true)
         )
-        // Twitch sometimes prompts to leave the embedded browser after returning
-        // from native playback. Dismiss only the specific "Open in App" sheet.
-        let stayInWebScript = """
-        (function() {
-          if (window.__streamhubStayOnTwitchWeb) return;
-          window.__streamhubStayOnTwitchWeb = true;
-          let pending = false;
-          function dismissAppPrompt() {
-            pending = false;
-            if (!/^(www\\.)?twitch\\.tv$/.test(location.hostname)) return;
-            const candidates = document.querySelectorAll('button, [role="button"]');
-            for (const candidate of candidates) {
-              const label = (candidate.textContent || '').trim().replace(/\\s+/g, ' ');
-              if (label !== 'Keep using web') continue;
-              let ancestor = candidate.parentElement;
-              let matched = false;
-              for (let depth = 0; ancestor && depth < 5; depth++, ancestor = ancestor.parentElement) {
-                const text = (ancestor.innerText || '').slice(0, 300);
-                if (text.includes('Open in App') && text.includes('Keep using web')) {
-                  matched = true;
-                  break;
-                }
-              }
-              if (matched) { candidate.click(); return; }
-            }
-          }
-          const observer = new MutationObserver(function() {
-            if (pending) return;
-            pending = true;
-            requestAnimationFrame(dismissAppPrompt);
-          });
-          observer.observe(document.documentElement, { childList: true, subtree: true });
-          dismissAppPrompt();
-        })();
-        """
-        configuration.userContentController.addUserScript(
-            WKUserScript(source: stayInWebScript, injectionTime: .atDocumentEnd, forMainFrameOnly: true)
-        )
         configuration.userContentController.add(context.coordinator, name: "followedTwitchChannel")
         let webView = WKWebView(frame: .zero, configuration: configuration)
         webView.isOpaque = false
