@@ -65,6 +65,11 @@ struct TwitchProxyPlayerView: View {
             }
             .buttonStyle(.borderedProminent)
             .disabled(resolvingForwardProxy)
+            Button("Test direct-only HLS relay (no proxy)") {
+                Task { await playForwardProxy(directOnly: true) }
+            }
+            .buttonStyle(.bordered)
+            .disabled(resolvingForwardProxy)
             Button("Test Firefox / Chromium HLS playlist") {
                 Task { await testForwardProxyPlaylist() }
             }
@@ -85,7 +90,7 @@ struct TwitchProxyPlayerView: View {
                     .padding(.horizontal)
             }
             if !relayDiagnostics.isEmpty {
-                Text(relayDiagnostics.suffix(8).joined(separator: "\\n"))
+                Text(relayDiagnostics.suffix(8).joined(separator: "\n"))
                     .font(.caption2.monospaced())
                     .foregroundStyle(.secondary)
                     .textSelection(.enabled)
@@ -108,16 +113,16 @@ struct TwitchProxyPlayerView: View {
     }
 
     @MainActor
-    private func playForwardProxy() async {
+    private func playForwardProxy(directOnly: Bool = false) async {
         resolvingForwardProxy = true
-        forwardProxyStatus = "Connecting to Firefox / Chromium HLS proxy…"
+        forwardProxyStatus = directOnly ? "Testing direct-only HLS relay (no proxy)…" : "Connecting to Firefox / Chromium HLS proxy…"
         defer { resolvingForwardProxy = false }
         do {
             let result = try await TwitchProxyPlaylistResolver.resolve(
                 channel: channel, preference: forwardProxyPreference,
-                allowFallback: forwardProxyFallback
+                allowFallback: forwardProxyFallback, directOnly: directOnly
             )
-            let endpoints = [result.endpoint] +
+            let endpoints = directOnly ? [] : [result.endpoint] +
                 TwitchForwardProxyDiagnostics.ordered(
                     preference: forwardProxyPreference, allowFallback: forwardProxyFallback
                 ).filter { $0.host != result.endpoint.host }
@@ -151,7 +156,9 @@ struct TwitchProxyPlayerView: View {
             player = avPlayer
             loading = false
             message = nil
-            forwardProxyStatus = "Playing through local HLS relay (\(result.endpoint.label) first). Ads are not guaranteed to be removed."
+            forwardProxyStatus = directOnly
+                ? "DIRECT-ONLY DIAGNOSTIC: playlists and media bypass both proxies. Ads are not blocked."
+                : "Playing through local HLS relay (\(result.endpoint.label) first). Ads are not guaranteed to be removed."
             avPlayer.play()
         } catch {
             forwardProxyStatus = "Forward proxy playback failed: \(error.localizedDescription)"
