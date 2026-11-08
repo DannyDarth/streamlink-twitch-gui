@@ -29,7 +29,7 @@ enum TwitchProxyPlaylistResolver {
         let data: DataValue?
     }
 
-    static func resolve(channel: String, preference: String, allowFallback: Bool) async throws -> Result {
+    static func resolve(channel: String, preference: String, allowFallback: Bool, directOnly: Bool = false) async throws -> Result {
         guard channel.range(of: "^[A-Za-z0-9_]{3,25}$", options: .regularExpression) != nil else {
             throw ResolutionError.invalidChannel
         }
@@ -46,6 +46,17 @@ enum TwitchProxyPlaylistResolver {
             URLQueryItem(name: "p", value: String(Int.random(in: 1...999999)))
         ]
         let playlistURL = components.url!
+        if directOnly {
+            var request = URLRequest(url: playlistURL)
+            request.setValue("https://player.twitch.tv", forHTTPHeaderField: "Referer")
+            let (data, response) = try await URLSession.shared.data(for: request)
+            guard let http = response as? HTTPURLResponse, (200...299).contains(http.statusCode),
+                  let playlist = String(data: data, encoding: .utf8),
+                  playlist.trimmingCharacters(in: .whitespacesAndNewlines).hasPrefix("#EXTM3U") else {
+                throw ResolutionError.invalidPlaylist
+            }
+            return Result(endpoint: TwitchForwardProxyDiagnostics.firefox, url: playlistURL, playlist: playlist)
+        }
         var failures: [String] = []
         for endpoint in TwitchForwardProxyDiagnostics.ordered(preference: preference, allowFallback: allowFallback) {
             do {
