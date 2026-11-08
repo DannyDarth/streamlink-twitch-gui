@@ -6,6 +6,8 @@ import Network
 /// This bridge is scoped to a single player and must be stopped on dismissal.
 final class TwitchHLSBridge {
     private let queue = DispatchQueue(label: "streamhub.hls.bridge")
+    var onDiagnostic: ((String) -> Void)?
+    private func log(_ message: String) { DispatchQueue.main.async { [weak self] in self?.onDiagnostic?(message) } }
     private var listener: NWListener?
     private var connections: [NWConnection] = []
     private let lock = NSLock()
@@ -57,6 +59,7 @@ final class TwitchHLSBridge {
                         return
                     }
                     self.port = port
+                    self.log("Local HLS server ready on port \(port)")
                     self.lock.lock()
                     self.resources["master"] = masterURL
                     self.lock.unlock()
@@ -90,6 +93,7 @@ final class TwitchHLSBridge {
             let isHead = first.hasPrefix("HEAD ")
             let rangeHeader = request.components(separatedBy: "\r\n").first { $0.lowercased().hasPrefix("range:") }?.dropFirst(6).trimmingCharacters(in: .whitespaces)
             let cleanPath = String(path).components(separatedBy: "?").first ?? ""
+            self.log("Local request: \(first)")
             if cleanPath == "/master.m3u8" {
                 let body = self.rewrite(masterPlaylist, base: masterURL)
                 self.reply(connection, status: 200, contentType: "application/vnd.apple.mpegurl",
@@ -101,12 +105,14 @@ final class TwitchHLSBridge {
             let upstream = self.resources[identifier]
             self.lock.unlock()
             guard let upstream else {
+                self.log("Missing local resource: \(identifier)")
                 self.reply(connection, status: 404, contentType: "text/plain", body: Data())
                 return
             }
             Task {
                 do {
                     let (bytes, response) = try await self.fetch(upstream, range: rangeHeader)
+                    self.log("Fetched \(upstream.pathExtension.isEmpty ? "media" : upstream.pathExtension): \(bytes.count) bytes, HTTP \((response as? HTTPURLResponse)?.statusCode ?? 0)")
                     let type = (response as? HTTPURLResponse)?.value(forHTTPHeaderField: "Content-Type") ?? ""
                     let isPlaylist = upstream.pathExtension.lowercased() == "m3u8" ||
                         type.contains("mpegurl") || bytes.starts(with: Data("#EXTM3U".utf8))
@@ -121,6 +127,7 @@ final class TwitchHLSBridge {
                                    body: bytes, headOnly: isHead, contentRange: contentRange)
                     }
                 } catch {
+                    self.log("Upstream fetch failed: \(error.localizedDescription)")
                     self.reply(connection, status: 502, contentType: "text/plain",
                                body: Data(error.localizedDescription.utf8))
                 }
