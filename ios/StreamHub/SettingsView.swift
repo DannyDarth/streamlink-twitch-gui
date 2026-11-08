@@ -4,6 +4,7 @@ struct SettingsView: View {
     @State private var proxyProbeResults: [String] = []
     @State private var probing = false
 
+    @AppStorage("streamhub.twitchWebAdDiagnostics") private var twitchWebAdDiagnostics = false
     @AppStorage("streamhub.braveStyleFilteringEnabled") private var braveStyleFilteringEnabled = false
     @AppStorage("streamhub.autoReturnOnTwitchAdMarker") private var autoReturnOnAdMarker = false
     @AppStorage("streamhub.twitchProxyEnabled") private var twitchProxyEnabled = false
@@ -32,6 +33,9 @@ struct SettingsView: View {
                 }
             }
             Section("Experimental Twitch WebKit filtering") {
+                Toggle("Twitch web ad-state diagnostics", isOn: $twitchWebAdDiagnostics)
+                Text("Observes possible commercial-break text and video state in the regular Twitch website. Writes diagnostic events to device logs; does not block ads. Restart StreamHub after changing.")
+                    .font(.footnote).foregroundStyle(.secondary)
                 Toggle("Brave-inspired tracker filtering", isOn: $braveStyleFilteringEnabled)
                 Text("Applies limited third-party tracker rules to the Twitch website. This is not Brave Shields and does not block Twitch HLS commercial breaks. Restart StreamHub after changing this setting. To test website playback, turn off Use proxy player for Twitch streams above.")
                     .font(.footnote)
