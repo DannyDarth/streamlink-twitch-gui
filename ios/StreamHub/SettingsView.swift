@@ -4,6 +4,7 @@ struct SettingsView: View {
     @State private var proxyProbeResults: [String] = []
     @State private var probing = false
 
+    @AppStorage("streamhub.twitchClientAdFiltering") private var twitchClientAdFiltering = false
     @AppStorage("streamhub.twitchWebAdDiagnostics") private var twitchWebAdDiagnostics = false
     @AppStorage("streamhub.braveStyleFilteringEnabled") private var braveStyleFilteringEnabled = false
     @AppStorage("streamhub.autoReturnOnTwitchAdMarker") private var autoReturnOnAdMarker = false
@@ -33,6 +34,9 @@ struct SettingsView: View {
                 }
             }
             Section("Experimental Twitch WebKit filtering") {
+                Toggle("Block Twitch client-side ad requests (experimental)", isOn: $twitchClientAdFiltering)
+                Text("Blocks a known Twitch client-side ad endpoint in WebKit. This cannot remove ads stitched into video playlists. Restart StreamHub after changing. Turn off if playback fails.")
+                    .font(.footnote).foregroundStyle(.secondary)
                 Toggle("Twitch web ad-state diagnostics", isOn: $twitchWebAdDiagnostics)
                 Text("Observes possible commercial-break text and video state in the regular Twitch website. Writes diagnostic events to device logs; does not block ads. Restart StreamHub after changing.")
                     .font(.footnote).foregroundStyle(.secondary)
