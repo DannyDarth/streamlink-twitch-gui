@@ -55,12 +55,20 @@ enum TwitchProxyPlaylistResolver {
         guard let url = components.url else { throw ResolutionError.invalidPlaylist }
         // The upstream project supports its own Luminous URL form. Test it first
         // and fall back to the direct randomized-platform manifest if unavailable.
+        // The upstream TwitchAdBlock implementation uses /playlist/CHANNEL
+        // (without .m3u8). Some servers also accept the .m3u8 suffix.
+        // Try both, recording which endpoint actually succeeded.
         var proxyComponents = URLComponents(url: proxyBase, resolvingAgainstBaseURL: false)
         let prefix = proxyComponents?.path.trimmingCharacters(in: CharacterSet(charactersIn: "/")) ?? ""
-        proxyComponents?.path = (prefix.isEmpty ? "" : "/" + prefix) + "/playlist/" + channel.lowercased() + ".m3u8"
+        let root = prefix.isEmpty ? "" : "/" + prefix
         proxyComponents?.queryItems = nil
+        proxyComponents?.path = root + "/playlist/" + channel.lowercased()
+        let upstreamURL = proxyComponents?.url
+        proxyComponents?.path = root + "/playlist/" + channel.lowercased() + ".m3u8"
+        let legacyURL = proxyComponents?.url
         let candidates: [(String, URL)] = [
-            ("TwitchAdBlock HTTPS proxy", proxyComponents?.url),
+            ("TwitchAdBlock /playlist/channel", upstreamURL),
+            ("TwitchAdBlock /playlist/channel.m3u8", legacyURL),
             ("randomized Twitch token", url)
         ].compactMap { title, target in target.map { (title, $0) } }
         var errors: [String] = []
