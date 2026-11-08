@@ -7,6 +7,7 @@ struct TwitchProxyPlayerView: View {
     @AppStorage("streamhub.twitchProxyURL") private var proxyBase = ""
     @State private var activeProxy: URL?
     @State private var player: AVPlayer?
+    @State private var hlsBridge: TwitchHLSBridge?
     @State private var message: String?
     @State private var loading = true
     @AppStorage("streamhub.twitchForwardProxyPreference") private var forwardProxyPreference = "firefox"
@@ -56,6 +57,11 @@ struct TwitchProxyPlayerView: View {
                 Text(message).font(.footnote).foregroundStyle(.secondary)
                     .multilineTextAlignment(.center).padding(.horizontal)
             }
+            Button(resolvingForwardProxy ? "Connecting…" : "Play via Firefox / Chromium proxy") {
+                Task { await playForwardProxy() }
+            }
+            .buttonStyle(.borderedProminent)
+            .disabled(resolvingForwardProxy)
             Button("Test Firefox / Chromium HLS playlist") {
                 Task { await testForwardProxyPlaylist() }
             }
@@ -80,7 +86,37 @@ struct TwitchProxyPlayerView: View {
         .navigationTitle(channel)
         .navigationBarTitleDisplayMode(.inline)
         .task(id: proxyBase) { await start() }
-        .onDisappear { player?.pause(); player = nil }
+        .onDisappear { player?.pause(); player = nil; hlsBridge?.stop(); hlsBridge = nil }
+    }
+
+    @MainActor
+    private func playForwardProxy() async {
+        resolvingForwardProxy = true
+        forwardProxyStatus = "Connecting to Firefox / Chromium HLS proxy…"
+        defer { resolvingForwardProxy = false }
+        do {
+            let result = try await TwitchProxyPlaylistResolver.resolve(
+                channel: channel, preference: forwardProxyPreference,
+                allowFallback: forwardProxyFallback
+            )
+            let endpoints = [result.endpoint] +
+                TwitchForwardProxyDiagnostics.ordered(
+                    preference: forwardProxyPreference, allowFallback: forwardProxyFallback
+                ).filter { $0.host != result.endpoint.host }
+            let bridge = TwitchHLSBridge(preferred: result.endpoint, endpoints: endpoints)
+            let localURL = try await bridge.start(masterURL: result.url, masterPlaylist: result.playlist)
+            player?.pause()
+            hlsBridge?.stop()
+            hlsBridge = bridge
+            let avPlayer = AVPlayer(url: localURL)
+            player = avPlayer
+            loading = false
+            message = nil
+            forwardProxyStatus = "Playing through local HLS relay (\(result.endpoint.label) first). Ads are not guaranteed to be removed."
+            avPlayer.play()
+        } catch {
+            forwardProxyStatus = "Forward proxy playback failed: \(error.localizedDescription)"
+        }
     }
 
     @MainActor
