@@ -196,20 +196,28 @@ final class TwitchHLSBridge {
     private func rewrite(_ playlist: String, base: URL) -> String {
         // Twitch ad-break metadata is informational. Never drop segments blindly:
         // removing them can break timestamps, audio synchronization, or live playback.
-        let adMarkers = ["stitched-ad", "twitch-stitched-ad", "EXT-X-DATERANGE", "SCTE35"]
-        let markedLines = playlist.components(separatedBy: "\n").filter { line in
-            let lower = line.lowercased()
-            return adMarkers.contains { lower.contains($0.lowercased()) }
-        }
-        let adActive = !markedLines.isEmpty
+        let lines = playlist.components(separatedBy: "\n")
+        let markerKinds: [(String, String)] = [
+            ("twitch-stitched-ad", "Twitch stitched ad"),
+            ("stitched-ad", "stitched ad"),
+            ("#EXT-X-DATERANGE", "date range"),
+            ("SCTE35", "SCTE35"),
+            ("#EXT-X-CUE-OUT", "cue out"),
+            ("#EXT-X-CUE-IN", "cue in")
+        ]
+        let matchedKinds = markerKinds.filter { marker, _ in
+            lines.contains { $0.localizedCaseInsensitiveContains(marker) }
+        }.map { $0.1 }
+        let adActive = !matchedKinds.isEmpty
+        let segmentCount = lines.filter { !$0.isEmpty && !$0.hasPrefix("#") }.count
+        let hasEndList = lines.contains { $0.hasPrefix("#EXT-X-ENDLIST") }
         lock.lock()
         let changed = lastAdState != adActive
         lastAdState = adActive
         lock.unlock()
-        if changed {
-            log(adActive
-                ? "Possible ad marker detected in HLS playlist (\(markedLines.count) lines); preserving playback"
-                : "No ad marker in current HLS playlist; normal segment delivery")
+        if changed || adActive {
+            let kind = matchedKinds.isEmpty ? "none" : matchedKinds.joined(separator: ", ")
+            log("HLS metadata: markers=\(kind); entries=\(segmentCount); live=\(!hasEndList). Diagnostic only; no segments removed.")
         }
         return playlist.components(separatedBy: "\n").map { line in
             if line.hasPrefix("#") {
