@@ -9,7 +9,7 @@
 					<button type="button" {{action "play" stream.slug}}
 						title="Play {{stream.slug}} in VLC"
 						style="display:block;width:100%;padding:0;border:0;background:transparent;cursor:pointer;text-align:left;color:inherit">
-						<div style="font-size:15px;font-weight:600;text-align:center;padding:0 0 8px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{stream.slug}}</div>
+						<div style="font-size:15px;font-weight:600;text-align:center;padding:0 0 8px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{#if stream.avatar}}<img src={{stream.avatar}} alt="" loading="lazy" style="width:30px;height:30px;border-radius:50%;border:2px solid #53fc18;object-fit:cover;vertical-align:middle;margin-right:8px">{{/if}}{{stream.slug}}</div>
 						<div style="aspect-ratio:16/9;background:rgba(128,128,128,.18);overflow:hidden;border-radius:5px;position:relative">
 							{{#if stream.thumbnail}}
 								<img src={{stream.thumbnail}} alt=""
