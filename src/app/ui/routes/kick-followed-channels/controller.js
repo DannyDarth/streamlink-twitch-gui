@@ -41,7 +41,7 @@ export default Controller.extend({
 					const live = result.data || result;
 					if ( generation !== this.refreshGeneration ) { return; }
 					const isLive = Boolean( live && live.id );
-					if ( !isLive ) {
+					if ( true ) {
 						const profileResponse = await fetch(
 							`https://kick.com/api/v2/channels/${encodeURIComponent( slug )}`,
 							{ credentials: "omit" }
