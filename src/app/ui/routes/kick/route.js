@@ -96,7 +96,11 @@ export default Route.extend({
 			set( controller, "streams", [{
 				slug,
 				channel: ( profile.user && profile.user.username ) || slug,
-				avatar: avatarUrl( profile.user && profile.user.profile_pic, profile.user && profile.user.profile_picture, profile.profile_pic ),
+				avatar: avatarUrl(
+					profile.user && profile.user.profile_pic,
+					profile.user && profile.user.profile_picture,
+					profile.profile_pic
+				),
 				title: live.session_title || live.title || "",
 				viewers: viewers === null ? "—" : viewers.toLocaleString(),
 				thumbnail: thumbnailUrl(
@@ -150,7 +154,11 @@ export default Route.extend({
 					livestreamId: row.id || row.livestream_id || null,
 					channel: ( channel.user && channel.user.username )
 						|| channel.slug || slug,
-					avatar: avatarUrl( channel.user && channel.user.profile_pic, channel.user && channel.user.profile_picture, channel.profile_pic, channel.profile_picture ),
+					avatar: avatarUrl(
+						channel.user && channel.user.profile_pic,
+						channel.user && channel.user.profile_picture,
+						channel.profile_pic, channel.profile_picture
+					),
 					title: row.session_title || row.title || "",
 					viewerCount: count,
 					viewers: count === null ? "—" : count.toLocaleString(),
@@ -237,7 +245,11 @@ export default Route.extend({
 							|| channel.slug
 							|| slug
 							|| "Unknown channel",
-						avatar: avatarUrl( channel.user && channel.user.profile_pic, channel.user && channel.user.profile_picture, channel.profile_pic, channel.profile_picture ),
+						avatar: avatarUrl(
+						channel.user && channel.user.profile_pic,
+						channel.user && channel.user.profile_picture,
+						channel.profile_pic, channel.profile_picture
+					),
 						title: row.session_title || row.title || "",
 						viewerCount: viewers,
 						viewers: viewers === null ? "—" : viewers.toLocaleString(),
