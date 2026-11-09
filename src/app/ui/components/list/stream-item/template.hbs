@@ -1,7 +1,6 @@
 <header>
-	{{#if content.user.profile_image_url}}<img class="streamer-avatar" src={{content.user.profile_image_url}} alt="" loading="lazy">{{/if}}
 	{{#if content.hasLanguage}}{{flag-icon type="channel" lang=content.language}}{{/if}}
-	<span class="{{unless content.hasLanguage 'noL'}} {{unless content.hasBroadcasterLanguage 'noBL'}}">{{#link-to "channel" content.id}}{{content.user.detailedName}}{{/link-to}}</span>
+	<span class="{{unless content.hasLanguage 'noL'}} {{unless content.hasBroadcasterLanguage 'noBL'}}">{{#link-to "channel" content.id class="streamer-identity"}}{{#if content.user.profile_image_url}}<img class="streamer-avatar" src={{content.user.profile_image_url}} alt="" loading="lazy">{{/if}}<span>{{content.user.detailedName}}</span>{{/link-to}}</span>
 	{{#if content.hasBroadcasterLanguage}}{{flag-icon type="broadcaster" lang=content.channel.broadcaster_language}}{{/if}}
 </header>
 {{#stream-preview-image
