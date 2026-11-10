@@ -11,7 +11,7 @@ on:
       - yarn.lock
 
 permissions:
-  contents: write
+  contents: read
 
 jobs:
   test-remediation:
@@ -28,31 +28,38 @@ jobs:
           corepack prepare yarn@1.22.22 --activate
       - name: Install locked dependencies
         run: yarn install --frozen-lockfile --ignore-scripts --non-interactive
-      - name: Identify dependency chains
+      - name: Identify remaining vulnerable dependency chains
         run: |
           yarn why handlebars
           yarn why babel-traverse
-      - name: Try patched Handlebars in isolated checkout
+          yarn list --pattern 'handlebars|babel-traverse'
+      - name: Audit locked dependency tree
         run: |
-          yarn upgrade handlebars@4.7.10 --ignore-scripts --non-interactive
-          yarn list --pattern handlebars
           yarn audit --json --level low > audit-after.jsonl || true
+          node - <<'NODE'
+          const fs = require('fs');
+          const lines = fs.readFileSync('audit-after.jsonl', 'utf8').split(/\r?\n/);
+          const findings = [];
+          for (const line of lines) {
+            if (!line.trim()) continue;
+            try {
+              const item = JSON.parse(line);
+              if (item.type === 'auditAdvisory') {
+                const a = item.data.advisory;
+                findings.push({module: a.module_name, severity: a.severity, title: a.title, vulnerable_versions: a.vulnerable_versions, patched_versions: a.patched_versions, paths: item.data.resolution?.path || null});
+              }
+            } catch (e) { console.log('Skipped non-JSON audit output:', e.message); }
+          }
+          const critical = findings.filter(f => f.severity === 'critical');
+          fs.writeFileSync('critical-dependency-report.json', JSON.stringify({total_advisories: findings.length, critical}, null, 2));
+          console.log('Total advisories:', findings.length);
+          console.log('Critical advisories:', critical.length);
+          console.log(JSON.stringify(critical, null, 2));
+          NODE
       - name: Test application compilation
         run: yarn run grunt clean:tmp_prod webpack:prod
       - name: Test application behavior
         run: xvfb-run --auto-servernum yarn run grunt test:coverage
-      - name: Commit verified Handlebars dependency files to security branch
-        if: github.event_name == 'push' && github.ref == 'refs/heads/security/windows-critical-dependency-audit'
-        run: |
-          git add package.json yarn.lock
-          if git diff --cached --quiet; then
-            echo "Handlebars dependency files already match the tested candidate."
-            exit 0
-          fi
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git commit -m "Update Handlebars to tested patched version"
-          git push origin HEAD:security/windows-critical-dependency-audit
       - name: Save candidate lockfile and audit
         if: always()
         uses: actions/upload-artifact@v4
@@ -61,4 +68,5 @@ jobs:
           path: |
             yarn.lock
             audit-after.jsonl
+            critical-dependency-report.json
           retention-days: 14
