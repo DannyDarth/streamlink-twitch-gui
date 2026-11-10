@@ -1,0 +1,118 @@
+name: Windows dependency security audit
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [master]
+    paths:
+      - package.json
+      - yarn.lock
+      - .github/workflows/windows-security-audit.yml
+  pull_request:
+    paths:
+      - package.json
+      - yarn.lock
+      - .github/workflows/windows-security-audit.yml
+  schedule:
+    - cron: '17 9 * * 1'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: windows-security-audit-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  dependency-audit:
+    name: Audit Windows JavaScript dependencies
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js and Yarn Classic
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Enable Yarn Classic
+        run: |
+          corepack enable
+          corepack prepare yarn@1.22.22 --activate
+          yarn --version
+
+      - name: Check dependency lockfile consistency
+        run: |
+          test -f yarn.lock
+          node -e 'const p=require("./package.json"); console.log("Project:",p.name,"Version:",p.version)'
+          echo "Lockfile exists; this audit will not change it."
+
+      - name: Query vulnerability advisory database
+        id: audit
+        shell: bash
+        run: |
+          set +e
+          yarn audit --json --level low > dependency-audit.jsonl 2> dependency-audit-stderr.txt
+          code=$?
+          set -e
+          echo "exit_code=$code" >> "$GITHUB_OUTPUT"
+          echo "Yarn audit exit status: $code"
+          test -s dependency-audit.jsonl || echo '{"type":"error","data":"No audit output returned; inspect stderr and check registry connectivity."}' > dependency-audit.jsonl
+
+      - name: Summarize security advisories
+        shell: bash
+        run: |
+          node <<'NODE'
+          const fs = require('fs');
+          const lines = fs.readFileSync('dependency-audit.jsonl','utf8').split(/\r?\n/);
+          const counts = {info:0,low:0,moderate:0,high:0,critical:0};
+          const advisories = [];
+          let errors = [];
+          let summary = null;
+          for (const line of lines) {
+            if (!line.trim()) continue;
+            try {
+              const item = JSON.parse(line);
+              if (item.type === 'auditAdvisory') {
+                const a = item.data?.advisory || {};
+                const severity = String(a.severity || 'unknown').toLowerCase();
+                if (severity in counts) counts[severity]++;
+                advisories.push({severity, name:a.module_name || 'unknown', title:a.title || 'Advisory', url:a.url || ''});
+              } else if (item.type === 'auditSummary') {
+                summary = item.data;
+              } else if (item.type === 'error') {
+                errors.push(String(item.data?.message || item.data || 'Unknown audit error'));
+              }
+            } catch (_) { errors.push('Unparseable audit output'); }
+          }
+          const output = ['# Windows dependency audit', '',
+            'This job reports findings; it does not modify packages or block a release.', '',
+            '| Severity | Advisory count |','|---|---:|',
+            ...Object.entries(counts).map(([k,v])=>`| ${k} | ${v} |`), '',
+            `Advisory records: ${advisories.length}`, ''];
+          if (summary?.vulnerabilities) output.push('Registry summary: '+JSON.stringify(summary.vulnerabilities), '');
+          if (errors.length) output.push('## Audit warnings', ...errors.map(e=>'- '+e.slice(0,400)), '');
+          output.push('## Advisory details', '',
+            ...advisories.slice(0,150).map(a=>`- **${a.severity}**: ${a.name} — ${a.title} ${a.url}`));
+          if (!advisories.length) output.push('No advisory records returned. Verify that the registry audit completed successfully; this is not proof of zero vulnerabilities.');
+          fs.writeFileSync('dependency-audit-summary.md', output.join('\n')+'\n');
+          fs.appendFileSync(process.env.GITHUB_STEP_SUMMARY, output.join('\n')+'\n');
+          console.log(output.slice(0,18).join('\n'));
+          NODE
+          if [ -s dependency-audit-stderr.txt ]; then
+            echo "Audit stderr (first 30 lines):"
+            head -30 dependency-audit-stderr.txt
+          fi
+
+      - name: Upload audit report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: windows-dependency-security-audit
+          path: |
+            dependency-audit.jsonl
+            dependency-audit-stderr.txt
+            dependency-audit-summary.md
+          if-no-files-found: warn
+          retention-days: 30
