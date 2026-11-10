@@ -217,11 +217,11 @@ export default Controller.extend({
 				const receivedState = url.searchParams.get( "state" );
 				const code = url.searchParams.get( "code" );
 				const error = url.searchParams.get( "error" );
-				if ( request.method !== "GET" || !receivedState ||
-					!crypto.timingSafeEqual(
-						Buffer.from( receivedState.padEnd( state.length, " " ).slice( 0, state.length ) ),
-						Buffer.from( state )
-					) || receivedState.length !== state.length ) {
+				const validState = receivedState && receivedState.length === state.length
+					&& crypto.timingSafeEqual(
+						Buffer.from( receivedState ), Buffer.from( state )
+					);
+				if ( request.method !== "GET" || !validState ) {
 					response.writeHead( 400, { "Content-Type": "text/plain" } );
 					response.end( "Invalid authorization callback." );
 					return;
@@ -231,7 +231,8 @@ export default Controller.extend({
 					clearTimeout( timeout );
 					response.writeHead( 400, { "Content-Type": "text/plain" } );
 					response.end( "Kick authorization failed. Return to the app." );
-					set( this, "status", error ? "Kick denied authorization." : "Missing authorization code." );
+					set( this, "status", error
+						? "Kick denied authorization." : "Missing authorization code." );
 					set( this, "busy", false );
 					closePendingServer();
 					return;
