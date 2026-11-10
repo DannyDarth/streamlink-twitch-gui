@@ -3,6 +3,8 @@ import { set } from "@ember/object";
 
 const { spawn } = require( "child_process" );
 
+const validSlug = slug => typeof slug === "string" && /^[A-Za-z0-9_-]+$/.test( slug );
+
 export default Controller.extend({
 	queryParams: [ "query" ],
 	query: "",
@@ -17,7 +19,7 @@ export default Controller.extend({
 
 	actions: {
 		play( slug ) {
-			if ( !slug ) { return; }
+			if ( !validSlug( slug ) ) { return; }
 			set( this, "error", null );
 
 			const args = [ `https://kick.com/${slug}`, "best" ];
@@ -44,7 +46,7 @@ export default Controller.extend({
 		},
 
 		openBrowser( slug ) {
-			if ( !slug ) { return; }
+			if ( !validSlug( slug ) ) { return; }
 			require( "nw.gui" ).Shell.openExternal( `https://kick.com/${slug}` );
 		}
 	}
