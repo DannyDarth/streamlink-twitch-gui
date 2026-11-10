@@ -547,7 +547,7 @@ module( "services/versioncheck", function( hooks ) {
 		);
 		assert.strictEqual(
 			modal.querySelector( ".modal-body-component" ).textContent.trim(),
-			"modal.debug.body{\"name\":\"Streamlink Twitch GUI\",\"htmlSafe\":true}",
+			"modal.debug.body{\"name\":\"StreamHub\",\"htmlSafe\":true}",
 			"Modal has the correct body text"
 		);
 		const btn = modal.querySelector( ".form-button-component.btn-primary" );
