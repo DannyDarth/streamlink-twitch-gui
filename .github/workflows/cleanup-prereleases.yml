@@ -1,0 +1,91 @@
+name: Cleanup StreamHub pre-releases
+
+on:
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: "Preview first; Delete removes only releases marked prerelease"
+        type: choice
+        options:
+          - preview
+          - delete
+        default: preview
+        required: true
+      confirmation:
+        description: "For delete mode only, enter DELETE PRERELEASES"
+        type: string
+        required: false
+
+permissions:
+  contents: write
+
+concurrency:
+  group: streamhub-prerelease-cleanup
+  cancel-in-progress: false
+
+jobs:
+  cleanup:
+    name: Preview or delete pre-releases
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check confirmation
+        env:
+          MODE: ${{ inputs.mode }}
+          CONFIRMATION: ${{ inputs.confirmation }}
+        run: |
+          set -euo pipefail
+          if [[ "$MODE" == "delete" && "$CONFIRMATION" != "DELETE PRERELEASES" ]]; then
+            echo "::error::Deletion requires the exact confirmation: DELETE PRERELEASES"
+            exit 1
+          fi
+
+      - name: List and optionally delete pre-releases (preserve tags)
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          MODE: ${{ inputs.mode }}
+        run: |
+          set -euo pipefail
+          echo "Repository: $GH_REPO"
+          echo "Mode: $MODE"
+          echo "Only releases with prerelease=true are eligible."
+          echo "Git tags are never deleted."
+          echo
+
+          # Fetch every page. Exclude drafts and stable releases regardless of naming.
+          mapfile -t ids < <(
+            gh api --paginate --slurp "repos/$GH_REPO/releases?per_page=100" \
+              --jq '.[][] | select(.prerelease == true and .draft == false) | .id'
+          )
+
+          if (( ${#ids[@]} == 0 )); then
+            echo "No published pre-releases found."
+            exit 0
+          fi
+
+          echo "Found ${#ids[@]} published pre-release(s):"
+          for id in "${ids[@]}"; do
+            # Re-fetch each release to confirm current state, even in preview.
+            release="$(gh api "repos/$GH_REPO/releases/$id")"
+            if [[ "$(jq -r '.prerelease' <<< "$release")" != "true" ]] || \
+               [[ "$(jq -r '.draft' <<< "$release")" != "false" ]]; then
+              echo "Skipping $id (no longer a published pre-release)"
+              continue
+            fi
+            tag="$(jq -r '.tag_name' <<< "$release")"
+            name="$(jq -r '.name // ""' <<< "$release")"
+            url="$(jq -r '.html_url' <<< "$release")"
+            echo "Pre-release: $name | tag: $tag | $url"
+
+            if [[ "$MODE" == "delete" ]]; then
+              gh api --method DELETE "repos/$GH_REPO/releases/$id"
+              echo "Deleted release $id (tag $tag preserved)"
+            fi
+          done
+
+          if [[ "$MODE" == "preview" ]]; then
+            echo
+            echo "Preview complete. Nothing was deleted."
+            echo "To delete these pre-releases, run this workflow again with mode=delete"
+            echo "and confirmation=DELETE PRERELEASES."
+          fi
