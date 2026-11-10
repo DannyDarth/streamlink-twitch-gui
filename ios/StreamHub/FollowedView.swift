@@ -227,10 +227,15 @@ private struct FollowingBrowser: UIViewRepresentable {
                host == "kick.com" || host.hasSuffix(".kick.com") ||
                host == "id.twitch.tv" {
                 decisionHandler(.allow)
-            } else if action.navigationType == .linkActivated {
+            } else if action.targetFrame?.isMainFrame == true ||
+                      action.targetFrame == nil {
+                // Do not follow untrusted top-level redirects inside the signed-in browser.
                 decisionHandler(.cancel)
-                UIApplication.shared.open(url)
+                if action.navigationType == .linkActivated {
+                    UIApplication.shared.open(url)
+                }
             } else {
+                // Keep HTTPS subframes for legitimate login and media resources.
                 decisionHandler(.allow)
             }
         }
