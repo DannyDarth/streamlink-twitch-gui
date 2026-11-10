@@ -2,6 +2,13 @@ name: Test critical dependency remediation
 
 on:
   workflow_dispatch:
+  push:
+    branches:
+      - security/windows-critical-dependency-audit
+    paths:
+      - .github/workflows/windows-critical-dependency-test.yml
+      - package.json
+      - yarn.lock
 
 permissions:
   contents: read
@@ -19,17 +26,21 @@ jobs:
         run: |
           corepack enable
           corepack prepare yarn@1.22.22 --activate
+      - name: Install locked dependencies
+        run: yarn install --frozen-lockfile --ignore-scripts --non-interactive
       - name: Identify dependency chains
         run: |
-          yarn why handlebars || true
-          yarn why babel-traverse || true
+          yarn why handlebars
+          yarn why babel-traverse
       - name: Try patched Handlebars in isolated checkout
         run: |
-          yarn install --frozen-lockfile --ignore-scripts
-          yarn upgrade handlebars@4.7.10 --ignore-scripts
+          yarn upgrade handlebars@4.7.10 --ignore-scripts --non-interactive
+          yarn list --pattern handlebars
           yarn audit --json --level low > audit-after.jsonl || true
       - name: Test application compilation
         run: yarn run grunt clean:tmp_prod webpack:prod
+      - name: Test application behavior
+        run: xvfb-run --auto-servernum yarn run grunt test:coverage
       - name: Save candidate lockfile and audit
         if: always()
         uses: actions/upload-artifact@v4
