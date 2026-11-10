@@ -1,0 +1,41 @@
+name: Test critical dependency remediation
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  test-remediation:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 50
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Prepare Yarn Classic
+        run: |
+          corepack enable
+          corepack prepare yarn@1.22.22 --activate
+      - name: Identify dependency chains
+        run: |
+          yarn why handlebars || true
+          yarn why babel-traverse || true
+      - name: Try patched Handlebars in isolated checkout
+        run: |
+          yarn install --frozen-lockfile --ignore-scripts
+          yarn upgrade handlebars@4.7.10 --ignore-scripts
+          yarn audit --json --level low > audit-after.jsonl || true
+      - name: Test application compilation
+        run: yarn run grunt clean:tmp_prod webpack:prod
+      - name: Save candidate lockfile and audit
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: windows-critical-dependency-candidate
+          path: |
+            yarn.lock
+            audit-after.jsonl
+          retention-days: 14
