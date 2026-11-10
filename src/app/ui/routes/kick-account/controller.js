@@ -212,20 +212,32 @@ export default Controller.extend({
 					response.end( "Callback already processed" );
 					return;
 				}
-				handled = true;
-				clearTimeout( timeout );
+				// Ignore unsolicited requests without ending the legitimate OAuth attempt.
+				// A bad callback must not consume the one-time authorization response.
 				const receivedState = url.searchParams.get( "state" );
 				const code = url.searchParams.get( "code" );
 				const error = url.searchParams.get( "error" );
-				if ( !receivedState || receivedState !== state || !code || error ) {
+				if ( request.method !== "GET" || !receivedState ||
+					!crypto.timingSafeEqual(
+						Buffer.from( receivedState.padEnd( state.length, " " ).slice( 0, state.length ) ),
+						Buffer.from( state )
+					) || receivedState.length !== state.length ) {
+					response.writeHead( 400, { "Content-Type": "text/plain" } );
+					response.end( "Invalid authorization callback." );
+					return;
+				}
+				if ( error || !code ) {
+					handled = true;
+					clearTimeout( timeout );
 					response.writeHead( 400, { "Content-Type": "text/plain" } );
 					response.end( "Kick authorization failed. Return to the app." );
-					set( this, "status",
-						error ? "Kick denied authorization." : "Invalid callback or state." );
+					set( this, "status", error ? "Kick denied authorization." : "Missing authorization code." );
 					set( this, "busy", false );
 					closePendingServer();
 					return;
 				}
+				handled = true;
+				clearTimeout( timeout );
 				response.writeHead( 200, { "Content-Type": "text/plain" } );
 				response.end( "Kick authorization received. You may return to StreamKickFusion." );
 				set( this, "status", "Exchanging authorization code..." );
