@@ -341,6 +341,17 @@ struct TwitchBrowserView: UIViewRepresentable {
                 decisionHandler(.cancel)
                 return
             }
+            // Never load an untrusted scheme into the embedded browser.
+            // Allow third-party HTTPS subresources/frames needed by Twitch.
+            let scheme = destination.scheme?.lowercased() ?? ""
+            guard scheme == "https" || scheme == "about" else {
+                decisionHandler(.cancel)
+                return
+            }
+            if scheme == "about" {
+                decisionHandler(.allow)
+                return
+            }
             let host = destination.host?.lowercased() ?? ""
             if true,
                let callback = onChannelSelected,
@@ -362,10 +373,15 @@ struct TwitchBrowserView: UIViewRepresentable {
                 (host == "twitch.tv" || host.hasSuffix(".twitch.tv") ||
                  host == "twitchcdn.net" || host.hasSuffix(".twitchcdn.net")) {
                 decisionHandler(.allow)
-            } else if navigationAction.navigationType == .linkActivated {
+            } else if navigationAction.targetFrame?.isMainFrame == true ||
+                      navigationAction.targetFrame == nil {
+                // Untrusted top-level redirects must not silently inherit this WKWebView.
                 decisionHandler(.cancel)
-                UIApplication.shared.open(destination)
+                if navigationAction.navigationType == .linkActivated {
+                    UIApplication.shared.open(destination)
+                }
             } else {
+                // Third-party HTTPS iframes may be required for Twitch login/media.
                 decisionHandler(.allow)
             }
         }
