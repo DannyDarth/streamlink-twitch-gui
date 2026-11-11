@@ -83,7 +83,7 @@ on:
       - src/test/tests/ui/routes/settings/languages.js
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
   test-remediation:
@@ -250,6 +250,18 @@ jobs:
           NODE
       - name: Test application behavior
         run: xvfb-run --auto-servernum yarn run grunt test:coverage
+      - name: Commit verified regenerated lockfile to security branch
+        if: success()
+        run: |
+          if ! git diff --quiet -- yarn.lock; then
+            git config user.name "github-actions[bot]"
+            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+            git add yarn.lock
+            git commit -m "Regenerate Yarn lockfile without inject-loader"
+            git push origin HEAD:security/windows-critical-dependency-audit
+          else
+            echo "Yarn lockfile is already current"
+          fi
       - name: Save candidate lockfile and audit
         if: always()
         uses: actions/upload-artifact@v4
