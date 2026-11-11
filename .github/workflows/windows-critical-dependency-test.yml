@@ -27,7 +27,8 @@ jobs:
           corepack enable
           corepack prepare yarn@1.22.22 --activate
       - name: Resolve permanent Handlebars override
-        run: yarn install --ignore-scripts --non-interactive
+        run: |
+          yarn install --ignore-scripts --non-interactive
           yarn list --pattern handlebars
           node - <<'NODE'
           const fs = require('fs');
