@@ -1,7 +1,7 @@
 // TODO: properly rewrite tests by using sinon
 import { module, test } from "qunit";
 
-import whichFallbackInjector from "inject-loader!utils/node/fs/whichFallback";
+import whichFallbackInjector from "streamhub-inject-loader!utils/node/fs/whichFallback";
 
 
 module( "utils/node/fs/whichFallback" );
