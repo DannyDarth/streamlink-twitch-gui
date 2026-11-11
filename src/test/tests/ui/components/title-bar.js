@@ -12,7 +12,7 @@ import { run } from "@ember/runloop";
 import Service from "@ember/service";
 
 import titleBarComponentInjector
-	from "inject-loader?config&nwjs/debug!ui/components/title-bar/component";
+	from "streamhub-inject-loader?config&nwjs/debug!ui/components/title-bar/component";
 
 
 module( "ui/components/title-bar", function( hooks ) {
