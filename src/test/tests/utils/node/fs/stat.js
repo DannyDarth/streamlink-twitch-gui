@@ -2,7 +2,7 @@ import { module, test } from "qunit";
 import sinon from "sinon";
 import { posix as path } from "path";
 
-import statInjector from "inject-loader?-util!utils/node/fs/stat";
+import statInjector from "streamhub-inject-loader?-util!utils/node/fs/stat";
 
 
 module( "utils/node/fs/stat", {
