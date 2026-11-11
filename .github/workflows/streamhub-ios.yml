@@ -6,12 +6,13 @@ on:
     branches:
       - feature/kick-clean-rebuild
       - feature/ios-twitchadblock-rebuild
+      - security/ios-hardening-audit
     paths:
       - 'ios/**'
       - '.github/workflows/streamhub-ios.yml'
 
 permissions:
-  contents: write
+  contents: read
 
 jobs:
   ios:
@@ -51,15 +52,28 @@ jobs:
           path: dist/StreamHub-iOS-unsigned.ipa
           if-no-files-found: error
 
+  publish:
+    name: Publish unsigned IPA prerelease
+    needs: ios
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Download built IPA
+        uses: actions/download-artifact@v4
+        with:
+          name: streamhub-ios-unsigned-ipa
+          path: dist
       - name: Publish direct IPA download in GitHub Releases
         env:
           GH_TOKEN: ${{ github.token }}
           GH_REPO: ${{ github.repository }}
         run: |
+          test -s dist/StreamHub-iOS-unsigned.ipa
           TAG="streamhub-ios-build-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}"
-          gh release create "$TAG" \
-            "dist/StreamHub-iOS-unsigned.ipa#StreamHub-iOS-unsigned.ipa" \
-            --title "StreamHub iOS build ${GITHUB_RUN_NUMBER} (attempt ${GITHUB_RUN_ATTEMPT})" \
-            --notes "Unsigned iOS IPA from commit ${GITHUB_SHA}. Download the .ipa asset directly and sign it using your preferred Windows sideloading tool." \
-            --target "$GITHUB_SHA" \
+          gh release create "$TAG" \\
+            "dist/StreamHub-iOS-unsigned.ipa#StreamHub-iOS-unsigned.ipa" \\
+            --title "StreamHub iOS build ${GITHUB_RUN_NUMBER} (attempt ${GITHUB_RUN_ATTEMPT})" \\
+            --notes "Unsigned iOS IPA from commit ${GITHUB_SHA}. Download the .ipa asset directly and sign it using your preferred Windows sideloading tool." \\
+            --target "$GITHUB_SHA" \\
             --prerelease
