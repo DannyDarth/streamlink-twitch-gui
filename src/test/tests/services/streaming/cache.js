@@ -1,9 +1,9 @@
 import { module, test } from "qunit";
 import { EventEmitter } from "events";
 
-import cacheItemInjector from "inject-loader?fs!services/streaming/cache/item";
-import cacheInjector from "inject-loader?./item!services/streaming/cache/cache";
-import registryInjector from "inject-loader?./item!services/streaming/cache/index";
+import cacheItemInjector from "streamhub-inject-loader?fs!services/streaming/cache/item";
+import cacheInjector from "streamhub-inject-loader?./item!services/streaming/cache/cache";
+import registryInjector from "streamhub-inject-loader?./item!services/streaming/cache/index";
 
 
 module( "services/streaming/cache" );
