@@ -90,6 +90,7 @@
 		"yaml-loader": "0.8.0"
 	},
 	"resolutions": {
+		"**/handlebars": "4.7.10",
 		"**/babel-code-frame/chalk": "^2.0.0",
 		"**/broccoli-caching-writer": "https://registry.yarnpkg.com/@favware/skip-dependency/-/skip-dependency-1.1.0.tgz",
 		"**/broccoli-concat": "https://registry.yarnpkg.com/@favware/skip-dependency/-/skip-dependency-1.1.0.tgz",
