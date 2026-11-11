@@ -1,7 +1,7 @@
 import { module, test } from "qunit";
 
 import updateChannelSettingsInjector
-	from "inject-loader?-./utils!init/initializers/localstorage/channelsettings";
+	from "streamhub-inject-loader?-./utils!init/initializers/localstorage/channelsettings";
 
 
 module( "init/initializers/localstorage/channelsettings" );
