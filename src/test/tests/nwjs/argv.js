@@ -2,7 +2,7 @@ import { module, test } from "qunit";
 
 import { posix as pathPosix, win32 as pathWin32 } from "path";
 
-import argvInjector from "inject-loader?nwjs/App&path!nwjs/argv";
+import argvInjector from "streamhub-inject-loader?nwjs/App&path!nwjs/argv";
 
 
 module( "nwjs/argv" );
