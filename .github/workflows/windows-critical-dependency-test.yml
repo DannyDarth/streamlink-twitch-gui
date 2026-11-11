@@ -51,6 +51,11 @@ on:
       - src/test/tests/services/versioncheck.js
       - src/test/tests/nwjs/argv.js
       - src/test/tests/services/notification/icons.js
+      - src/test/tests/services/notification/polling.js
+      - src/test/tests/services/notification/provider.js
+      - src/test/tests/services/notification/providers/chrome-notifications.js
+      - src/test/tests/services/chat/launch.js
+      - src/test/tests/services/chat/service.js
 
 permissions:
   contents: read
