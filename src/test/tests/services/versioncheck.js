@@ -13,7 +13,7 @@ import Service from "@ember/service";
 import Adapter from "ember-data/adapter";
 
 import versioncheckServiceInjector
-	from "inject-loader?metadata&nwjs/App&nwjs/argv&nwjs/debug!services/versioncheck";
+	from "streamhub-inject-loader?metadata&nwjs/App&nwjs/argv&nwjs/debug!services/versioncheck";
 import Versioncheck from "data/models/versioncheck/model";
 import GithubReleases from "data/models/github/releases/model";
 import GithubReleasesAdapter from "data/models/github/releases/adapter";
