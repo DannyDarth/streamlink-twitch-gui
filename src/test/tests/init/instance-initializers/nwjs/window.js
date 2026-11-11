@@ -9,10 +9,11 @@ import Adapter from "ember-data/adapter";
 import { EventEmitter } from "events";
 
 import Window from "data/models/window/model";
-import resetWindowInjector from "inject-loader!nwjs/Window/reset";
+import resetWindowInjector from "streamhub-inject-loader!nwjs/Window/reset";
 import windowInitializerInjector
 // eslint-disable-next-line max-len
-	from "inject-loader?config&nwjs/Window&nwjs/Window/reset&nwjs/Screen&utils/node/platform!init/instance-initializers/nwjs/window";
+	// eslint-disable-next-line max-len
+	from "streamhub-inject-loader?config&nwjs/Window&nwjs/Window/reset&nwjs/Screen&utils/node/platform!init/instance-initializers/nwjs/window";
 
 
 module( "init/instance-initializers/nwjs/window", function( hooks ) {
