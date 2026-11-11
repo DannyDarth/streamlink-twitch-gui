@@ -1,7 +1,7 @@
 import { module, test } from "qunit";
 import sinon from "sinon";
 
-import clearfolderInjector from "inject-loader?-util!utils/node/fs/clearfolder";
+import clearfolderInjector from "streamhub-inject-loader?-util!utils/node/fs/clearfolder";
 import { posix as path } from "path";
 
 
