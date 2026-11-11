@@ -144,6 +144,35 @@ jobs:
           assert.strictEqual(result.exports({}).value,'bar');
           console.log('Experimental Babel 7 loader: mocked and real dependencies passed');
           NODE
+      - name: Exercise Babel 7 loader against StreamHub system locale module
+        run: |
+          node - <<'NODE'
+          const fs = require('fs');
+          const assert = require('assert');
+          const babel = require('@babel/core');
+          const loader = require('./build/tasks/webpack/loaders/inject-loader-babel7');
+          const source = fs.readFileSync('src/app/utils/system-locale.js', 'utf8');
+          const commonjs = babel.transformSync(source, {
+            babelrc:false, configFile:false,
+            plugins:['@babel/plugin-transform-modules-commonjs']
+          }).code;
+          let output;
+          loader.call({
+            resourcePath: require('path').resolve('src/app/utils/system-locale.js'),
+            callback(error, code) { if(error) throw error; output = code; }
+          }, commonjs);
+          const outer = {exports:{}};
+          new Function('module','exports','require',output)(outer,outer.exports,require);
+          const factory = outer.exports;
+          const config = {locales:{locales:{en:'English',fr:'French'},default:'en'}};
+          const withLanguages = languages => factory({
+            config,
+            'nwjs/Window':{window:{navigator:{languages}}}
+          }).default;
+          assert.strictEqual(withLanguages(['fr','en']), 'fr');
+          assert.strictEqual(withLanguages(['xx']), 'en');
+          console.log('Real StreamHub system-locale module passed both supported and fallback locale cases');
+          NODE
       - name: Test application behavior
         run: xvfb-run --auto-servernum yarn run grunt test:coverage
       - name: Save candidate lockfile and audit
