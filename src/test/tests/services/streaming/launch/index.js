@@ -5,7 +5,8 @@ import { EventEmitter } from "events";
 
 import launchProviderInjector
 // eslint-disable-next-line max-len
-	from "inject-loader?../is-aborted&../spawn&../provider/parameters&./parse-error&utils/parameters/Parameter!services/streaming/launch";
+	// eslint-disable-next-line max-len
+	from "streamhub-inject-loader?../is-aborted&../spawn&../provider/parameters&./parse-error&utils/parameters/Parameter!services/streaming/launch";
 import {
 	ExitCodeError,
 	ExitSignalError,
