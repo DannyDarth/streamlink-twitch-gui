@@ -20,7 +20,7 @@ import { run } from "@ember/runloop";
 import Service from "@ember/service";
 
 import HotkeyMixin from "ui/components/-mixins/hotkey";
-import hotkeyServiceInjector from "inject-loader?config!services/hotkey";
+import hotkeyServiceInjector from "streamhub-inject-loader?config!services/hotkey";
 
 
 module( "services/hotkey", function( hooks ) {
