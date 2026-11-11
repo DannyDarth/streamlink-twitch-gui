@@ -66,6 +66,11 @@ on:
       - src/test/tests/services/hotkey.js
       - src/test/tests/services/intl.js
       - src/test/tests/services/nwjs.js
+      - src/test/tests/services/modal.js
+      - src/test/tests/ui/components/search-bar.js
+      - src/test/tests/ui/components/title-bar.js
+      - src/test/tests/ui/components/settings-hotkey.js
+      - src/test/tests/init/initializers/localstorage/initializer.js
 
 permissions:
   contents: read
