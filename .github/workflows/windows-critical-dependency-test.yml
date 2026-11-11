@@ -61,6 +61,11 @@ on:
       - src/test/tests/services/streaming/cache.js
       - src/test/tests/services/streaming/launch/index.js
       - src/test/tests/services/streaming/provider/find-pythonscript-interpreter.js
+      - src/test/tests/nwjs/App.js
+      - src/test/tests/nwjs/Window.js
+      - src/test/tests/services/hotkey.js
+      - src/test/tests/services/intl.js
+      - src/test/tests/services/nwjs.js
 
 permissions:
   contents: read
