@@ -171,7 +171,12 @@ private struct FollowingBrowser: UIViewRepresentable {
             if playbackSuspended {
                 webView.stopLoading()
                 webView.loadHTMLString("", baseURL: nil)
-            } else {
+            } else if url.scheme?.lowercased() == "https",
+                      let host = url.host?.lowercased(),
+                      host == "twitch.tv" || host.hasSuffix(".twitch.tv") ||
+                      host == "kick.com" || host.hasSuffix(".kick.com") {
+                // Revalidate on resume as well as on initial load, since this
+                // browser retains the user's authenticated website sessions.
                 webView.load(URLRequest(url: url))
             }
         }
