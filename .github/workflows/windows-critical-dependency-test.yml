@@ -9,6 +9,9 @@ on:
       - .github/workflows/windows-critical-dependency-test.yml
       - package.json
       - yarn.lock
+      - build/tasks/webpack/configurators/tests.js
+      - build/tasks/webpack/loaders/inject-loader-babel7.js
+      - src/test/tests/utils/system-locale.js
 
 permissions:
   contents: read
