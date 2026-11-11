@@ -41,6 +41,11 @@ on:
       - src/test/tests/services/auth.js
       - src/test/tests/services/chat/providers/chromium.js
       - src/test/tests/services/chat/providers/chatty.js
+      - src/test/tests/services/chat/providers/browser.js
+      - src/test/tests/services/chat/providers/custom.js
+      - src/test/tests/services/chat/providers/chatterino.js
+      - src/test/tests/services/chat/providers/chatty-standalone.js
+      - src/test/tests/services/notification/service.js
 
 permissions:
   contents: read
