@@ -60,7 +60,16 @@ jobs:
           test "$BUNDLE_ID" = "com.streamhub.ios"
           test "$PLATFORM" = "iphoneos"
           test "$DEVICE_FAMILY" = "1"
-          echo "Verified iPhone Release bundle: $BUNDLE_ID ($PLATFORM)"
+          # The IPA must remain unsigned so it can be signed locally on Windows.
+          if /usr/bin/codesign --verify "$APP" >/dev/null 2>&1; then
+            echo "::error::App is unexpectedly code signed; refusing unsigned IPA packaging"
+            exit 1
+          fi
+          if [ -e "$APP/embedded.mobileprovision" ] || [ -e "$APP/_CodeSignature" ]; then
+            echo "::error::App contains signing or provisioning material"
+            exit 1
+          fi
+          echo "Verified unsigned iPhone Release bundle: $BUNDLE_ID ($PLATFORM)"
           rm -rf "$RUNNER_TEMP/Payload"
           mkdir -p "$RUNNER_TEMP/Payload" dist
           cp -R "$APP" "$RUNNER_TEMP/Payload/StreamHub.app"
