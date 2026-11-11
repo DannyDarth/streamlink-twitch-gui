@@ -3,9 +3,9 @@ import sinon from "sinon";
 import { twitch as twitchConfig } from "config";
 
 import chatProviderInjector
-	from "inject-loader?-utils/parameters/Parameter!services/chat/providers/-provider";
+	from "streamhub-inject-loader?-utils/parameters/Parameter!services/chat/providers/-provider";
 import chatProviderBasicInjector
-	from "inject-loader?-utils/parameters/ParameterCustom!services/chat/providers/-basic";
+	from "streamhub-inject-loader?-utils/parameters/ParameterCustom!services/chat/providers/-basic";
 import Substitution from "utils/parameters/Substitution";
 
 
