@@ -1,7 +1,7 @@
 import { module, test } from "qunit";
 
 import notificationProviderNativeInjector
-	from "inject-loader!services/notification/providers/native";
+	from "streamhub-inject-loader!services/notification/providers/native";
 
 
 module( "services/notification/providers/native" );
