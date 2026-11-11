@@ -11,7 +11,7 @@ on:
       - yarn.lock
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
   test-remediation:
@@ -26,15 +26,8 @@ jobs:
         run: |
           corepack enable
           corepack prepare yarn@1.22.22 --activate
-      - name: Test isolated Handlebars override
-        run: |
-          node - <<'NODE'
-          const fs = require('fs');
-          const pkg = JSON.parse(fs.readFileSync('package.json', 'utf8'));
-          pkg.resolutions['**/handlebars'] = '4.7.10';
-          fs.writeFileSync('package.json', JSON.stringify(pkg, null, 2) + '\n');
-          NODE
-          yarn install --ignore-scripts --non-interactive
+      - name: Resolve permanent Handlebars override
+        run: yarn install --ignore-scripts --non-interactive
           yarn list --pattern handlebars
           node - <<'NODE'
           const fs = require('fs');
@@ -76,6 +69,18 @@ jobs:
         run: yarn run grunt clean:tmp_prod webpack:prod
       - name: Test application behavior
         run: xvfb-run --auto-servernum yarn run grunt test:coverage
+      - name: Commit verified dependency lockfile
+        if: github.event_name == 'push' && github.ref == 'refs/heads/security/windows-critical-dependency-audit'
+        run: |
+          git add yarn.lock
+          if git diff --cached --quiet; then
+            echo "Lockfile already matches tested dependency tree."
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git commit -m "Lock transitive Handlebars to 4.7.10"
+          git push origin HEAD:security/windows-critical-dependency-audit
       - name: Save candidate lockfile and audit
         if: always()
         uses: actions/upload-artifact@v4
