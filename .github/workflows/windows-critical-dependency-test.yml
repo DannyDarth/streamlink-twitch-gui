@@ -26,8 +26,24 @@ jobs:
         run: |
           corepack enable
           corepack prepare yarn@1.22.22 --activate
-      - name: Install locked dependencies
-        run: yarn install --frozen-lockfile --ignore-scripts --non-interactive
+      - name: Test isolated Handlebars override
+        run: |
+          node - <<'NODE'
+          const fs = require('fs');
+          const pkg = JSON.parse(fs.readFileSync('package.json', 'utf8'));
+          pkg.resolutions['**/handlebars'] = '4.7.10';
+          fs.writeFileSync('package.json', JSON.stringify(pkg, null, 2) + '\n');
+          NODE
+          yarn install --ignore-scripts --non-interactive
+          yarn list --pattern handlebars
+          node - <<'NODE'
+          const fs = require('fs');
+          const lock = fs.readFileSync('yarn.lock', 'utf8');
+          if (/handlebars@[^:]*:\n  version "4\.7\.9"/.test(lock)) {
+            throw new Error('Vulnerable Handlebars 4.7.9 remains in candidate lockfile');
+          }
+          console.log('Verified no Handlebars 4.7.9 lockfile entries');
+          NODE
       - name: Identify remaining vulnerable dependency chains
         run: |
           yarn why handlebars
@@ -67,6 +83,7 @@ jobs:
           name: windows-critical-dependency-candidate
           path: |
             yarn.lock
+            package.json
             audit-after.jsonl
             critical-dependency-report.json
           retention-days: 14
