@@ -12,7 +12,7 @@ import { run } from "@ember/runloop";
 import Service from "@ember/service";
 
 import { helper as HotkeyTitleHelper } from "ui/components/helper/hotkey-title";
-import hotkeyServiceInjector from "inject-loader?config!services/hotkey";
+import hotkeyServiceInjector from "streamhub-inject-loader?config!services/hotkey";
 import HotkeyMixin from "ui/components/-mixins/hotkey";
 
 
