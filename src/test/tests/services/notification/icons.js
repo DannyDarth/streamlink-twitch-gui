@@ -4,7 +4,8 @@ import { resolve, posix as pathPosix } from "path";
 
 import notificationIconsMixinInjector
 // eslint-disable-next-line max-len
-	from "inject-loader?config&utils/node/platform&utils/node/fs/mkdirp&utils/node/fs/clearfolder&utils/node/fs/download&path!services/notification/icons";
+	// eslint-disable-next-line max-len
+	from "streamhub-inject-loader?config&utils/node/platform&utils/node/fs/mkdirp&utils/node/fs/clearfolder&utils/node/fs/download&path!services/notification/icons";
 
 
 
