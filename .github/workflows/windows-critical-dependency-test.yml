@@ -56,6 +56,11 @@ on:
       - src/test/tests/services/notification/providers/chrome-notifications.js
       - src/test/tests/services/chat/launch.js
       - src/test/tests/services/chat/service.js
+      - src/test/tests/services/chat/providers/-basic.js
+      - src/test/tests/services/chat/providers/-java.js
+      - src/test/tests/services/streaming/cache.js
+      - src/test/tests/services/streaming/launch/index.js
+      - src/test/tests/services/streaming/provider/find-pythonscript-interpreter.js
 
 permissions:
   contents: read
