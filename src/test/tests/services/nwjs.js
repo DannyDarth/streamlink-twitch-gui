@@ -7,7 +7,8 @@ import { A } from "@ember/array";
 import EmberObject from "@ember/object";
 import Service from "@ember/service";
 
-import nwjsServiceInjector from "inject-loader?nwjs/App&nwjs/Shell&nwjs/Window!services/nwjs";
+	// eslint-disable-next-line max-len
+import nwjsServiceInjector from "streamhub-inject-loader?nwjs/App&nwjs/Shell&nwjs/Window!services/nwjs";
 import {
 	ATTR_GUI_INTEGRATION_TASKBAR,
 	ATTR_GUI_INTEGRATION_TRAY,

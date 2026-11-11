@@ -40,17 +40,21 @@ function getVersion( config ) {
 
 	const output = stdout.toString().trim();
 
+	// Convert Git's commit-distance suffix to valid semver build metadata first.
+	// For example: v2.5.3-4-gabcdef0-dirty -> v2.5.3+4.gabcdef0.dirty
+	const normalized = output.replace(
+		/-(\\d+-g[a-f0-9]+(-dirty)?)$/,
+		( _, suffix ) => `+${suffix.replace( /-/g, "." )}`
+	);
+
 	const semver = require( "semver" );
-	if ( !semver.parse( output ) ) {
-		throw new Error( "Invalid output of `git describe --tags --dirty`" );
+	if ( semver.parse( normalized ) ) {
+		return normalized;
 	}
 
-	// turn fake prerelease data into build data and make it file name friendly
-	// v1.2.3-rc45-67-gdeadbeef-dirty => v1.2.3-rc45+67.gdeadbeef.dirty
-	return output.replace(
-		/-(\d+-g[a-f0-9]+(-dirty)?)$/,
-		( _, s ) => `+${s.replace( /-/g, "." )}`
-	);
+	// Forks may contain unrelated tags that cannot describe a semver version.
+	// Use the declared package version rather than failing the entire build.
+	return `v${config.package.version}`;
 }
 
 

@@ -1,6 +1,6 @@
 import { module, test } from "qunit";
 
-import chatProviderChromeInjector from "inject-loader!services/chat/providers/chrome";
+import chatProviderChromeInjector from "streamhub-inject-loader!services/chat/providers/chrome";
 
 
 module( "services/chat/providers/chrome" );

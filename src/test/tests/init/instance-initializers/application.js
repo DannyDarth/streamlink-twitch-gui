@@ -17,7 +17,7 @@ import Router from "@ember/routing/router";
 import Service from "@ember/service";
 
 import applicationInstanceInitializerInjector
-	from "inject-loader?smoothscroll!init/instance-initializers/application";
+	from "streamhub-inject-loader?smoothscroll!init/instance-initializers/application";
 
 
 module( "init/instance-initializers/application", function( hooks ) {

@@ -2,7 +2,7 @@ import { module, test } from "qunit";
 import sinon from "sinon";
 import { EventEmitter } from "events";
 
-import httpServerInjector from "inject-loader?http!utils/node/http/HttpServer";
+import httpServerInjector from "streamhub-inject-loader?http!utils/node/http/HttpServer";
 import { Stream, Writable } from "stream";
 
 

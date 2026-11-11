@@ -3,7 +3,7 @@ import sinon from "sinon";
 
 // noinspection ES6CheckImport
 import infiniteScrollMixinCssInjector
-	from "inject-loader!ui/routes/-mixins/routes/infinite-scroll/css";
+	from "streamhub-inject-loader!ui/routes/-mixins/routes/infinite-scroll/css";
 
 
 module( "ui/routes/-mixins/routes/infinite-scroll/css", function( hooks ) {

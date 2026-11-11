@@ -1,7 +1,8 @@
 import { module, test } from "qunit";
 import sinon from "sinon";
 
-import instanceInitializerInjector from "inject-loader!init/initializers/localstorage/initializer";
+	// eslint-disable-next-line max-len
+import instanceInitializerInjector from "streamhub-inject-loader!init/initializers/localstorage/initializer";
 
 
 module( "init/initializers/localstorage/initializer" );

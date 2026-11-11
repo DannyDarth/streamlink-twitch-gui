@@ -1,7 +1,7 @@
 import { module, test } from "qunit";
 
 import notificationProviderRichInjector
-	from "inject-loader!services/notification/providers/rich";
+	from "streamhub-inject-loader!services/notification/providers/rich";
 
 
 module( "services/notification/providers/rich" );

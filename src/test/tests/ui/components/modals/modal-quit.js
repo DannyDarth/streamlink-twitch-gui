@@ -14,7 +14,8 @@ import Evented from "@ember/object/evented";
 import { run } from "@ember/runloop";
 import Service from "@ember/service";
 
-import nwjsServiceInjector from "inject-loader?nwjs/App&nwjs/Shell&nwjs/Window!services/nwjs";
+	// eslint-disable-next-line max-len
+import nwjsServiceInjector from "streamhub-inject-loader?nwjs/App&nwjs/Shell&nwjs/Window!services/nwjs";
 import HotkeyService from "services/hotkey";
 import ModalService from "services/modal";
 import ModalServiceComponent from "ui/components/modal/modal-service/component";

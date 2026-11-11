@@ -4,7 +4,7 @@ import sinon from "sinon";
 import { EventEmitter } from "events";
 
 import promiseChildProcessInjector
-	from "inject-loader?-utils/StreamOutputBuffer!utils/node/child_process/promise";
+	from "streamhub-inject-loader?-utils/StreamOutputBuffer!utils/node/child_process/promise";
 
 
 module( "utils/node/child_process/promise", function( hooks ) {

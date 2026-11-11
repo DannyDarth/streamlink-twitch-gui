@@ -1,7 +1,8 @@
 import { module, test } from "qunit";
 import { EventEmitter } from "events";
 
-import getRedirectedInjector from "inject-loader?http&https!utils/node/http/getRedirected";
+import getRedirectedInjector
+	from "streamhub-inject-loader?http&https!utils/node/http/getRedirected";
 
 
 class FakeServerResponse {

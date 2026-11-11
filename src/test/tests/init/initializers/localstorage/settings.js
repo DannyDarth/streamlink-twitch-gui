@@ -1,6 +1,7 @@
 import { module, test } from "qunit";
 
-import updateSettingsInjector from "inject-loader?-./utils!init/initializers/localstorage/settings";
+	// eslint-disable-next-line max-len
+import updateSettingsInjector from "streamhub-inject-loader?-./utils!init/initializers/localstorage/settings";
 import {
 	ATTR_STREAMS_LANGUAGES_FADE,
 	ATTR_STREAMS_LANGUAGES_FILTER

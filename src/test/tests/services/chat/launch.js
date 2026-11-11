@@ -2,7 +2,7 @@ import { module, test } from "qunit";
 import { EventEmitter } from "events";
 import sinon from "sinon";
 
-import launchInjector from "inject-loader!services/chat/launch";
+import launchInjector from "streamhub-inject-loader!services/chat/launch";
 
 
 module( "services/chat/launch", {

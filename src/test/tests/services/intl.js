@@ -5,7 +5,8 @@ import sinon from "sinon";
 import { set, observer } from "@ember/object";
 import Service from "@ember/service";
 
-import intlServiceInjector from "inject-loader?ember-intl&config&utils/system-locale!services/intl";
+	// eslint-disable-next-line max-len
+import intlServiceInjector from "streamhub-inject-loader?ember-intl&config&utils/system-locale!services/intl";
 
 
 module( "services/intl", function( hooks ) {

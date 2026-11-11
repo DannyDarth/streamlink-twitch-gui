@@ -13,7 +13,7 @@ import Service from "@ember/service";
 import Adapter from "ember-data/adapter";
 
 import versioncheckServiceInjector
-	from "inject-loader?metadata&nwjs/App&nwjs/argv&nwjs/debug!services/versioncheck";
+	from "streamhub-inject-loader?metadata&nwjs/App&nwjs/argv&nwjs/debug!services/versioncheck";
 import Versioncheck from "data/models/versioncheck/model";
 import GithubReleases from "data/models/github/releases/model";
 import GithubReleasesAdapter from "data/models/github/releases/adapter";
@@ -547,7 +547,7 @@ module( "services/versioncheck", function( hooks ) {
 		);
 		assert.strictEqual(
 			modal.querySelector( ".modal-body-component" ).textContent.trim(),
-			"modal.debug.body{\"name\":\"Streamlink Twitch GUI\",\"htmlSafe\":true}",
+			"modal.debug.body{\"name\":\"StreamHub\",\"htmlSafe\":true}",
 			"Modal has the correct body text"
 		);
 		const btn = modal.querySelector( ".form-button-component.btn-primary" );

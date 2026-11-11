@@ -8,7 +8,8 @@ import { sendEvent } from "@ember/object/events";
 import Service from "@ember/service";
 import { EventEmitter } from "events";
 
-import refreshMixinInjector from "inject-loader?nwjs/Window!ui/routes/-mixins/routes/refresh";
+	// eslint-disable-next-line max-len
+import refreshMixinInjector from "streamhub-inject-loader?nwjs/Window!ui/routes/-mixins/routes/refresh";
 
 
 module( "ui/routes/-mixins/routes/refresh", function( hooks ) {

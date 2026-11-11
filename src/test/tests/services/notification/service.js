@@ -7,7 +7,8 @@ import { set } from "@ember/object";
 import Service from "@ember/service";
 
 import notificationServiceInjector
-	from "inject-loader?./polling&./dispatch&./badge&./tray!services/notification/service";
+	// eslint-disable-next-line max-len
+	from "streamhub-inject-loader?./polling&./dispatch&./badge&./tray!services/notification/service";
 
 
 module( "services/notification", function( hooks ) {

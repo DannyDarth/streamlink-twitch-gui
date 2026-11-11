@@ -3,12 +3,13 @@ import sinon from "sinon";
 import { twitch as twitchConfig } from "config";
 
 import chatProviderInjector
-	from "inject-loader?-utils/parameters/Parameter!services/chat/providers/-provider";
+	from "streamhub-inject-loader?-utils/parameters/Parameter!services/chat/providers/-provider";
 import chatProviderBasicInjector
 // eslint-disable-next-line max-len
-	from "inject-loader?-utils/parameters/ParameterCustom&-utils/parameters/Substitution!services/chat/providers/-basic";
+	// eslint-disable-next-line max-len
+	from "streamhub-inject-loader?-utils/parameters/ParameterCustom&-utils/parameters/Substitution!services/chat/providers/-basic";
 import chatProviderChromiumInjector
-	from "inject-loader?./-basic!services/chat/providers/chromium";
+	from "streamhub-inject-loader?./-basic!services/chat/providers/chromium";
 
 
 module( "services/chat/providers/chromium", {

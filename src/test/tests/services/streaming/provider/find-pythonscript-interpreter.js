@@ -3,9 +3,9 @@ import sinon from "sinon";
 import { EventEmitter } from "events";
 import { posix as pathPosix, win32 as pathWin32 } from "path";
 
-import readLinesInjector from "inject-loader?fs!utils/node/fs/readLines";
+import readLinesInjector from "streamhub-inject-loader?fs!utils/node/fs/readLines";
 import findPythonscriptInterpreterInjector
-	from "inject-loader!services/streaming/provider/find-pythonscript-interpreter";
+	from "streamhub-inject-loader!services/streaming/provider/find-pythonscript-interpreter";
 import ExecObj from "services/streaming/exec-obj";
 
 

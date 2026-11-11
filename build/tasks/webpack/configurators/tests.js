@@ -1,5 +1,5 @@
 const { resolve: r } = require( "path" );
-const { pTest, pTestFixtures, pDependencies } = require( "../paths" );
+const { pTest, pTestFixtures, pDependencies, pLoaders } = require( "../paths" );
 const { buildBabelConfig } = require( "../utils" );
 
 
@@ -22,6 +22,11 @@ module.exports = {
 	},
 
 	_aliases( config ) {
+		// Test-only alias: opt in individual modules before migrating the full suite.
+		config.resolveLoader = config.resolveLoader || {};
+		config.resolveLoader.alias = Object.assign( {}, config.resolveLoader.alias, {
+			"streamhub-inject-loader": r( pLoaders, "inject-loader-babel7.js" )
+		});
 		Object.assign( config.resolve.alias, {
 			"tests": r( pTest, "tests" ),
 			"fixtures": pTestFixtures,

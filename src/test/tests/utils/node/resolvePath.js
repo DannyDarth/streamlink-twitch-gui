@@ -1,6 +1,6 @@
 import { module, test } from "qunit";
 
-import resolvePathInjector from "inject-loader!utils/node/resolvePath";
+import resolvePathInjector from "streamhub-inject-loader!utils/node/resolvePath";
 
 
 module( "utils/node/resolvePath", {

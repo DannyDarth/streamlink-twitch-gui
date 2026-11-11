@@ -14,8 +14,8 @@ import { EventEmitter } from "events";
 import { Stream, Writable } from "stream";
 
 import authServiceInjector
-	from "inject-loader?crypto&utils/node/http/HttpServer!services/auth/service";
-import httpServerInjector from "inject-loader?http!utils/node/http/HttpServer";
+	from "streamhub-inject-loader?crypto&utils/node/http/HttpServer!services/auth/service";
+import httpServerInjector from "streamhub-inject-loader?http!utils/node/http/HttpServer";
 import Auth from "data/models/auth/model";
 import TwitchAdapter from "data/models/twitch/adapter";
 import TwitchUser from "data/models/twitch/user/model";

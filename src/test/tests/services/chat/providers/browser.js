@@ -2,8 +2,8 @@ import { module, test } from "qunit";
 import sinon from "sinon";
 import { twitch as twitchConfig } from "config";
 
-import chatProviderInjector from "inject-loader!services/chat/providers/-provider";
-import chatProviderBrowserInjector from "inject-loader!services/chat/providers/browser";
+import chatProviderInjector from "streamhub-inject-loader!services/chat/providers/-provider";
+import chatProviderBrowserInjector from "streamhub-inject-loader!services/chat/providers/browser";
 
 
 module( "services/chat/providers/browser", {

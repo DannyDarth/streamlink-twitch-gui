@@ -3,7 +3,7 @@ import sinon from "sinon";
 
 import { EventEmitter } from "events";
 
-import nwWindowInjector from "inject-loader!nwjs/Window";
+import nwWindowInjector from "streamhub-inject-loader!nwjs/Window";
 
 
 module( "nwjs/Window", function( hooks ) {

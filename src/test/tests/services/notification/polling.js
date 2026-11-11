@@ -12,7 +12,7 @@ import Service from "@ember/service";
 import Model from "ember-data/model";
 
 import notificationPollingMixinInjector
-	from "inject-loader?config&./cache&./icons&./logger!services/notification/polling";
+	from "streamhub-inject-loader?config&./cache&./icons&./logger!services/notification/polling";
 import TwitchAdapter from "data/models/twitch/adapter";
 import TwitchStreamFollowed from "data/models/twitch/stream-followed/model";
 import TwitchStreamFollowedSerializer from "data/models/twitch/stream-followed/serializer";

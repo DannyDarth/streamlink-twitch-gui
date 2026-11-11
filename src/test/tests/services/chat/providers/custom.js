@@ -1,6 +1,6 @@
 import { module, test } from "qunit";
 
-import chatProviderCustomInjector from "inject-loader!services/chat/providers/custom";
+import chatProviderCustomInjector from "streamhub-inject-loader!services/chat/providers/custom";
 
 
 module( "services/chat/providers/custom" );

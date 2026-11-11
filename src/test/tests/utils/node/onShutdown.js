@@ -3,7 +3,7 @@ import sinon from "sinon";
 
 import { EventEmitter } from "events";
 
-import onShutdownInjector from "inject-loader!utils/node/onShutdown";
+import onShutdownInjector from "streamhub-inject-loader!utils/node/onShutdown";
 
 
 module( "utils/node/onShutdown", function( hooks ) {

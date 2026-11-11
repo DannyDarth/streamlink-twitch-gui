@@ -6,7 +6,7 @@ import sinon from "sinon";
 import Evented from "@ember/object/evented";
 import Service from "@ember/service";
 
-import chatServiceInjector from "inject-loader?config&./providers!services/chat/service";
+import chatServiceInjector from "streamhub-inject-loader?config&./providers!services/chat/service";
 
 
 module( "services/chat", function( hooks ) {

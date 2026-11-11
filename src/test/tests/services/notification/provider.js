@@ -1,6 +1,6 @@
 import { module, test } from "qunit";
 
-import providerInjector from "inject-loader!services/notification/provider";
+import providerInjector from "streamhub-inject-loader!services/notification/provider";
 
 
 module( "services/notification/provider" );

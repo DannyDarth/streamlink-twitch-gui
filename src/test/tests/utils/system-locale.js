@@ -1,6 +1,6 @@
 import { module, test } from "qunit";
 
-import systemLocaleInjector from "inject-loader!utils/system-locale";
+import systemLocaleInjector from "streamhub-inject-loader!utils/system-locale";
 
 
 module( "utils/system-locale" );

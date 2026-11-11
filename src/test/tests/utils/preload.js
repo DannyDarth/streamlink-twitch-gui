@@ -2,7 +2,7 @@ import { module, test } from "qunit";
 import ArrayProxy from "@ember/array/proxy";
 import sinon from "sinon";
 
-import preloadInjector from "inject-loader?nwjs/Window!utils/preload";
+import preloadInjector from "streamhub-inject-loader?nwjs/Window!utils/preload";
 
 
 module( "utils/preload", {

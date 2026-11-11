@@ -2,7 +2,7 @@ import { module, test } from "qunit";
 import sinon from "sinon";
 import { merge } from "lodash/object";
 
-import resolvePlayerInjector from "inject-loader!services/streaming/player/resolve";
+import resolvePlayerInjector from "streamhub-inject-loader!services/streaming/player/resolve";
 import { PlayerError } from "services/streaming/errors";
 import ExecObj from "services/streaming/exec-obj";
 

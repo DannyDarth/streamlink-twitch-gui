@@ -1,0 +1,280 @@
+name: Test critical dependency remediation
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - security/windows-critical-dependency-audit
+    paths:
+      - .github/workflows/windows-critical-dependency-test.yml
+      - package.json
+      - yarn.lock
+      - build/tasks/webpack/configurators/tests.js
+      - build/tasks/webpack/loaders/inject-loader-babel7.js
+      - src/test/tests/utils/system-locale.js
+      - src/test/tests/utils/node/fs/mkdirp.js
+      - src/test/tests/utils/node/resolvePath.js
+      - src/test/tests/utils/node/fs/whichFallback.js
+      - src/test/tests/utils/node/fs/which.js
+      - src/test/tests/utils/node/onShutdown.js
+      - src/test/tests/utils/node/child_process/spawn.js
+      - src/test/tests/utils/node/fs/stat.js
+      - src/test/tests/utils/node/http/getRedirected.js
+      - src/test/tests/utils/node/fs/clearfolder.js
+      - src/test/tests/utils/node/fs/download.js
+      - src/test/tests/utils/node/fs/readLines.js
+      - src/test/tests/utils/node/http/HttpServer.js
+      - src/test/tests/utils/node/child_process/promise.js
+      - src/test/tests/utils/Logger.js
+      - src/test/tests/utils/preload.js
+      - src/test/tests/utils/node/platform.js
+      - src/test/tests/services/streaming/spawn.js
+      - src/test/tests/services/streaming/provider/resolve.js
+      - src/test/tests/services/streaming/provider/validate.js
+      - src/test/tests/services/streaming/player/resolve.js
+      - src/test/tests/services/notification/providers/snoretoast.js
+      - src/test/tests/services/chat/providers/chrome.js
+      - src/test/tests/services/notification/providers/growl.js
+      - src/test/tests/services/notification/providers/native.js
+      - src/test/tests/services/notification/providers/rich.js
+      - src/test/tests/services/notification/dispatch.js
+      - src/test/tests/services/auth.js
+      - src/test/tests/services/chat/providers/chromium.js
+      - src/test/tests/services/chat/providers/chatty.js
+      - src/test/tests/services/chat/providers/browser.js
+      - src/test/tests/services/chat/providers/custom.js
+      - src/test/tests/services/chat/providers/chatterino.js
+      - src/test/tests/services/chat/providers/chatty-standalone.js
+      - src/test/tests/services/notification/service.js
+      - src/test/tests/services/notification/cache.js
+      - src/test/tests/init/instance-initializers/application.js
+      - src/test/tests/services/versioncheck.js
+      - src/test/tests/nwjs/argv.js
+      - src/test/tests/services/notification/icons.js
+      - src/test/tests/services/notification/polling.js
+      - src/test/tests/services/notification/provider.js
+      - src/test/tests/services/notification/providers/chrome-notifications.js
+      - src/test/tests/services/chat/launch.js
+      - src/test/tests/services/chat/service.js
+      - src/test/tests/services/chat/providers/-basic.js
+      - src/test/tests/services/chat/providers/-java.js
+      - src/test/tests/services/streaming/cache.js
+      - src/test/tests/services/streaming/launch/index.js
+      - src/test/tests/services/streaming/provider/find-pythonscript-interpreter.js
+      - src/test/tests/nwjs/App.js
+      - src/test/tests/nwjs/Window.js
+      - src/test/tests/services/hotkey.js
+      - src/test/tests/services/intl.js
+      - src/test/tests/services/nwjs.js
+      - src/test/tests/services/modal.js
+      - src/test/tests/ui/components/search-bar.js
+      - src/test/tests/ui/components/title-bar.js
+      - src/test/tests/ui/components/settings-hotkey.js
+      - src/test/tests/init/initializers/localstorage/initializer.js
+      - src/test/tests/ui/components/helper/hotkey-title.js
+      - src/test/tests/ui/components/modals/modal-quit.js
+      - src/test/tests/data/models/settings/model.js
+      - src/test/tests/init/initializers/localstorage/channelsettings.js
+      - src/test/tests/init/initializers/localstorage/settings.js
+      - src/test/tests/init/instance-initializers/nwjs/window.js
+      - src/test/tests/ui/routes/-mixins/routes/infinite-scroll/index.js
+      - src/test/tests/ui/routes/-mixins/routes/refresh.js
+      - src/test/tests/ui/routes/-mixins/routes/infinite-scroll/css.js
+      - src/test/tests/ui/routes/settings/languages.js
+
+permissions:
+  contents: write
+
+jobs:
+  test-remediation:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 50
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Prepare Yarn Classic
+        run: |
+          corepack enable
+          corepack prepare yarn@1.22.22 --activate
+      - name: Inventory inject-loader usage and replacement requirements
+        run: |
+          node - <<'NODE'
+          const fs = require('fs'), path = require('path');
+          const matches = [];
+          function walk(dir) {
+            for (const entry of fs.readdirSync(dir, {withFileTypes:true})) {
+              const p = path.join(dir, entry.name);
+              if (entry.isDirectory()) walk(p);
+              else if (entry.isFile() && p.endsWith('.js')) {
+                const source = fs.readFileSync(p, 'utf8');
+                for (const line of source.split(String.fromCharCode(10))) {
+                  if (/(^|[^\\w-])inject-loader[?!]/.test(line)) {
+                    matches.push({file:p, line:line.trim()});
+                  }
+                }
+              }
+            }
+          }
+          walk('src/test');
+          const report = {count:matches.length, files:new Set(matches.map(m=>m.file)).size, imports:matches};
+          fs.writeFileSync('inject-loader-usage.json', JSON.stringify(report, null, 2));
+          console.log('inject-loader references:', report.count, 'across files:', report.files);
+          console.log('Examples:', JSON.stringify(matches.slice(0,15),null,2));
+          console.log('Query variants:', JSON.stringify([...new Set(matches.map(m => (m.line.match(/inject-loader[^!]*!/) || ['inject-loader!'])[0]))].sort(), null, 2));
+          if (report.count) throw new Error('Legacy inject-loader imports remain; migrate these before removing the dependency');
+          NODE
+      - name: Regenerate Yarn lockfile without legacy inject-loader
+        run: |
+          yarn install --ignore-scripts --non-interactive
+          node - <<'NODE'
+          const fs = require('fs');
+          const pkg = JSON.parse(fs.readFileSync('package.json','utf8'));
+          if (pkg.devDependencies['inject-loader']) throw new Error('Legacy loader still declared');
+          const lock = fs.readFileSync('yarn.lock','utf8');
+          if (/^inject-loader@/m.test(lock)) throw new Error('Legacy loader remains in regenerated lockfile');
+          if (/handlebars@[^:]*:\\n  version "4\\.7\\.9"/.test(lock)) throw new Error('Vulnerable Handlebars remains');
+          console.log('Regenerated lockfile excludes inject-loader and Handlebars 4.7.9');
+          if (/^babel-traverse@/m.test(lock)) throw new Error('Babel 6 traverse remains in lockfile');
+          NODE
+          git diff --exit-code -- yarn.lock
+      - name: Inspect remaining Babel 6 dependency paths
+        run: |
+          yarn list --pattern 'inject-loader|babel-traverse|babel-core|handlebars' > babel-dependency-tree.txt || true
+          cat babel-dependency-tree.txt
+          yarn why babel-traverse || true
+      - name: Verify no legacy test imports
+        run: |
+          node - <<'NODE'
+          const fs = require('fs');
+          const report = JSON.parse(fs.readFileSync('inject-loader-usage.json','utf8'));
+          if (report.count !== 0) throw new Error('Legacy imports remain');
+          console.log('No legacy inject-loader imports');
+          NODE
+      - name: Audit locked dependency tree
+        run: |
+          yarn audit --json --level low > audit-after.jsonl || true
+          node - <<'NODE'
+          const fs = require('fs');
+          const lines = fs.readFileSync('audit-after.jsonl', 'utf8').split(/\r?\n/);
+          const findings = [];
+          for (const line of lines) {
+            if (!line.trim()) continue;
+            try {
+              const item = JSON.parse(line);
+              if (item.type === 'auditAdvisory') {
+                const a = item.data.advisory;
+                findings.push({module: a.module_name, severity: a.severity, title: a.title, vulnerable_versions: a.vulnerable_versions, patched_versions: a.patched_versions, paths: item.data.resolution?.path || null});
+              }
+            } catch (e) { console.log('Skipped non-JSON audit output:', e.message); }
+          }
+          const critical = findings.filter(f => f.severity === 'critical');
+          fs.writeFileSync('critical-dependency-report.json', JSON.stringify({total_advisories: findings.length, critical}, null, 2));
+          console.log('Total advisories:', findings.length);
+          console.log('Critical advisories:', critical.length);
+          if (critical.length) throw new Error('Critical vulnerabilities remain in dependency audit');
+          console.log(JSON.stringify(critical, null, 2));
+          NODE
+      - name: Test application compilation
+        run: yarn run grunt clean:tmp_prod webpack:prod
+      - name: Prototype Babel 7 dependency substitution without Babel 6
+        run: |
+          node - <<'NODE'
+          const babel = require('@babel/core');
+          const assert = require('assert');
+          const source = 'import config from "config"; export default config.mode;';
+          const plugin = function({types:t}) {
+            return {visitor:{
+              ImportDeclaration(path) {
+                if (path.node.source.value !== 'config') return;
+                const binding = path.node.specifiers[0].local;
+                path.replaceWith(t.variableDeclaration('const', [
+                  t.variableDeclarator(binding, t.memberExpression(t.identifier('__testDependencies'),t.identifier('config')))
+                ]));
+              }
+            }};
+          };
+          const result = babel.transformSync(source, {
+            babelrc:false, configFile:false,
+            plugins:[plugin, '@babel/plugin-transform-modules-commonjs']
+          }).code;
+          const module = {exports:{}};
+          new Function('module','exports','__testDependencies',result)(
+            module,module.exports,{config:{mode:'injected'}}
+          );
+          assert.strictEqual(module.exports.default,'injected');
+          console.log('Babel 7 injection proof of concept passed without babel-core 6');
+          NODE
+      - name: Exercise experimental Babel 7 loader with real and mocked dependencies
+        run: |
+          node - <<'NODE'
+          const assert = require('assert');
+          const loader = require('./build/tasks/webpack/loaders/inject-loader-babel7');
+          let output;
+          loader.call({
+            resourcePath: '/tmp/streamhub-loader-smoke.js',
+            callback(error, code) { if (error) throw error; output = code; }
+          }, 'exports.value = require("path").basename("/foo/bar");');
+          const result = {exports:{}};
+          new Function('module', 'exports', 'require', output)(result,result.exports,require);
+          assert.strictEqual(result.exports({path:{basename:()=> 'mocked'}}).value,'mocked');
+          assert.strictEqual(result.exports({}).value,'bar');
+          console.log('Experimental Babel 7 loader: mocked and real dependencies passed');
+          NODE
+      - name: Exercise Babel 7 loader against StreamHub system locale module
+        run: |
+          node - <<'NODE'
+          const fs = require('fs');
+          const assert = require('assert');
+          const babel = require('@babel/core');
+          const loader = require('./build/tasks/webpack/loaders/inject-loader-babel7');
+          const source = fs.readFileSync('src/app/utils/system-locale.js', 'utf8');
+          const commonjs = babel.transformSync(source, {
+            babelrc:false, configFile:false,
+            plugins:['@babel/plugin-transform-modules-commonjs']
+          }).code;
+          let output;
+          loader.call({
+            resourcePath: require('path').resolve('src/app/utils/system-locale.js'),
+            callback(error, code) { if(error) throw error; output = code; }
+          }, commonjs);
+          const outer = {exports:{}};
+          new Function('module','exports','require',output)(outer,outer.exports,require);
+          const factory = outer.exports;
+          const config = {locales:{locales:{en:'English',fr:'French'},default:'en'}};
+          const withLanguages = languages => factory({
+            config,
+            'nwjs/Window':{window:{navigator:{languages}}}
+          }).default;
+          assert.strictEqual(withLanguages(['fr','en']), 'fr');
+          assert.strictEqual(withLanguages(['xx']), 'en');
+          console.log('Real StreamHub system-locale module passed both supported and fallback locale cases');
+          NODE
+      - name: Test application behavior
+        run: xvfb-run --auto-servernum yarn run grunt test:coverage
+      - name: Commit verified regenerated lockfile to security branch
+        if: success()
+        run: |
+          if ! git diff --quiet -- yarn.lock; then
+            git config user.name "github-actions[bot]"
+            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+            git add yarn.lock
+            git commit -m "Regenerate Yarn lockfile without inject-loader"
+            git push origin HEAD:security/windows-critical-dependency-audit
+          else
+            echo "Yarn lockfile is already current"
+          fi
+      - name: Save candidate lockfile and audit
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: windows-critical-dependency-candidate
+          path: |
+            yarn.lock
+            package.json
+            audit-after.jsonl
+            critical-dependency-report.json
+            babel-dependency-tree.txt
+            inject-loader-usage.json
+          retention-days: 14
