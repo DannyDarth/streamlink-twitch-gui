@@ -4,7 +4,7 @@ import sinon from "sinon";
 
 import { streaming as streamingConfig } from "config";
 import validateProviderInjector
-	from "inject-loader?-semver/functions/lt!services/streaming/provider/validate";
+	from "streamhub-inject-loader?-semver/functions/lt!services/streaming/provider/validate";
 import { LogError, VersionError } from "services/streaming/errors";
 import StreamOutputBuffer from "utils/StreamOutputBuffer";
 
