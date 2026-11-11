@@ -120,10 +120,12 @@ jobs:
         run: |
           test -s dist/StreamHub-iOS-unsigned.ipa
           TAG="streamhub-ios-build-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}"
+          RUN_URL="https://github.com/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}/attempts/${GITHUB_RUN_ATTEMPT}"
+          NOTES="$(printf 'Unsigned iOS IPA for local signing on Windows.\\n\\nSource commit: %s\\nSource branch: %s\\nWorkflow run: %s\\nWorkflow attempt: %s\\nActions URL: %s\\nSHA-256 checksum: see attached .sha256 file.\\n' "$GITHUB_SHA" "$GITHUB_REF_NAME" "$GITHUB_RUN_ID" "$GITHUB_RUN_ATTEMPT" "$RUN_URL")"
           gh release create "$TAG" \
             "dist/StreamHub-iOS-unsigned.ipa#StreamHub-iOS-unsigned.ipa" \
             "dist/StreamHub-iOS-unsigned.ipa.sha256#StreamHub-iOS-unsigned.ipa.sha256" \
             --title "StreamHub iOS build ${GITHUB_RUN_NUMBER} (attempt ${GITHUB_RUN_ATTEMPT})" \
-            --notes "Unsigned iOS IPA from commit ${GITHUB_SHA}. Download the .ipa asset directly and sign it using your preferred Windows sideloading tool." \
+            --notes "$NOTES" \
             --target "$GITHUB_SHA" \
             --prerelease
