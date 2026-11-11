@@ -1,7 +1,7 @@
 import { module, test } from "qunit";
 
 import CacheItem from "services/notification/cache/item";
-import cacheInjector from "inject-loader?config!services/notification/cache";
+import cacheInjector from "streamhub-inject-loader?config!services/notification/cache";
 
 
 module( "services/notification/cache", function() {
