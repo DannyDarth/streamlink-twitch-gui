@@ -1,7 +1,7 @@
 import { module, test } from "qunit";
 import sinon from "sinon";
 
-import resolveProviderInjector from "inject-loader!services/streaming/provider/resolve";
+import resolveProviderInjector from "streamhub-inject-loader!services/streaming/provider/resolve";
 import { ProviderError } from "services/streaming/errors";
 import ExecObj from "services/streaming/exec-obj";
 
