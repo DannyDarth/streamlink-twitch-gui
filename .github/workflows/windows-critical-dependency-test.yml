@@ -46,6 +46,11 @@ on:
       - src/test/tests/services/chat/providers/chatterino.js
       - src/test/tests/services/chat/providers/chatty-standalone.js
       - src/test/tests/services/notification/service.js
+      - src/test/tests/services/notification/cache.js
+      - src/test/tests/init/instance-initializers/application.js
+      - src/test/tests/services/versioncheck.js
+      - src/test/tests/nwjs/argv.js
+      - src/test/tests/services/notification/icons.js
 
 permissions:
   contents: read
