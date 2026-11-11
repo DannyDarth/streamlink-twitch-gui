@@ -71,6 +71,11 @@ on:
       - src/test/tests/ui/components/title-bar.js
       - src/test/tests/ui/components/settings-hotkey.js
       - src/test/tests/init/initializers/localstorage/initializer.js
+      - src/test/tests/ui/components/helper/hotkey-title.js
+      - src/test/tests/ui/components/modals/modal-quit.js
+      - src/test/tests/data/models/settings/model.js
+      - src/test/tests/init/initializers/localstorage/channelsettings.js
+      - src/test/tests/init/initializers/localstorage/settings.js
 
 permissions:
   contents: read
