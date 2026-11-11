@@ -92,6 +92,7 @@ jobs:
   publish:
     name: Publish unsigned IPA prerelease
     needs: ios
+    timeout-minutes: 10
     # Only publish builds from this repository's explicitly approved iOS branches.
     # Keep security-branch prereleases available for on-device regression testing.
     if: >-
