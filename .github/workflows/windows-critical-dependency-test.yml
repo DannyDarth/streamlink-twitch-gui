@@ -25,6 +25,9 @@ on:
       - src/test/tests/utils/node/fs/readLines.js
       - src/test/tests/utils/node/http/HttpServer.js
       - src/test/tests/utils/node/child_process/promise.js
+      - src/test/tests/utils/Logger.js
+      - src/test/tests/utils/preload.js
+      - src/test/tests/utils/node/platform.js
 
 permissions:
   contents: read
