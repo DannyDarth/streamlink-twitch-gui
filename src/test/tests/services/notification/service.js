@@ -7,6 +7,7 @@ import { set } from "@ember/object";
 import Service from "@ember/service";
 
 import notificationServiceInjector
+	// eslint-disable-next-line max-len
 	from "streamhub-inject-loader?./polling&./dispatch&./badge&./tray!services/notification/service";
 
 
