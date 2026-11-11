@@ -26,15 +26,34 @@ jobs:
         run: |
           corepack enable
           corepack prepare yarn@1.22.22 --activate
-      - name: Test removal of legacy inject-loader in isolated checkout
+      - name: Inventory inject-loader usage and replacement requirements
         run: |
-          yarn remove inject-loader --ignore-scripts --non-interactive
-          if yarn why inject-loader > inject-loader-remaining.txt 2>&1; then
-            cat inject-loader-remaining.txt
-            echo "inject-loader still appears in dependency tree"
-          fi
+          node - <<'NODE'
+          const fs = require('fs'), path = require('path');
+          const matches = [];
+          function walk(dir) {
+            for (const entry of fs.readdirSync(dir, {withFileTypes:true})) {
+              const p = path.join(dir, entry.name);
+              if (entry.isDirectory()) walk(p);
+              else if (entry.isFile() && /\\.js$/.test(p)) {
+                const source = fs.readFileSync(p, 'utf8');
+                for (const m of source.matchAll(/inject-loader(?:\\?[^!'"\\s]*)?!([^'"\\s]+)/g)) {
+                  matches.push({file:p, import:m[0], query:m[0].split('!')[0]});
+                }
+              }
+            }
+          }
+          walk('src/test');
+          const report = {count:matches.length, files:new Set(matches.map(m=>m.file)).size, imports:matches};
+          fs.writeFileSync('inject-loader-usage.json', JSON.stringify(report, null, 2));
+          console.log('inject-loader imports:', report.count, 'across files:', report.files);
+          console.log('Examples:', JSON.stringify(matches.slice(0,15),null,2));
+          NODE
+      - name: Check dependency chain without removing test functionality
+        run: |
+          yarn why inject-loader
+          yarn why babel-traverse
           yarn list --pattern 'inject-loader|babel-traverse|babel-core' > babel-dependency-tree.txt || true
-          cat babel-dependency-tree.txt
       - name: Resolve permanent Handlebars override
         run: |
           yarn install --ignore-scripts --non-interactive
@@ -90,5 +109,5 @@ jobs:
             audit-after.jsonl
             critical-dependency-report.json
             babel-dependency-tree.txt
-            inject-loader-remaining.txt
+            inject-loader-usage.json
           retention-days: 14
