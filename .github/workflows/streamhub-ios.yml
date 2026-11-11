@@ -52,6 +52,15 @@ jobs:
           APP="$RUNNER_TEMP/StreamHubDerived/Build/Products/Release-iphoneos/StreamHub.app"
           test -s "$APP/Info.plist"
           test -s "$APP/StreamHub"
+          # Refuse to package an unexpected app or a simulator-only build.
+          PLIST="$APP/Info.plist"
+          BUNDLE_ID="$(/usr/libexec/PlistBuddy -c 'Print :CFBundleIdentifier' "$PLIST")"
+          PLATFORM="$(/usr/libexec/PlistBuddy -c 'Print :DTPlatformName' "$PLIST")"
+          DEVICE_FAMILY="$(/usr/libexec/PlistBuddy -c 'Print :UIDeviceFamily:0' "$PLIST")"
+          test "$BUNDLE_ID" = "com.streamhub.ios"
+          test "$PLATFORM" = "iphoneos"
+          test "$DEVICE_FAMILY" = "1"
+          echo "Verified iPhone Release bundle: $BUNDLE_ID ($PLATFORM)"
           rm -rf "$RUNNER_TEMP/Payload"
           mkdir -p "$RUNNER_TEMP/Payload" dist
           cp -R "$APP" "$RUNNER_TEMP/Payload/StreamHub.app"
