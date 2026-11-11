@@ -48,10 +48,15 @@ jobs:
             CODE_SIGNING_ALLOWED=NO build
       - name: Package unsigned IPA for local signing
         run: |
+          set -euo pipefail
+          APP="$RUNNER_TEMP/StreamHubDerived/Build/Products/Release-iphoneos/StreamHub.app"
+          test -s "$APP/Info.plist"
+          test -s "$APP/StreamHub"
+          rm -rf "$RUNNER_TEMP/Payload"
           mkdir -p "$RUNNER_TEMP/Payload" dist
-          cp -R "$RUNNER_TEMP/StreamHubDerived/Build/Products/Release-iphoneos/StreamHub.app" "$RUNNER_TEMP/Payload/"
+          cp -R "$APP" "$RUNNER_TEMP/Payload/StreamHub.app"
           cd "$RUNNER_TEMP"
-          zip -qry "$GITHUB_WORKSPACE/dist/StreamHub-iOS-unsigned.ipa" Payload
+          zip -qry "$GITHUB_WORKSPACE/dist/StreamHub-iOS-unsigned.ipa" Payload/StreamHub.app
       - name: Upload IPA
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
