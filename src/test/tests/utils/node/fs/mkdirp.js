@@ -1,7 +1,7 @@
 import { module, test } from "qunit";
 import sinon from "sinon";
 
-import mkdirpInjector from "inject-loader!utils/node/fs/mkdirp";
+import mkdirpInjector from "streamhub-inject-loader!utils/node/fs/mkdirp";
 
 
 module( "utils/node/fs/mkdirp", function( hooks ) {
