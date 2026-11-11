@@ -9,7 +9,7 @@ import { fragment } from "ember-data-model-fragments/attributes";
 
 import Settings from "data/models/settings/model";
 import settingsStreamsLanguagesInjector
-	from "inject-loader?config!data/models/settings/streams/languages/fragment";
+	from "streamhub-inject-loader?config!data/models/settings/streams/languages/fragment";
 import ModelFragmentsInitializer from "init/initializers/model-fragments";
 
 
