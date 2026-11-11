@@ -76,6 +76,11 @@ on:
       - src/test/tests/data/models/settings/model.js
       - src/test/tests/init/initializers/localstorage/channelsettings.js
       - src/test/tests/init/initializers/localstorage/settings.js
+      - src/test/tests/init/instance-initializers/nwjs/window.js
+      - src/test/tests/ui/routes/-mixins/routes/infinite-scroll/index.js
+      - src/test/tests/ui/routes/-mixins/routes/refresh.js
+      - src/test/tests/ui/routes/-mixins/routes/infinite-scroll/css.js
+      - src/test/tests/ui/routes/settings/languages.js
 
 permissions:
   contents: read
