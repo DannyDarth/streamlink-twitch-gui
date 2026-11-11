@@ -18,6 +18,8 @@ on:
       - src/test/tests/utils/node/fs/which.js
       - src/test/tests/utils/node/onShutdown.js
       - src/test/tests/utils/node/child_process/spawn.js
+      - src/test/tests/utils/node/fs/stat.js
+      - src/test/tests/utils/node/http/getRedirected.js
 
 permissions:
   contents: read
