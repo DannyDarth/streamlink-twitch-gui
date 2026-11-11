@@ -33,6 +33,11 @@ on:
       - src/test/tests/services/streaming/provider/validate.js
       - src/test/tests/services/streaming/player/resolve.js
       - src/test/tests/services/notification/providers/snoretoast.js
+      - src/test/tests/services/chat/providers/chrome.js
+      - src/test/tests/services/notification/providers/growl.js
+      - src/test/tests/services/notification/providers/native.js
+      - src/test/tests/services/notification/providers/rich.js
+      - src/test/tests/services/notification/dispatch.js
 
 permissions:
   contents: read
