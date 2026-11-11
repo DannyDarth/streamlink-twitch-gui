@@ -1,7 +1,7 @@
 // TODO: properly rewrite tests by using sinon
 import { module, test } from "qunit";
 
-import whichInjector from "inject-loader!utils/node/fs/which";
+import whichInjector from "streamhub-inject-loader!utils/node/fs/which";
 
 
 module( "utils/node/fs/which" );
