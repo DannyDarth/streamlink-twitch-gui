@@ -128,6 +128,22 @@ jobs:
           assert.strictEqual(module.exports.default,'injected');
           console.log('Babel 7 injection proof of concept passed without babel-core 6');
           NODE
+      - name: Exercise experimental Babel 7 loader with real and mocked dependencies
+        run: |
+          node - <<'NODE'
+          const assert = require('assert');
+          const loader = require('./build/tasks/webpack/loaders/inject-loader-babel7');
+          let output;
+          loader.call({
+            resourcePath: '/tmp/streamhub-loader-smoke.js',
+            callback(error, code) { if (error) throw error; output = code; }
+          }, 'exports.value = require("path").basename("/foo/bar");');
+          const result = {exports:{}};
+          new Function('module', 'exports', 'require', output)(result,result.exports,require);
+          assert.strictEqual(result.exports({path:{basename:()=> 'mocked'}}).value,'mocked');
+          assert.strictEqual(result.exports({}).value,'bar');
+          console.log('Experimental Babel 7 loader: mocked and real dependencies passed');
+          NODE
       - name: Test application behavior
         run: xvfb-run --auto-servernum yarn run grunt test:coverage
       - name: Save candidate lockfile and audit
