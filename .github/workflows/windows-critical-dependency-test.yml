@@ -125,28 +125,31 @@ jobs:
           console.log('Query variants:', JSON.stringify([...new Set(matches.map(m => (m.line.match(/inject-loader[^!]*!/) || ['inject-loader!'])[0]))].sort(), null, 2));
           if (report.count) throw new Error('Legacy inject-loader imports remain; migrate these before removing the dependency');
           NODE
-      - name: Check dependency chain without removing test functionality
-        run: |
-          yarn why inject-loader
-          yarn why babel-traverse
-          yarn list --pattern 'inject-loader|babel-traverse|babel-core' > babel-dependency-tree.txt || true
-      - name: Resolve permanent Handlebars override
+      - name: Regenerate Yarn lockfile without legacy inject-loader
         run: |
           yarn install --ignore-scripts --non-interactive
-          yarn list --pattern handlebars
           node - <<'NODE'
           const fs = require('fs');
-          const lock = fs.readFileSync('yarn.lock', 'utf8');
-          if (/handlebars@[^:]*:\n  version "4\.7\.9"/.test(lock)) {
-            throw new Error('Vulnerable Handlebars 4.7.9 remains in candidate lockfile');
-          }
-          console.log('Verified no Handlebars 4.7.9 lockfile entries');
+          const pkg = JSON.parse(fs.readFileSync('package.json','utf8'));
+          if (pkg.devDependencies['inject-loader']) throw new Error('Legacy loader still declared');
+          const lock = fs.readFileSync('yarn.lock','utf8');
+          if (/^inject-loader@/m.test(lock)) throw new Error('Legacy loader remains in regenerated lockfile');
+          if (/handlebars@[^:]*:\\n  version "4\\.7\\.9"/.test(lock)) throw new Error('Vulnerable Handlebars remains');
+          console.log('Regenerated lockfile excludes inject-loader and Handlebars 4.7.9');
           NODE
-      - name: Identify remaining vulnerable dependency chains
+      - name: Inspect remaining Babel 6 dependency paths
         run: |
-          yarn why handlebars
-          yarn why babel-traverse
-          yarn list --pattern 'handlebars|babel-traverse'
+          yarn list --pattern 'inject-loader|babel-traverse|babel-core|handlebars' > babel-dependency-tree.txt || true
+          cat babel-dependency-tree.txt
+          yarn why babel-traverse || true
+      - name: Verify no legacy test imports
+        run: |
+          node - <<'NODE'
+          const fs = require('fs');
+          const report = JSON.parse(fs.readFileSync('inject-loader-usage.json','utf8'));
+          if (report.count !== 0) throw new Error('Legacy imports remain');
+          console.log('No legacy inject-loader imports');
+          NODE
       - name: Audit locked dependency tree
         run: |
           yarn audit --json --level low > audit-after.jsonl || true
