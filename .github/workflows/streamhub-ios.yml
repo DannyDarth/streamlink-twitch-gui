@@ -81,6 +81,7 @@ jobs:
           name: streamhub-ios-unsigned-ipa
           path: dist/StreamHub-iOS-unsigned.ipa
           if-no-files-found: error
+          retention-days: 7
 
   publish:
     name: Publish unsigned IPA prerelease
