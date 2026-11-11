@@ -37,7 +37,7 @@ jobs:
               if (entry.isDirectory()) walk(p);
               else if (entry.isFile() && p.endsWith('.js')) {
                 const source = fs.readFileSync(p, 'utf8');
-                for (const line of source.split('\\n')) {
+                for (const line of source.split(String.fromCharCode(10))) {
                   if (line.includes('inject-loader!') || line.includes('inject-loader?')) {
                     matches.push({file:p, line:line.trim()});
                   }
@@ -50,6 +50,7 @@ jobs:
           fs.writeFileSync('inject-loader-usage.json', JSON.stringify(report, null, 2));
           console.log('inject-loader references:', report.count, 'across files:', report.files);
           console.log('Examples:', JSON.stringify(matches.slice(0,15),null,2));
+          console.log('Query variants:', JSON.stringify([...new Set(matches.map(m => (m.line.match(/inject-loader[^!]*!/) || ['inject-loader!'])[0]))].sort(), null, 2));
           if (!report.count) throw new Error('Expected existing inject-loader imports; inventory is incomplete');
           NODE
       - name: Check dependency chain without removing test functionality
