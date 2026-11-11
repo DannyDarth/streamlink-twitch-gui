@@ -38,6 +38,9 @@ on:
       - src/test/tests/services/notification/providers/native.js
       - src/test/tests/services/notification/providers/rich.js
       - src/test/tests/services/notification/dispatch.js
+      - src/test/tests/services/auth.js
+      - src/test/tests/services/chat/providers/chromium.js
+      - src/test/tests/services/chat/providers/chatty.js
 
 permissions:
   contents: read
