@@ -191,7 +191,13 @@ private struct FollowingBrowser: UIViewRepresentable {
 
         func userContentController(_ userContentController: WKUserContentController,
                                    didReceive message: WKScriptMessage) {
-            guard message.name == "followedTwitchChannel", interceptTwitchChannels,
+            // Only the top-level Twitch page may request native playback.
+            // Ignore forged messages from embedded third-party frames.
+            let origin = message.frameInfo.securityOrigin
+            guard message.frameInfo.isMainFrame,
+                  origin.protocol.lowercased() == "https",
+                  ["twitch.tv", "www.twitch.tv", "m.twitch.tv"].contains(origin.host.lowercased()),
+                  message.name == "followedTwitchChannel", interceptTwitchChannels,
                   !playbackSuspended,
                   let channel = message.body as? String,
                   channel.range(of: "^[A-Za-z0-9_]{3,25}$", options: .regularExpression) != nil else { return }
