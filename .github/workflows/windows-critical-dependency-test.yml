@@ -53,6 +53,34 @@ jobs:
           console.log('Query variants:', JSON.stringify([...new Set(matches.map(m => (m.line.match(/inject-loader[^!]*!/) || ['inject-loader!'])[0]))].sort(), null, 2));
           if (!report.count) throw new Error('Expected existing inject-loader imports; inventory is incomplete');
           NODE
+      - name: Prototype Babel 7 dependency substitution without Babel 6
+        run: |
+          node - <<'NODE'
+          const babel = require('@babel/core');
+          const assert = require('assert');
+          const source = 'import config from "config"; export default config.mode;';
+          const plugin = function({types:t}) {
+            return {visitor:{
+              ImportDeclaration(path) {
+                if (path.node.source.value !== 'config') return;
+                const binding = path.node.specifiers[0].local;
+                path.replaceWith(t.variableDeclaration('const', [
+                  t.variableDeclarator(binding, t.memberExpression(t.identifier('__testDependencies'),t.identifier('config')))
+                ]));
+              }
+            }};
+          };
+          const result = babel.transformSync(source, {
+            babelrc:false, configFile:false,
+            plugins:[plugin, '@babel/plugin-transform-modules-commonjs']
+          }).code;
+          const module = {exports:{}};
+          new Function('module','exports','__testDependencies',result)(
+            module,module.exports,{config:{mode:'injected'}}
+          );
+          assert.strictEqual(module.exports.default,'injected');
+          console.log('Babel 7 injection proof of concept passed without babel-core 6');
+          NODE
       - name: Check dependency chain without removing test functionality
         run: |
           yarn why inject-loader
