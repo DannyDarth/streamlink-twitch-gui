@@ -3,7 +3,7 @@ import sinon from "sinon";
 import { EventEmitter } from "events";
 
 import notificationProviderGrowlInjector
-	from "inject-loader!services/notification/providers/growl";
+	from "streamhub-inject-loader!services/notification/providers/growl";
 import NotificationData from "services/notification/data";
 
 
