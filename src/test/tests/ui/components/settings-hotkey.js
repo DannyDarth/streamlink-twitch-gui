@@ -20,7 +20,7 @@ import { run } from "@ember/runloop";
 import SettingsHotkeyComponent from "ui/components/settings-hotkey/component";
 import FormButtonComponent from "ui/components/button/form-button/component";
 import CheckBoxComponent from "ui/components/form/check-box/component";
-import hotkeyServiceInjector from "inject-loader?config!services/hotkey";
+import hotkeyServiceInjector from "streamhub-inject-loader?config!services/hotkey";
 import { helper as BoolOrHelper } from "ui/components/helper/bool-or";
 import { helper as HotkeyTitleHelper } from "ui/components/helper/hotkey-title";
 import ObjectBuffer from "utils/ember/ObjectBuffer";
