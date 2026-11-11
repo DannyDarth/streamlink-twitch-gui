@@ -9,7 +9,8 @@ import { observer } from "@ember/object";
 import Service from "@ember/service";
 import Adapter from "ember-data/adapter";
 
-import searchBarComponentInjector from "inject-loader?config!ui/components/search-bar/component";
+	// eslint-disable-next-line max-len
+import searchBarComponentInjector from "streamhub-inject-loader?config!ui/components/search-bar/component";
 import Search from "data/models/search/model";
 
 
