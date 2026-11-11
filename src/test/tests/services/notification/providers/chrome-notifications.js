@@ -1,7 +1,7 @@
 import { module, test } from "qunit";
 
 import notificationProviderRichInjector
-	from "inject-loader!services/notification/providers/chrome-notifications";
+	from "streamhub-inject-loader!services/notification/providers/chrome-notifications";
 import NotificationData from "services/notification/data";
 
 
