@@ -73,6 +73,18 @@ jobs:
           APP="$RUNNER_TEMP/StreamHubDerived/Build/Products/Release-iphoneos/StreamHub.app"
           test -s "$APP/Info.plist"
           test -s "$APP/StreamHub"
+          # Validate the Release-iphoneos output is an actual iPhone arm64 binary.
+          EXECUTABLE="$(/usr/libexec/PlistBuddy -c 'Print :CFBundleExecutable' "$APP/Info.plist")"
+          test "$EXECUTABLE" = "StreamHub"
+          ARCHS="$(/usr/bin/lipo -archs "$APP/$EXECUTABLE")"
+          case " $ARCHS " in
+            *" arm64 "*) ;;
+            *)
+              echo "::error::Release iPhone executable is missing arm64 architecture: $ARCHS"
+              exit 1
+              ;;
+          esac
+          echo "Verified Release iPhone executable architecture: $ARCHS"
           # Refuse to package an unexpected app or a simulator-only build.
           PLIST="$APP/Info.plist"
           BUNDLE_ID="$(/usr/libexec/PlistBuddy -c 'Print :CFBundleIdentifier' "$PLIST")"
