@@ -2,11 +2,11 @@ import { module, test } from "qunit";
 import sinon from "sinon";
 
 import chatProviderInjector
-	from "inject-loader?../launch!services/chat/providers/-provider";
+	from "streamhub-inject-loader?../launch!services/chat/providers/-provider";
 import chatProviderBasicInjector
-	from "inject-loader?./-provider!services/chat/providers/-basic";
+	from "streamhub-inject-loader?./-provider!services/chat/providers/-basic";
 import chatProviderChatterinoInjector
-	from "inject-loader?./-provider!services/chat/providers/chatterino";
+	from "streamhub-inject-loader?./-provider!services/chat/providers/chatterino";
 
 
 module( "services/chat/providers/chatterino", function( hooks ) {
