@@ -316,6 +316,12 @@ struct TwitchBrowserView: UIViewRepresentable {
 
         func userContentController(_ userContentController: WKUserContentController,
                                    didReceive message: WKScriptMessage) {
+            // Do not trust messages from third-party frames or redirected pages.
+            let origin = message.frameInfo.securityOrigin
+            guard message.frameInfo.isMainFrame,
+                  origin.protocol.lowercased() == "https",
+                  ["twitch.tv", "www.twitch.tv", "m.twitch.tv"].contains(origin.host.lowercased())
+            else { return }
             if message.name == "streamhubAdState", let state = message.body as? String {
                 NSLog("StreamHub Twitch web player: %@", state)
                 return
@@ -349,7 +355,8 @@ struct TwitchBrowserView: UIViewRepresentable {
                 return
             }
             if scheme == "about" {
-                decisionHandler(.allow)
+                // Only the browser's empty bootstrap document is expected.
+                decisionHandler(destination.absoluteString == "about:blank" ? .allow : .cancel)
                 return
             }
             let host = destination.host?.lowercased() ?? ""
