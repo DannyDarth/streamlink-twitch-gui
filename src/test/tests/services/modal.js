@@ -11,7 +11,8 @@ import { run } from "@ember/runloop";
 import ModalService from "services/modal";
 import ModalServiceComponent from "ui/components/modal/modal-service/component";
 import modalDialogComponentInjector
-	from "inject-loader?ui/components/-mixins/hotkey!ui/components/modal/modal-dialog/component";
+	// eslint-disable-next-line max-len
+	from "streamhub-inject-loader?ui/components/-mixins/hotkey!ui/components/modal/modal-dialog/component";
 
 
 module( "services/modal", function( hooks ) {
