@@ -1,0 +1,62 @@
+name: Publish StreamHub Windows v1.0.2
+
+on:
+  push:
+    branches:
+      - master
+    paths:
+      - .github/workflows/publish-streamhub-windows-v1.0.2.yml
+
+permissions:
+  contents: write
+  actions: read
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Verify tested Windows installer build
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          status="$(gh api repos/${GITHUB_REPOSITORY}/actions/runs/42950165119 --jq .conclusion)"
+          sha="$(gh api repos/${GITHUB_REPOSITORY}/actions/runs/42950165119 --jq .head_sha)"
+          test "$status" = success
+          test "$sha" = 9b575d8db36217a24fc52878a7542861659f41af
+          if gh release view streamhub-windows-v1.0.2 --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            echo "Release v1.0.2 already exists; refusing to overwrite"
+            exit 1
+          fi
+
+      - name: Download verified installer artifact
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh run download 42950165119 --repo "$GITHUB_REPOSITORY" --name streamhub-windows-x64-installer --dir release-assets
+          test -s release-assets/StreamHub-Windows-x64-Setup.exe
+
+      - name: Publish Windows v1.0.2 release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          cat > release-notes.md <<'NOTES'
+          # StreamHub Windows v1.0.2
+
+          Security maintenance update to StreamHub Windows v1.0.1.
+
+          - Removed the obsolete inject-loader and its vulnerable Babel 6 dependency chain.
+          - Migrated 70 test files to the Babel 7-based test loader.
+          - Updated vulnerable Handlebars dependencies and regenerated the Yarn lockfile.
+          - Verified zero critical dependency advisories in the release candidate audit.
+          - Passed automated Windows and Ubuntu application tests and the security workflow.
+          - Passed all 16 user-reported manual checks for Twitch, Kick, playback, login, artwork, settings and performance.
+
+          Existing Twitch and Kick features and appearance are retained.
+
+          ## Install
+          Download StreamHub-Windows-x64-Setup.exe, close StreamHub, and run the installer.
+
+          The previous Windows v1.0.1 release remains available for rollback.
+          NOTES
+          gh release create streamhub-windows-v1.0.2 release-assets/StreamHub-Windows-x64-Setup.exe --repo "$GITHUB_REPOSITORY" --target 9b575d8db36217a24fc52878a7542861659f41af --title "StreamHub Windows v1.0.2 - Security Update" --notes-file release-notes.md
