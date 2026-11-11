@@ -22,7 +22,8 @@ concurrency:
 
 jobs:
   ios:
-    runs-on: macos-latest
+    # Use a specific supported macOS runner generation instead of the moving latest alias.
+    runs-on: macos-15
     timeout-minutes: 35
     steps:
       - name: Check out repository
