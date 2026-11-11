@@ -13,7 +13,7 @@ import Service from "@ember/service";
 import SettingsRoute from "ui/routes/settings/route";
 import SettingsLanguagesRoute from "ui/routes/settings/languages/route";
 import settingsLanguagesControllerInjector
-	from "inject-loader?config!ui/routes/settings/languages/controller";
+	from "streamhub-inject-loader?config!ui/routes/settings/languages/controller";
 import SettingsLanguagesTemplate from "ui/routes/settings/languages/template.hbs";
 import {
 	ATTR_STREAMS_LANGUAGES_FADE
