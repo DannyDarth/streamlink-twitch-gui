@@ -6,7 +6,7 @@ import sinon from "sinon";
 
 import { posix as path } from "path";
 
-import loggerInjector from "inject-loader?-util!utils/Logger";
+import loggerInjector from "streamhub-inject-loader?-util!utils/Logger";
 
 
 module( "utils/Logger", function( hooks ) {
