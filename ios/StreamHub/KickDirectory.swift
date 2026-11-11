@@ -25,7 +25,14 @@ struct KickStream: Identifiable, Decodable {
         self.category = (categoryData["name"] as? String) ?? (categories.first?["name"] as? String) ?? ""
         let thumbnailData = json["thumbnail"] as? [String: Any] ?? [:]
         let raw = (json["thumbnail"] as? String) ?? (json["thumbnail_url"] as? String) ?? (thumbnailData["src"] as? String) ?? (thumbnailData["url"] as? String) ?? ""
-        self.thumbnail = URL(string: raw)
+        // Do not pass untrusted non-HTTPS image URLs to AsyncImage.
+        if let imageURL = URL(string: raw),
+           imageURL.scheme?.lowercased() == "https",
+           imageURL.host != nil {
+            self.thumbnail = imageURL
+        } else {
+            self.thumbnail = nil
+        }
     }
 }
 
@@ -80,7 +87,12 @@ final class KickDirectory: ObservableObject {
             request.timeoutInterval = 20
             request.setValue("application/json", forHTTPHeaderField: "Accept")
             let (data, response) = try await URLSession.shared.data(for: request)
-            guard let http = response as? HTTPURLResponse, (200..<300).contains(http.statusCode) else {
+            // Redirects must not move Kick API data to an unexpected origin.
+            guard let http = response as? HTTPURLResponse,
+                  (200..<300).contains(http.statusCode),
+                  http.url?.scheme?.lowercased() == "https",
+                  http.url?.host?.lowercased() == "web.kick.com",
+                  data.count <= 5_000_000 else {
                 throw URLError(.badServerResponse)
             }
             let payload = try JSONSerialization.jsonObject(with: data)
