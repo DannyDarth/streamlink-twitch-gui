@@ -9,6 +9,7 @@ import Service from "@ember/service";
 import sinon from "sinon";
 
 import notificationServiceDispatchMixinInjector
+	// eslint-disable-next-line max-len
 	from "streamhub-inject-loader?./icons&./logger&./provider&nwjs/Window!services/notification/dispatch";
 import {
 	ATTR_NOTIFY_CLICK_NOOP,
