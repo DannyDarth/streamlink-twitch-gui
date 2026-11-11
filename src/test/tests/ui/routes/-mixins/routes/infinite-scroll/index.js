@@ -8,7 +8,7 @@ import { default as EmberObject, getProperties, set, setProperties } from "@embe
 import Route from "@ember/routing/route";
 
 import infiniteScrollMixinInjector
-	from "inject-loader?./css!ui/routes/-mixins/routes/infinite-scroll";
+	from "streamhub-inject-loader?./css!ui/routes/-mixins/routes/infinite-scroll";
 
 
 module( "ui/routes/-mixins/routes/infinite-scroll/index", function( hooks ) {
