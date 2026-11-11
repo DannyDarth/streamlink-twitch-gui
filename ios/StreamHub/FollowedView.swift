@@ -154,7 +154,10 @@ private struct FollowingBrowser: UIViewRepresentable {
         context.coordinator.onTwitchChannel = onTwitchChannel
         context.coordinator.interceptTwitchChannels = interceptTwitchChannels
         context.coordinator.playbackSuspended = playbackSuspended
-        webView.load(URLRequest(url: url))
+        // The signed-in Twitch/Kick browser must never start on an insecure URL.
+        if url.scheme?.lowercased() == "https", url.host != nil {
+            webView.load(URLRequest(url: url))
+        }
         return webView
     }
 
@@ -213,7 +216,11 @@ private struct FollowingBrowser: UIViewRepresentable {
                 decisionHandler(.cancel)
                 return
             }
-            if scheme == "about" { decisionHandler(.allow); return }
+            // Only the empty bootstrap page is expected; reject other about: URLs.
+            if scheme == "about" {
+                decisionHandler(url.absoluteString == "about:blank" ? .allow : .cancel)
+                return
+            }
             if interceptTwitchChannels, !playbackSuspended,
                action.targetFrame?.isMainFrame == true,
                ["twitch.tv","www.twitch.tv","m.twitch.tv"].contains(host) {
