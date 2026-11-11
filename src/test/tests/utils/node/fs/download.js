@@ -1,7 +1,7 @@
 import { module, test } from "qunit";
 import sinon from "sinon";
 
-import downloadInjector from "inject-loader?-url!utils/node/fs/download";
+import downloadInjector from "streamhub-inject-loader?-url!utils/node/fs/download";
 import { posix as path } from "path";
 import { Readable, Writable } from "stream";
 import { parse } from "url";
