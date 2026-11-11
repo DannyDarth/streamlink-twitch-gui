@@ -1,6 +1,6 @@
 import { module, test } from "qunit";
 
-import spawnInjector from "inject-loader!services/streaming/spawn";
+import spawnInjector from "streamhub-inject-loader!services/streaming/spawn";
 import ExecObj from "services/streaming/exec-obj";
 
 
