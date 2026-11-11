@@ -28,6 +28,11 @@ on:
       - src/test/tests/utils/Logger.js
       - src/test/tests/utils/preload.js
       - src/test/tests/utils/node/platform.js
+      - src/test/tests/services/streaming/spawn.js
+      - src/test/tests/services/streaming/provider/resolve.js
+      - src/test/tests/services/streaming/provider/validate.js
+      - src/test/tests/services/streaming/player/resolve.js
+      - src/test/tests/services/notification/providers/snoretoast.js
 
 permissions:
   contents: read
