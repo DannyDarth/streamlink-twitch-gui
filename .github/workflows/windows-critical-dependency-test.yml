@@ -12,6 +12,9 @@ on:
       - build/tasks/webpack/configurators/tests.js
       - build/tasks/webpack/loaders/inject-loader-babel7.js
       - src/test/tests/utils/system-locale.js
+      - src/test/tests/utils/node/fs/mkdirp.js
+      - src/test/tests/utils/node/resolvePath.js
+      - src/test/tests/utils/node/fs/whichFallback.js
 
 permissions:
   contents: read
