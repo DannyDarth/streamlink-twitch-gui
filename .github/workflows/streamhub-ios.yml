@@ -79,6 +79,15 @@ jobs:
         with:
           name: streamhub-ios-unsigned-ipa
           path: dist
+      - name: Verify downloaded IPA structure
+        run: |
+          set -euo pipefail
+          IPA="dist/StreamHub-iOS-unsigned.ipa"
+          test -s "$IPA"
+          unzip -tq "$IPA"
+          unzip -Z -1 "$IPA" | grep -Fxq 'Payload/StreamHub.app/Info.plist'
+          echo "IPA archive integrity and expected app bundle verified"
+          shasum -a 256 "$IPA"
       - name: Publish direct IPA download in GitHub Releases
         env:
           GH_TOKEN: ${{ github.token }}
