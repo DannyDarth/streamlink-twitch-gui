@@ -6,7 +6,7 @@ import { EventEmitter } from "events";
 import { win32 as win32Path } from "path";
 
 import notificationProviderSnoreToastInjector
-	from "inject-loader?-events!services/notification/providers/snoretoast";
+	from "streamhub-inject-loader?-events!services/notification/providers/snoretoast";
 import NotificationData from "services/notification/data";
 
 
