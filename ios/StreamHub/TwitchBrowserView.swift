@@ -322,7 +322,13 @@ struct TwitchBrowserView: UIViewRepresentable {
                   origin.protocol.lowercased() == "https",
                   ["twitch.tv", "www.twitch.tv", "m.twitch.tv"].contains(origin.host.lowercased())
             else { return }
-            if message.name == "streamhubAdState", let state = message.body as? String {
+            if message.name == "streamhubAdState" {
+                // Diagnostic messages originate in webpage JavaScript. Log only
+                // the exact known states, never arbitrary webpage-supplied text.
+                guard let state = message.body as? String,
+                      ["Possible Twitch ad UI visible",
+                       "Video playing; no ad UI detected",
+                       "No active video or ad UI detected"].contains(state) else { return }
                 NSLog("StreamHub Twitch web player: %@", state)
                 return
             }
