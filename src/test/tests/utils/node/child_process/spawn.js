@@ -1,6 +1,6 @@
 import { module, test } from "qunit";
 
-import spawnInjector from "inject-loader!utils/node/child_process/spawn";
+import spawnInjector from "streamhub-inject-loader!utils/node/child_process/spawn";
 
 
 module( "utils/node/child_process/spawn" );
