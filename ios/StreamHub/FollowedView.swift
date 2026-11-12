@@ -250,11 +250,9 @@ private struct FollowingBrowser: UIViewRepresentable {
                 decisionHandler(.allow)
             } else if action.targetFrame?.isMainFrame == true ||
                       action.targetFrame == nil {
-                // Do not follow untrusted top-level redirects inside the signed-in browser.
+                // Do not follow untrusted top-level redirects inside the signed-in browser,
+                // or automatically hand untrusted links to another app.
                 decisionHandler(.cancel)
-                if action.navigationType == .linkActivated {
-                    UIApplication.shared.open(url)
-                }
             } else {
                 // Keep HTTPS subframes for legitimate login and media resources.
                 decisionHandler(.allow)
