@@ -73,6 +73,19 @@ jobs:
           APP="$RUNNER_TEMP/StreamHubDerived/Build/Products/Release-iphoneos/StreamHub.app"
           test -s "$APP/Info.plist"
           test -s "$APP/StreamHub"
+          # StreamHub does not need protected-device permission prompts or background modes.
+          # Fail if a future project change adds one without explicit security review.
+          PLIST_JSON="$(plutil -convert json -o - "$APP/Info.plist")"
+          printf '%s' "$PLIST_JSON" | python3 -c '
+import json, sys
+info = json.load(sys.stdin)
+usage = sorted(key for key in info if key.startswith("NS") and key.endswith("UsageDescription"))
+background = info.get("UIBackgroundModes", [])
+if usage or background:
+    print("::error::Unexpected iOS privacy permission or background mode:", usage, background)
+    sys.exit(1)
+print("Verified no protected-device usage descriptions or background modes")
+'
           # Validate the Release-iphoneos output is an actual iPhone arm64 binary.
           EXECUTABLE="$(/usr/libexec/PlistBuddy -c 'Print :CFBundleExecutable' "$APP/Info.plist")"
           test "$EXECUTABLE" = "StreamHub"
