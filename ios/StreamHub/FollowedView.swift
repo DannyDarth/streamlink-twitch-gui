@@ -145,6 +145,11 @@ private struct FollowingBrowser: UIViewRepresentable {
         )
         configuration.userContentController.add(context.coordinator, name: "followedTwitchChannel")
         let webView = WKWebView(frame: .zero, configuration: configuration)
+        // Authenticated Twitch/Kick pages may contain session cookies.
+        // Keep production Web Inspector disabled even if debug settings change.
+        if #available(iOS 16.4, *) {
+            webView.isInspectable = false
+        }
         webView.isOpaque = false
         webView.backgroundColor = UIColor(red: 14/255, green: 14/255, blue: 16/255, alpha: 1)
         webView.scrollView.backgroundColor = webView.backgroundColor
