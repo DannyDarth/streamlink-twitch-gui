@@ -15,7 +15,8 @@ struct FilteredWebPlayer: UIViewRepresentable {
         webView.navigationDelegate = context.coordinator
         Task { @MainActor in
             await AdBlockingSettings.shared.configure(configuration.userContentController)
-            guard url.scheme?.lowercased() == "https", url.host != nil else { return }
+            guard url.scheme?.lowercased() == "https", url.host != nil,
+                  url.user == nil, url.password == nil else { return }
             webView.load(URLRequest(url: url))
         }
         return webView
@@ -35,7 +36,8 @@ struct FilteredWebPlayer: UIViewRepresentable {
             }
             // Reject HTTP, file, javascript, and custom-scheme navigations.
             // Keep about:blank for normal embedded player frame initialization.
-            if scheme == "https", destination.host != nil {
+            if scheme == "https", destination.host != nil,
+               destination.user == nil, destination.password == nil {
                 decisionHandler(.allow)
             } else if scheme == "about", destination.absoluteString == "about:blank" {
                 decisionHandler(.allow)
