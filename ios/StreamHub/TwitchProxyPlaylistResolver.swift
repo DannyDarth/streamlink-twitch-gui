@@ -95,7 +95,8 @@ enum TwitchProxyPlaylistResolver {
                               url: candidate, playlist: playlist, playbackIdentity: identity,
                               proxyFailure: identity == "randomized Twitch token" ? errors.joined(separator: "; ") : nil)
             } catch {
-                errors.append("\(identity): \(error.localizedDescription)")
+                // URLSession errors may contain signed playlist URLs; do not expose them.
+                errors.append("\(identity): request failed")
             }
         }
         throw ResolutionError.noProxySucceeded(errors.joined(separator: "; "))
@@ -158,7 +159,8 @@ enum TwitchProxyPlaylistResolver {
                 }
                 return Result(endpoint: endpoint, url: playlistURL, playlist: playlist, playbackIdentity: "forward proxy HLS", proxyFailure: nil)
             } catch {
-                failures.append("\(endpoint.label): \(error.localizedDescription)")
+                // Never surface error descriptions that may contain token-bearing URLs.
+                failures.append("\(endpoint.label): request failed")
             }
         }
         throw ResolutionError.noProxySucceeded(failures.joined(separator: "; "))

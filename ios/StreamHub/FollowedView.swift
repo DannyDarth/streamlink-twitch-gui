@@ -145,6 +145,11 @@ private struct FollowingBrowser: UIViewRepresentable {
         )
         configuration.userContentController.add(context.coordinator, name: "followedTwitchChannel")
         let webView = WKWebView(frame: .zero, configuration: configuration)
+        // Authenticated Twitch/Kick pages may contain session cookies.
+        // Keep production Web Inspector disabled even if debug settings change.
+        if #available(iOS 16.4, *) {
+            webView.isInspectable = false
+        }
         webView.isOpaque = false
         webView.backgroundColor = UIColor(red: 14/255, green: 14/255, blue: 16/255, alpha: 1)
         webView.scrollView.backgroundColor = webView.backgroundColor
@@ -154,7 +159,11 @@ private struct FollowingBrowser: UIViewRepresentable {
         context.coordinator.onTwitchChannel = onTwitchChannel
         context.coordinator.interceptTwitchChannels = interceptTwitchChannels
         context.coordinator.playbackSuspended = playbackSuspended
-        webView.load(URLRequest(url: url))
+        // The signed-in Twitch/Kick browser must never start on an insecure URL.
+        if url.scheme?.lowercased() == "https", url.host != nil,
+           url.user == nil, url.password == nil {
+            webView.load(URLRequest(url: url))
+        }
         return webView
     }
 
@@ -168,7 +177,13 @@ private struct FollowingBrowser: UIViewRepresentable {
             if playbackSuspended {
                 webView.stopLoading()
                 webView.loadHTMLString("", baseURL: nil)
-            } else {
+            } else if url.scheme?.lowercased() == "https",
+                      url.user == nil, url.password == nil,
+                      let host = url.host?.lowercased(),
+                      host == "twitch.tv" || host.hasSuffix(".twitch.tv") ||
+                      host == "kick.com" || host.hasSuffix(".kick.com") {
+                // Revalidate on resume as well as on initial load, since this
+                // browser retains the user's authenticated website sessions.
                 webView.load(URLRequest(url: url))
             }
         }
@@ -191,7 +206,13 @@ private struct FollowingBrowser: UIViewRepresentable {
 
         func userContentController(_ userContentController: WKUserContentController,
                                    didReceive message: WKScriptMessage) {
-            guard message.name == "followedTwitchChannel", interceptTwitchChannels,
+            // Only the top-level Twitch page may request native playback.
+            // Ignore forged messages from embedded third-party frames.
+            let origin = message.frameInfo.securityOrigin
+            guard message.frameInfo.isMainFrame,
+                  origin.protocol.lowercased() == "https",
+                  ["twitch.tv", "www.twitch.tv", "m.twitch.tv"].contains(origin.host.lowercased()),
+                  message.name == "followedTwitchChannel", interceptTwitchChannels,
                   !playbackSuspended,
                   let channel = message.body as? String,
                   channel.range(of: "^[A-Za-z0-9_]{3,25}$", options: .regularExpression) != nil else { return }
@@ -203,11 +224,16 @@ private struct FollowingBrowser: UIViewRepresentable {
             guard let url = action.request.url,
                   let scheme = url.scheme?.lowercased(),
                   scheme == "https" || scheme == "about",
+                  url.user == nil, url.password == nil,
                   let host = url.host?.lowercased() ?? (scheme == "about" ? "" : nil) else {
                 decisionHandler(.cancel)
                 return
             }
-            if scheme == "about" { decisionHandler(.allow); return }
+            // Only the empty bootstrap page is expected; reject other about: URLs.
+            if scheme == "about" {
+                decisionHandler(url.absoluteString == "about:blank" ? .allow : .cancel)
+                return
+            }
             if interceptTwitchChannels, !playbackSuspended,
                action.targetFrame?.isMainFrame == true,
                ["twitch.tv","www.twitch.tv","m.twitch.tv"].contains(host) {
@@ -229,11 +255,9 @@ private struct FollowingBrowser: UIViewRepresentable {
                 decisionHandler(.allow)
             } else if action.targetFrame?.isMainFrame == true ||
                       action.targetFrame == nil {
-                // Do not follow untrusted top-level redirects inside the signed-in browser.
+                // Do not follow untrusted top-level redirects inside the signed-in browser,
+                // or automatically hand untrusted links to another app.
                 decisionHandler(.cancel)
-                if action.navigationType == .linkActivated {
-                    UIApplication.shared.open(url)
-                }
             } else {
                 // Keep HTTPS subframes for legitimate login and media resources.
                 decisionHandler(.allow)

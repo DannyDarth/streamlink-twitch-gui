@@ -13,6 +13,9 @@ struct TwitchBrowserView: UIViewRepresentable {
 
     func makeUIView(context: Context) -> WKWebView {
         let configuration = WKWebViewConfiguration()
+        // Preserve the shared website session used by Twitch authentication.
+        // Do not switch to an ephemeral store: that would discard login state.
+        configuration.websiteDataStore = .default()
         configuration.allowsInlineMediaPlayback = true
         configuration.mediaTypesRequiringUserActionForPlayback = []
         // Set a dark page canvas before Twitch's own styles load to prevent
@@ -253,6 +256,11 @@ struct TwitchBrowserView: UIViewRepresentable {
         )
 
         let webView = WKWebView(frame: .zero, configuration: configuration)
+        // Browsed pages may share an authenticated website data store.
+        // Keep Web Inspector unavailable in production.
+        if #available(iOS 16.4, *) {
+            webView.isInspectable = false
+        }
         webView.isOpaque = false
         webView.backgroundColor = UIColor(red: 14/255, green: 14/255, blue: 16/255, alpha: 1)
         webView.scrollView.backgroundColor = webView.backgroundColor
@@ -316,7 +324,19 @@ struct TwitchBrowserView: UIViewRepresentable {
 
         func userContentController(_ userContentController: WKUserContentController,
                                    didReceive message: WKScriptMessage) {
-            if message.name == "streamhubAdState", let state = message.body as? String {
+            // Do not trust messages from third-party frames or redirected pages.
+            let origin = message.frameInfo.securityOrigin
+            guard message.frameInfo.isMainFrame,
+                  origin.protocol.lowercased() == "https",
+                  ["twitch.tv", "www.twitch.tv", "m.twitch.tv"].contains(origin.host.lowercased())
+            else { return }
+            if message.name == "streamhubAdState" {
+                // Diagnostic messages originate in webpage JavaScript. Log only
+                // the exact known states, never arbitrary webpage-supplied text.
+                guard let state = message.body as? String,
+                      ["Possible Twitch ad UI visible",
+                       "Video playing; no ad UI detected",
+                       "No active video or ad UI detected"].contains(state) else { return }
                 NSLog("StreamHub Twitch web player: %@", state)
                 return
             }
@@ -349,7 +369,15 @@ struct TwitchBrowserView: UIViewRepresentable {
                 return
             }
             if scheme == "about" {
-                decisionHandler(.allow)
+                // Only the browser's empty bootstrap document is expected.
+                decisionHandler(destination.absoluteString == "about:blank" ? .allow : .cancel)
+                return
+            }
+            // Reject HTTPS URLs with embedded credentials or no hostname.
+            // Preserve legitimate Twitch HTTPS navigation and media frames.
+            guard destination.host != nil,
+                  destination.user == nil, destination.password == nil else {
+                decisionHandler(.cancel)
                 return
             }
             let host = destination.host?.lowercased() ?? ""
@@ -375,11 +403,11 @@ struct TwitchBrowserView: UIViewRepresentable {
                 decisionHandler(.allow)
             } else if navigationAction.targetFrame?.isMainFrame == true ||
                       navigationAction.targetFrame == nil {
-                // Untrusted top-level redirects must not silently inherit this WKWebView.
+                // Block untrusted top-level redirects and links. Do not
+                // automatically hand them to Safari or another external app.
+                // Twitch navigation and third-party HTTPS media frames are
+                // handled by the allow rules above and below.
                 decisionHandler(.cancel)
-                if navigationAction.navigationType == .linkActivated {
-                    UIApplication.shared.open(destination)
-                }
             } else {
                 // Third-party HTTPS iframes may be required for Twitch login/media.
                 decisionHandler(.allow)

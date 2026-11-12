@@ -21,7 +21,14 @@ struct KickGame: Identifiable {
         let first = raw.components(separatedBy: ",").first?
             .trimmingCharacters(in: .whitespacesAndNewlines)
             .components(separatedBy: .whitespaces).first ?? ""
-        self.cover = URL(string: first)
+        // Accept only secure absolute artwork URLs supplied by Kick.
+        if let coverURL = URL(string: first),
+           coverURL.scheme?.lowercased() == "https",
+           coverURL.host != nil {
+            self.cover = coverURL
+        } else {
+            self.cover = nil
+        }
         let value = json["viewers"] ?? json["viewer_count"]
         if let number = value as? NSNumber {
             self.viewers = number.intValue
@@ -79,8 +86,12 @@ final class KickGamesDirectory: ObservableObject {
             request.timeoutInterval = 20
             request.setValue("application/json", forHTTPHeaderField: "Accept")
             let (data, response) = try await URLSession.shared.data(for: request)
+            // Reject unexpected redirects and oversized API payloads before parsing.
             guard let response = response as? HTTPURLResponse,
-                  (200..<300).contains(response.statusCode) else {
+                  (200..<300).contains(response.statusCode),
+                  response.url?.scheme?.lowercased() == "https",
+                  response.url?.host?.lowercased() == "kick.com",
+                  data.count <= 5_000_000 else {
                 throw URLError(.badServerResponse)
             }
             let payload = try JSONSerialization.jsonObject(with: data)

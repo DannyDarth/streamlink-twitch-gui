@@ -6,22 +6,51 @@ on:
     branches:
       - feature/kick-clean-rebuild
       - feature/ios-twitchadblock-rebuild
+      - security/ios-hardening-audit
     paths:
       - 'ios/**'
       - '.github/workflows/streamhub-ios.yml'
 
 permissions:
-  contents: write
+  contents: read
+
+# Serialize builds and prerelease publishing for the same branch.
+# Do not interrupt an active build just because another commit was pushed.
+concurrency:
+  group: streamhub-ios-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: false
 
 jobs:
   ios:
-    runs-on: macos-latest
+    # Use a specific supported macOS runner generation instead of the moving latest alias.
+    runs-on: macos-15
     timeout-minutes: 35
     steps:
       - name: Check out repository
-        uses: actions/checkout@v4
-      - name: Install XcodeGen
-        run: brew install xcodegen
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+      - name: Verify selected Xcode toolchain
+        run: |
+          set -euo pipefail
+          xcodebuild -version
+          XCODE_VERSION="$(xcodebuild -version | awk '/^Xcode / { print $2 }')"
+          case "$XCODE_VERSION" in
+            16.*|26.*) ;;
+            *)
+              echo "::error::Unexpected Xcode version: $XCODE_VERSION"
+              exit 1
+              ;;
+          esac
+          xcrun --sdk iphoneos --show-sdk-path >/dev/null
+          echo "Verified supported Xcode toolchain: $XCODE_VERSION with iPhoneOS SDK"
+      - name: Install and verify XcodeGen 2.46.0
+        run: |
+          brew install xcodegen
+          INSTALLED_VERSION="$(xcodegen --version)"
+          echo "Installed XcodeGen: $INSTALLED_VERSION"
+          if [ "$INSTALLED_VERSION" != "Version: 2.46.0" ] && [ "$INSTALLED_VERSION" != "2.46.0" ]; then
+            echo "::error::Expected XcodeGen 2.46.0; refusing to build with an unreviewed version"
+            exit 1
+          fi
       - name: Prepare selected StreamHub app icon
         run: |
           ICON=ios/StreamHub/Assets.xcassets/AppIcon.appiconset/AppIcon.png
@@ -40,26 +69,117 @@ jobs:
             CODE_SIGNING_ALLOWED=NO build
       - name: Package unsigned IPA for local signing
         run: |
+          set -euo pipefail
+          APP="$RUNNER_TEMP/StreamHubDerived/Build/Products/Release-iphoneos/StreamHub.app"
+          test -s "$APP/Info.plist"
+          test -s "$APP/StreamHub"
+          # StreamHub does not need protected-device permission prompts or background modes.
+          # Fail if a future project change adds one without explicit security review.
+          PLIST_JSON="$(plutil -convert json -o - "$APP/Info.plist")"
+          printf '%s' "$PLIST_JSON" | python3 -c '
+          import json, sys
+          info = json.load(sys.stdin)
+          usage = sorted(key for key in info if key.startswith("NS") and key.endswith("UsageDescription"))
+          background = info.get("UIBackgroundModes", [])
+          if usage or background:
+              print("::error::Unexpected iOS privacy permission or background mode:", usage, background)
+              sys.exit(1)
+          print("Verified no protected-device usage descriptions or background modes")
+          # ATS defaults to secure transport when no override is configured.
+          ats = info.get("NSAppTransportSecurity", {})
+          if not isinstance(ats, dict) or ats:
+              print("::error::Unexpected App Transport Security override; review before publishing:", ats)
+              sys.exit(1)
+          print("Verified default App Transport Security policy (no exceptions)")
+          '
+          # Validate the Release-iphoneos output is an actual iPhone arm64 binary.
+          EXECUTABLE="$(/usr/libexec/PlistBuddy -c 'Print :CFBundleExecutable' "$APP/Info.plist")"
+          test "$EXECUTABLE" = "StreamHub"
+          ARCHS="$(/usr/bin/lipo -archs "$APP/$EXECUTABLE")"
+          case " $ARCHS " in
+            *" arm64 "*) ;;
+            *)
+              echo "::error::Release iPhone executable is missing arm64 architecture: $ARCHS"
+              exit 1
+              ;;
+          esac
+          echo "Verified Release iPhone executable architecture: $ARCHS"
+          # Refuse to package an unexpected app or a simulator-only build.
+          PLIST="$APP/Info.plist"
+          BUNDLE_ID="$(/usr/libexec/PlistBuddy -c 'Print :CFBundleIdentifier' "$PLIST")"
+          PLATFORM="$(/usr/libexec/PlistBuddy -c 'Print :DTPlatformName' "$PLIST")"
+          DEVICE_FAMILY="$(/usr/libexec/PlistBuddy -c 'Print :UIDeviceFamily:0' "$PLIST")"
+          test "$BUNDLE_ID" = "com.streamhub.ios"
+          test "$PLATFORM" = "iphoneos"
+          test "$DEVICE_FAMILY" = "1"
+          # The IPA must remain unsigned so it can be signed locally on Windows.
+          if /usr/bin/codesign --verify "$APP" >/dev/null 2>&1; then
+            echo "::error::App is unexpectedly code signed; refusing unsigned IPA packaging"
+            exit 1
+          fi
+          if [ -e "$APP/embedded.mobileprovision" ] || [ -e "$APP/_CodeSignature" ]; then
+            echo "::error::App contains signing or provisioning material"
+            exit 1
+          fi
+          echo "Verified unsigned iPhone Release bundle: $BUNDLE_ID ($PLATFORM)"
+          rm -rf "$RUNNER_TEMP/Payload"
           mkdir -p "$RUNNER_TEMP/Payload" dist
-          cp -R "$RUNNER_TEMP/StreamHubDerived/Build/Products/Release-iphoneos/StreamHub.app" "$RUNNER_TEMP/Payload/"
+          cp -R "$APP" "$RUNNER_TEMP/Payload/StreamHub.app"
           cd "$RUNNER_TEMP"
-          zip -qry "$GITHUB_WORKSPACE/dist/StreamHub-iOS-unsigned.ipa" Payload
+          zip -qry "$GITHUB_WORKSPACE/dist/StreamHub-iOS-unsigned.ipa" Payload/StreamHub.app
       - name: Upload IPA
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
           name: streamhub-ios-unsigned-ipa
           path: dist/StreamHub-iOS-unsigned.ipa
           if-no-files-found: error
+          retention-days: 7
 
+  publish:
+    name: Publish unsigned IPA prerelease
+    needs: ios
+    timeout-minutes: 10
+    # Only publish builds from this repository's explicitly approved iOS branches.
+    # Keep security-branch prereleases available for on-device regression testing.
+    if: >-
+      github.repository == 'DannyDarth/streamlink-twitch-gui' &&
+      (github.ref == 'refs/heads/feature/kick-clean-rebuild' ||
+       github.ref == 'refs/heads/feature/ios-twitchadblock-rebuild' ||
+       github.ref == 'refs/heads/security/ios-hardening-audit') &&
+      (github.event_name == 'push' || github.event_name == 'workflow_dispatch')
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Download built IPA
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
+        with:
+          name: streamhub-ios-unsigned-ipa
+          path: dist
+      - name: Verify downloaded IPA structure
+        run: |
+          set -euo pipefail
+          IPA="dist/StreamHub-iOS-unsigned.ipa"
+          test -s "$IPA"
+          unzip -tq "$IPA"
+          unzip -Z -1 "$IPA" | grep -Fxq 'Payload/StreamHub.app/Info.plist'
+          echo "IPA archive integrity and expected app bundle verified"
+          shasum -a 256 "$IPA"
+          (cd dist && shasum -a 256 StreamHub-iOS-unsigned.ipa > StreamHub-iOS-unsigned.ipa.sha256)
+          (cd dist && shasum -a 256 -c StreamHub-iOS-unsigned.ipa.sha256)
       - name: Publish direct IPA download in GitHub Releases
         env:
           GH_TOKEN: ${{ github.token }}
           GH_REPO: ${{ github.repository }}
         run: |
+          test -s dist/StreamHub-iOS-unsigned.ipa
           TAG="streamhub-ios-build-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}"
+          RUN_URL="https://github.com/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}/attempts/${GITHUB_RUN_ATTEMPT}"
+          NOTES="$(printf 'Unsigned iOS IPA for local signing on Windows.\\n\\nSource commit: %s\\nSource branch: %s\\nWorkflow run: %s\\nWorkflow attempt: %s\\nActions URL: %s\\nSHA-256 checksum: see attached .sha256 file.\\n' "$GITHUB_SHA" "$GITHUB_REF_NAME" "$GITHUB_RUN_ID" "$GITHUB_RUN_ATTEMPT" "$RUN_URL")"
           gh release create "$TAG" \
             "dist/StreamHub-iOS-unsigned.ipa#StreamHub-iOS-unsigned.ipa" \
+            "dist/StreamHub-iOS-unsigned.ipa.sha256#StreamHub-iOS-unsigned.ipa.sha256" \
             --title "StreamHub iOS build ${GITHUB_RUN_NUMBER} (attempt ${GITHUB_RUN_ATTEMPT})" \
-            --notes "Unsigned iOS IPA from commit ${GITHUB_SHA}. Download the .ipa asset directly and sign it using your preferred Windows sideloading tool." \
+            --notes "$NOTES" \
             --target "$GITHUB_SHA" \
             --prerelease
