@@ -155,7 +155,8 @@ private struct FollowingBrowser: UIViewRepresentable {
         context.coordinator.interceptTwitchChannels = interceptTwitchChannels
         context.coordinator.playbackSuspended = playbackSuspended
         // The signed-in Twitch/Kick browser must never start on an insecure URL.
-        if url.scheme?.lowercased() == "https", url.host != nil {
+        if url.scheme?.lowercased() == "https", url.host != nil,
+           url.user == nil, url.password == nil {
             webView.load(URLRequest(url: url))
         }
         return webView
@@ -172,6 +173,7 @@ private struct FollowingBrowser: UIViewRepresentable {
                 webView.stopLoading()
                 webView.loadHTMLString("", baseURL: nil)
             } else if url.scheme?.lowercased() == "https",
+                      url.user == nil, url.password == nil,
                       let host = url.host?.lowercased(),
                       host == "twitch.tv" || host.hasSuffix(".twitch.tv") ||
                       host == "kick.com" || host.hasSuffix(".kick.com") {
@@ -217,6 +219,7 @@ private struct FollowingBrowser: UIViewRepresentable {
             guard let url = action.request.url,
                   let scheme = url.scheme?.lowercased(),
                   scheme == "https" || scheme == "about",
+                  url.user == nil, url.password == nil,
                   let host = url.host?.lowercased() ?? (scheme == "about" ? "" : nil) else {
                 decisionHandler(.cancel)
                 return
