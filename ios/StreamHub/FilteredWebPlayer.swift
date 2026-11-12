@@ -12,6 +12,11 @@ struct FilteredWebPlayer: UIViewRepresentable {
         let configuration = WKWebViewConfiguration()
         configuration.allowsInlineMediaPlayback = true
         let webView = WKWebView(frame: .zero, configuration: configuration)
+        // Prevent inspection of playback pages and their session data.
+        // This does not change media playback or content filtering.
+        if #available(iOS 16.4, *) {
+            webView.isInspectable = false
+        }
         webView.navigationDelegate = context.coordinator
         Task { @MainActor in
             await AdBlockingSettings.shared.configure(configuration.userContentController)
