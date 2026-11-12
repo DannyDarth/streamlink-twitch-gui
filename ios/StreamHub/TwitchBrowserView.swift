@@ -365,6 +365,13 @@ struct TwitchBrowserView: UIViewRepresentable {
                 decisionHandler(destination.absoluteString == "about:blank" ? .allow : .cancel)
                 return
             }
+            // Reject HTTPS URLs with embedded credentials or no hostname.
+            // Preserve legitimate Twitch HTTPS navigation and media frames.
+            guard destination.host != nil,
+                  destination.user == nil, destination.password == nil else {
+                decisionHandler(.cancel)
+                return
+            }
             let host = destination.host?.lowercased() ?? ""
             if true,
                let callback = onChannelSelected,
