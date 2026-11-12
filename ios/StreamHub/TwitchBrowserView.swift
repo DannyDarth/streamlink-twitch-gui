@@ -253,6 +253,11 @@ struct TwitchBrowserView: UIViewRepresentable {
         )
 
         let webView = WKWebView(frame: .zero, configuration: configuration)
+        // Browsed pages may share an authenticated website data store.
+        // Keep Web Inspector unavailable in production.
+        if #available(iOS 16.4, *) {
+            webView.isInspectable = false
+        }
         webView.isOpaque = false
         webView.backgroundColor = UIColor(red: 14/255, green: 14/255, blue: 16/255, alpha: 1)
         webView.scrollView.backgroundColor = webView.backgroundColor
