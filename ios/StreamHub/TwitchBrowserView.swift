@@ -13,6 +13,9 @@ struct TwitchBrowserView: UIViewRepresentable {
 
     func makeUIView(context: Context) -> WKWebView {
         let configuration = WKWebViewConfiguration()
+        // Preserve the shared website session used by Twitch authentication.
+        // Do not switch to an ephemeral store: that would discard login state.
+        configuration.websiteDataStore = .default()
         configuration.allowsInlineMediaPlayback = true
         configuration.mediaTypesRequiringUserActionForPlayback = []
         // Set a dark page canvas before Twitch's own styles load to prevent
