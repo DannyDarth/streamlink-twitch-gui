@@ -10,6 +10,9 @@ struct FilteredWebPlayer: UIViewRepresentable {
 
     func makeUIView(context: Context) -> WKWebView {
         let configuration = WKWebViewConfiguration()
+        // Preserve the default website data store so embedded playback retains
+        // the same provider session and media behavior as before hardening.
+        configuration.websiteDataStore = .default()
         configuration.allowsInlineMediaPlayback = true
         let webView = WKWebView(frame: .zero, configuration: configuration)
         // Prevent inspection of playback pages and their session data.
