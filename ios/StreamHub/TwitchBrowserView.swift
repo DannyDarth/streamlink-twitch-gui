@@ -395,11 +395,11 @@ struct TwitchBrowserView: UIViewRepresentable {
                 decisionHandler(.allow)
             } else if navigationAction.targetFrame?.isMainFrame == true ||
                       navigationAction.targetFrame == nil {
-                // Untrusted top-level redirects must not silently inherit this WKWebView.
+                // Block untrusted top-level redirects and links. Do not
+                // automatically hand them to Safari or another external app.
+                // Twitch navigation and third-party HTTPS media frames are
+                // handled by the allow rules above and below.
                 decisionHandler(.cancel)
-                if navigationAction.navigationType == .linkActivated {
-                    UIApplication.shared.open(destination)
-                }
             } else {
                 // Third-party HTTPS iframes may be required for Twitch login/media.
                 decisionHandler(.allow)
