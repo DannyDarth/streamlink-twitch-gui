@@ -154,27 +154,8 @@ struct TwitchBrowserView: UIViewRepresentable {
               window.webkit.messageHandlers.streamhubChannelTap.postMessage(parts[0]);
             }
           }, true);
-          let lastRoute = location.pathname;
-          function notifyRoute() {
-            const path = location.pathname;
-            if (path === lastRoute) return;
-            lastRoute = path;
-            if (!window.__streamhubProxyEnabled) return;
-            const parts = path.split('/').filter(Boolean);
-            if (parts.length !== 1 || !/^[a-zA-Z0-9_]{3,25}$/.test(parts[0]) ||
-                reserved.has(parts[0].toLowerCase())) return;
-            window.webkit?.messageHandlers?.streamhubChannelTap?.postMessage(parts[0]);
-          }
-          for (const method of ['pushState', 'replaceState']) {
-            const original = history[method];
-            history[method] = function() {
-              const result = original.apply(this, arguments);
-              notifyRoute();
-              return result;
-            };
-          }
-          window.addEventListener('popstate', notifyRoute);
-          setInterval(notifyRoute, 400);
+          // Only genuine user taps open StreamHub playback. Twitch may change
+          // routes automatically during sign-in, including to profile pages.
         })();
         """
         configuration.userContentController.addUserScript(
@@ -382,7 +363,7 @@ struct TwitchBrowserView: UIViewRepresentable {
                 return
             }
             let host = destination.host?.lowercased() ?? ""
-            if true,
+            if navigationAction.navigationType == .linkActivated,
                let callback = onChannelSelected,
                navigationAction.targetFrame?.isMainFrame == true,
                host == "www.twitch.tv" || host == "m.twitch.tv" || host == "twitch.tv" {
